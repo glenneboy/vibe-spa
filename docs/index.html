@@ -1,12 +1,1447 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Vibe SPA</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strava Route Finder Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .accent-orange { accent-color: #fc4c02; }
+        .loading { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .route-card {
+            transition: all 0.2s ease;
+        }
+        .route-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        #map {
+            height: 250px;
+            border-radius: 0.5rem;
+            z-index: 1;
+        }
+        .leaflet-container {
+            background: #1e293b;
+        }
+
+        /* noUiSlider Custom Styling */
+        .noUi-target {
+            background: #374151;
+            border: none;
+            box-shadow: none;
+            height: 8px;
+            border-radius: 4px;
+        }
+        .noUi-connect {
+            background: #fc4c02;
+        }
+        .noUi-handle {
+            background: #fc4c02;
+            border: 3px solid #1f2937;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            right: -10px;
+            top: -6px;
+            cursor: pointer;
+        }
+        .noUi-handle:before,
+        .noUi-handle:after {
+            display: none;
+        }
+        .noUi-handle:hover {
+            background: #ff5a13;
+        }
+        .noUi-tooltip {
+            display: none;
+        }
+        .noUi-horizontal .noUi-handle {
+            right: -10px;
+        }
+    </style>
 </head>
-<body>
-  <div id="app">Welcome to Vibe SPA</div>
-  <script src="app.js"></script>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+
+<!-- Help Modal -->
+<div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 border border-gray-700">
+        <div class="flex justify-between items-start mb-6">
+            <h2 class="text-2xl font-bold text-orange-500">Setup Instructions</h2>
+            <button onclick="closeHelp()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+
+        <div class="space-y-6 text-sm">
+            <div>
+                <h3 class="font-bold text-lg mb-2 text-orange-400">Step 1: Create a Strava API Application</h3>
+                <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                    <li>Go to <a href="https://www.strava.com/settings/api" target="_blank" class="text-blue-400 underline">https://www.strava.com/settings/api</a></li>
+                    <li>Create an application (if you haven't already)</li>
+                    <li>Set "Authorization Callback Domain" to <code class="bg-gray-700 px-2 py-1 rounded">localhost</code></li>
+                    <li>Note your <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                </ol>
+            </div>
+
+            <div>
+                <h3 class="font-bold text-lg mb-2 text-orange-400">Step 2: Get Your Access Token</h3>
+                <p class="mb-2 text-gray-300">Visit this URL in your browser (replace YOUR_CLIENT_ID):</p>
+                <div class="bg-gray-900 p-3 rounded text-xs break-all font-mono text-blue-300 border border-gray-700">
+                    https://www.strava.com/oauth/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=http://localhost&approval_prompt=force&scope=activity:read_all,read_all
+                </div>
+                <p class="mt-2 text-gray-300">After authorizing, you'll be redirected to localhost with a code in the URL:</p>
+                <div class="bg-gray-900 p-3 rounded text-xs font-mono text-gray-400 border border-gray-700">
+                    http://localhost/?state=&code=<span class="text-green-400">COPY_THIS_CODE</span>&scope=...
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-bold text-lg mb-2 text-orange-400">Step 3: Exchange Code for Token</h3>
+                <p class="mb-2 text-gray-300">Use curl or Postman to exchange the code:</p>
+                <div class="bg-gray-900 p-3 rounded text-xs font-mono text-gray-300 border border-gray-700 overflow-x-auto">
+curl -X POST https://www.strava.com/oauth/token \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET \
+  -d code=YOUR_CODE \
+  -d grant_type=authorization_code
+                </div>
+                <p class="mt-2 text-gray-300">The response will contain <code class="bg-gray-700 px-2 py-1 rounded">refresh_token</code> - save this!</p>
+            </div>
+
+            <div class="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                <h3 class="font-bold text-orange-400 mb-2">Quick Start</h3>
+                <p class="text-gray-300">Enter your Client ID, Client Secret, and Refresh Token in the form, then click "Connect to Strava"</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="flex flex-col lg:flex-row h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-full lg:w-96 bg-gray-800 border-r border-gray-700 flex flex-col overflow-hidden">
+        <div class="p-6 border-b border-gray-700">
+            <div class="flex items-center justify-between mb-2">
+                <h1 class="text-2xl font-black text-orange-500 flex items-center gap-2">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    ROUTE FINDER
+                </h1>
+                <button onclick="showHelp()" class="text-gray-400 hover:text-white transition">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="connectionStatus" class="text-xs text-gray-400">
+                Not connected
+            </div>
+            <button id="logoutBtn" onclick="logout()" class="hidden mt-2 text-xs text-red-400 hover:text-red-300 transition">
+                Logout
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Auth Section -->
+            <div id="authSection" class="space-y-4 mb-8">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Client ID</label>
+                    <input type="text" id="clientId" placeholder="Your Strava Client ID"
+                           class="w-full bg-gray-900 border border-gray-700 px-4 py-2.5 rounded-lg outline-none focus:border-orange-500 transition text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Client Secret</label>
+                    <input type="password" id="clientSecret" placeholder="Your Strava Client Secret"
+                           class="w-full bg-gray-900 border border-gray-700 px-4 py-2.5 rounded-lg outline-none focus:border-orange-500 transition text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Refresh Token</label>
+                    <input type="password" id="refreshToken" placeholder="Your Refresh Token"
+                           class="w-full bg-gray-900 border border-gray-700 px-4 py-2.5 rounded-lg outline-none focus:border-orange-500 transition text-sm">
+                </div>
+                <button onclick="connectStrava()" id="connectBtn"
+                        class="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg transition shadow-lg">
+                    Connect to Strava
+                </button>
+                <div id="authError" class="hidden text-xs text-red-400 bg-red-900/30 border border-red-800 rounded-lg p-3"></div>
+            </div>
+
+            <!-- Filters Section -->
+            <div id="filtersSection" class="hidden space-y-6">
+                <div class="border-t border-gray-700 pt-6">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase mb-4">Filters</h3>
+
+                    <!-- Activity Type -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-semibold text-gray-300 mb-2">Activity Type</label>
+                        <select id="typeFilter" onchange="applyFilters()"
+                                class="w-full bg-gray-900 border border-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:border-orange-500">
+                            <option value="all">All Activities</option>
+                            <option value="1">Ride</option>
+                            <option value="2">Run</option>
+                        </select>
+                    </div>
+
+                    <!-- Distance Range -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-semibold text-gray-300 mb-2">
+                            Distance: <span id="distanceRangeValue" class="text-orange-500 font-mono">0 - max mi</span>
+                        </label>
+                        <div id="distanceSlider" class="mt-4"></div>
+                    </div>
+
+                    <!-- Elevation Range -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-semibold text-gray-300 mb-2">
+                            Elevation Gain: <span id="elevationRangeValue" class="text-orange-500 font-mono">0 - max ft</span>
+                        </label>
+                        <div id="elevationSlider" class="mt-4"></div>
+                    </div>
+
+                    <!-- Estimated Time -->     
+                    <div class="mb-6">
+                        <label class="block text-xs font-semibold text-gray-300 mb-2">
+                            Max Time: <span id="maxTimeValue" class="text-orange-500 font-mono">No limit</span>
+                        </label>
+                        <input type="range" id="maxTimeSlider" min="0" max="480" step="15" value="480"
+                               oninput="updateMaxTimeLabel(); applyFilters()"
+                               class="w-full accent-orange h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+                            <span>Any</span>
+                            <span>8 hrs</span>
+                        </div>
+                    </div>
+
+                    <!-- Starred Routes -->
+                    <div class="mb-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="starredOnly" onchange="applyFilters()"
+                                   class="w-4 h-4 accent-orange rounded">
+                            <span class="text-xs font-semibold text-gray-300">Show only starred routes</span>
+                        </label>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-semibold text-gray-300 mb-2">Sort By</label>
+                        <select id="sortBy" onchange="applyFilters()"
+                                class="w-full bg-gray-900 border border-gray-700 px-3 py-2 rounded-lg text-sm outline-none focus:border-orange-500">
+                            <option value="name">Name (A-Z)</option>
+                            <option value="proximity" id="proximitySort" disabled>Proximity (Nearest)</option>
+                            <option value="distance-asc">Distance (Shortest)</option>
+                            <option value="distance-desc">Distance (Longest)</option>
+                            <option value="elevation-asc">Elevation (Least)</option>
+                            <option value="elevation-desc">Elevation (Most)</option>
+                            <option value="time-asc">Time (Quickest)</option>
+                            <option value="time-desc">Time (Longest)</option>
+                            <option value="created-desc">Recently Created</option>
+                            <option value="created-asc">Oldest Created</option>
+                        </select>
+                    </div>
+
+                    <!-- Location Filter -->
+                    <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                        <label class="block text-xs font-semibold text-gray-300 mb-3">Proximity Filter</label>
+                        <div class="text-xs text-gray-400 mb-3">Click on the map to set search location</div>
+
+                        <!-- Map Container -->
+                        <div id="map" class="mb-3 border border-gray-700"></div>
+
+                        <!-- Map Controls -->
+                        <div class="flex gap-2 mb-3">
+                            <button onclick="useCurrentLocation()" class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-xs font-semibold transition">
+                                📍 My Location
+                            </button>
+                            <button onclick="clearLocationFilter()" class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-xs font-semibold transition">
+                                ✕ Clear
+                            </button>
+                        </div>
+
+                        <div id="locationInfo" class="hidden text-xs text-green-400 mb-3 font-mono"></div>
+
+                        <div id="radiusControl" class="hidden">
+                            <label class="block text-xs font-semibold text-gray-300 mb-2">
+                                Search Radius: <span id="radiusValue" class="text-orange-500 font-mono">5</span> mi
+                            </label>
+                            <input type="range" id="radiusSlider" min="1" max="50" value="5"
+                                   oninput="updateRadiusLabel(); applyFilters()"
+                                   class="w-full accent-orange h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="mt-6 bg-gray-900 rounded-lg p-4 border border-gray-700">
+                        <div class="text-xs text-gray-400 mb-1">Routes Found</div>
+                        <div class="text-2xl font-bold text-orange-500" id="routeCount">0</div>
+                        <div class="text-[10px] text-gray-500 mt-1" id="totalRoutes">of 0 total</div>
+                    </div>
+
+                    <!-- Reset Filters -->
+                    <button onclick="resetFilters()"
+                            class="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-semibold mt-4 transition">
+                        Reset Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Header -->
+        <header class="h-16 bg-gray-800/50 backdrop-blur border-b border-gray-700 px-6 flex items-center justify-between">
+            <div id="athleteInfo" class="hidden flex items-center gap-3">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div class="flex flex-col">
+                    <span id="athleteName" class="text-sm font-semibold">Athlete Connected</span>
+                    <span id="sessionExpiry" class="text-[10px] text-gray-500"></span>
+                </div>
+            </div>
+            <div id="loadingIndicator" class="hidden flex items-center gap-2 text-sm text-gray-400">
+                <div class="loading">Loading routes...</div>
+            </div>
+        </header>
+
+        <!-- Routes Grid -->
+        <div id="routesContainer" class="flex-1 overflow-y-auto p-6">
+            <div id="emptyState" class="flex flex-col items-center justify-center h-full text-gray-500">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-4 opacity-30">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <p class="text-lg font-semibold">Connect to Strava to view your routes</p>
+                <p class="text-sm mt-2">Enter your credentials in the sidebar to get started</p>
+            </div>
+
+            <div id="routesGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Routes will be inserted here -->
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+let allRoutes = [];
+let filteredRoutes = [];
+let currentLocation = null;
+let accessToken = '';
+let tokenExpiresAt = null;
+let credentials = {
+    clientId: '',
+    clientSecret: '',
+    refreshToken: ''
+};
+let map = null;
+let locationMarker = null;
+let searchCircle = null;
+
+// Token Management
+function saveSession() {
+    localStorage.setItem('strava_access_token', accessToken);
+    localStorage.setItem('strava_token_expires_at', tokenExpiresAt);
+    localStorage.setItem('strava_client_id', credentials.clientId);
+    localStorage.setItem('strava_client_secret', credentials.clientSecret);
+    localStorage.setItem('strava_refresh_token', credentials.refreshToken);
+}
+
+function loadSession() {
+    const savedToken = localStorage.getItem('strava_access_token');
+    const savedExpiry = localStorage.getItem('strava_token_expires_at');
+    const savedClientId = localStorage.getItem('strava_client_id');
+    const savedClientSecret = localStorage.getItem('strava_client_secret');
+    const savedRefreshToken = localStorage.getItem('strava_refresh_token');
+
+    if (savedToken && savedExpiry && savedClientId && savedClientSecret && savedRefreshToken) {
+        accessToken = savedToken;
+        tokenExpiresAt = parseInt(savedExpiry);
+        credentials = {
+            clientId: savedClientId,
+            clientSecret: savedClientSecret,
+            refreshToken: savedRefreshToken
+        };
+        return true;
+    }
+    return false;
+}
+
+function clearSession() {
+    accessToken = '';
+    tokenExpiresAt = null;
+    credentials = { clientId: '', clientSecret: '', refreshToken: '' };
+    localStorage.removeItem('strava_access_token');
+    localStorage.removeItem('strava_token_expires_at');
+    localStorage.removeItem('strava_client_id');
+    localStorage.removeItem('strava_client_secret');
+    localStorage.removeItem('strava_refresh_token');
+}
+
+function isTokenExpired() {
+    if (!tokenExpiresAt) return true;
+    // Add 5 minute buffer to refresh before actual expiry
+    return Date.now() >= (tokenExpiresAt - 5 * 60 * 1000);
+}
+
+async function refreshAccessToken() {
+    try {
+        const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                client_id: credentials.clientId,
+                client_secret: credentials.clientSecret,
+                refresh_token: credentials.refreshToken,
+                grant_type: 'refresh_token'
+            })
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok || !tokenData.access_token) {
+            throw new Error(tokenData.message || 'Failed to refresh token');
+        }
+
+        accessToken = tokenData.access_token;
+        tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000);
+
+        // Update refresh token if a new one was provided
+        if (tokenData.refresh_token) {
+            credentials.refreshToken = tokenData.refresh_token;
+        }
+
+        saveSession();
+        return true;
+    } catch (error) {
+        console.error('Token refresh failed:', error);
+        return false;
+    }
+}
+
+async function ensureValidToken() {
+    if (isTokenExpired()) {
+        const statusEl = document.getElementById('connectionStatus');
+        statusEl.textContent = 'Refreshing session...';
+
+        const success = await refreshAccessToken();
+        if (!success) {
+            showSessionExpiredDialog();
+            return false;
+        }
+
+        statusEl.textContent = 'Session refreshed';
+        statusEl.classList.add('text-green-400');
+    }
+    return true;
+}
+
+function showSessionExpiredDialog() {
+    const shouldReauth = confirm(
+        'Your session has expired and could not be automatically refreshed.\n\n' +
+        'Would you like to log in again?\n\n' +
+        'Click OK to log in again, or Cancel to stay logged out.'
+    );
+
+    if (shouldReauth) {
+        logout(false);
+        showAuthForm();
+    } else {
+        logout(true);
+    }
+}
+
+function logout(silent = false) {
+    clearSession();
+    allRoutes = [];
+    filteredRoutes = [];
+    currentLocation = null;
+
+    // Reset UI
+    document.getElementById('authSection').classList.remove('hidden');
+    document.getElementById('filtersSection').classList.add('hidden');
+    document.getElementById('athleteInfo').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+    document.getElementById('routesGrid').classList.add('hidden');
+    document.getElementById('routesGrid').innerHTML = '';
+    document.getElementById('connectionStatus').textContent = 'Not connected';
+    document.getElementById('connectionStatus').classList.remove('text-green-400', 'text-red-400');
+    document.getElementById('connectionStatus').classList.add('text-gray-400');
+
+    // Clear proximity sort
+    const proximitySort = document.getElementById('proximitySort');
+    proximitySort.disabled = true;
+    if (document.getElementById('sortBy').value === 'proximity') {
+        document.getElementById('sortBy').value = 'name';
+    }
+
+    // Clear map markers
+    if (locationMarker) {
+        map.removeLayer(locationMarker);
+        locationMarker = null;
+    }
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+        searchCircle = null;
+    }
+    document.getElementById('locationInfo').classList.add('hidden');
+    document.getElementById('radiusControl').classList.add('hidden');
+
+    if (!silent) {
+        alert('You have been logged out successfully.');
+    }
+}
+
+function showAuthForm() {
+    document.getElementById('authSection').classList.remove('hidden');
+    document.getElementById('filtersSection').classList.add('hidden');
+}
+
+function updateSessionExpiry() {
+    if (!tokenExpiresAt) return;
+
+    const expiryEl = document.getElementById('sessionExpiry');
+    const now = Date.now();
+    const timeLeft = tokenExpiresAt - now;
+
+    if (timeLeft <= 0) {
+        expiryEl.textContent = 'Session expired';
+        expiryEl.classList.add('text-red-400');
+        return;
+    }
+
+    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+        expiryEl.textContent = `Session expires in ${hours}h ${minutes}m`;
+    } else if (minutes > 5) {
+        expiryEl.textContent = `Session expires in ${minutes}m`;
+    } else {
+        expiryEl.textContent = `Session expires soon (${minutes}m)`;
+        expiryEl.classList.add('text-yellow-400');
+    }
+}
+
+// Update session expiry display every minute
+setInterval(() => {
+    if (accessToken && tokenExpiresAt) {
+        updateSessionExpiry();
+
+        // Auto-refresh if close to expiry
+        if (isTokenExpired()) {
+            refreshAccessToken();
+        }
+    }
+}, 60000); // Check every minute
+
+// Show/Hide Help Modal
+function showHelp() {
+    document.getElementById('helpModal').classList.remove('hidden');
+}
+
+function closeHelp() {
+    document.getElementById('helpModal').classList.add('hidden');
+}
+
+// Store slider values
+let distanceRange = [0, 151];
+let elevationRange = [0, 25100];
+
+// Initialize Range Sliders
+function initializeSliders() {
+    // Distance Range Slider (0-150, with 151 = "max"/unlimited)
+    const distanceSlider = document.getElementById('distanceSlider');
+    noUiSlider.create(distanceSlider, {
+        start: [0, 151],
+        connect: true,
+        step: 1,
+        range: {
+            'min': 0,
+            'max': 151
+        },
+        format: {
+            to: value => Math.round(value),
+            from: value => Math.round(value)
+        }
+    });
+
+    distanceSlider.noUiSlider.on('update', (values) => {
+        distanceRange = [parseFloat(values[0]), parseFloat(values[1])];
+        const min = values[0];
+        const max = parseFloat(values[1]) > 150 ? 'max' : values[1];
+        document.getElementById('distanceRangeValue').textContent = `${min} - ${max} mi`;
+    });
+
+    distanceSlider.noUiSlider.on('change', () => {
+        applyFilters();
+    });
+
+    // Elevation Range Slider (0-25000, with 25100 = "max"/unlimited, step 100)
+    const elevationSlider = document.getElementById('elevationSlider');
+    noUiSlider.create(elevationSlider, {
+        start: [0, 25100],
+        connect: true,
+        step: 100,
+        range: {
+            'min': 0,
+            'max': 25100
+        },
+        format: {
+            to: value => Math.round(value),
+            from: value => Math.round(value)
+        }
+    });
+
+    elevationSlider.noUiSlider.on('update', (values) => {
+        elevationRange = [parseFloat(values[0]), parseFloat(values[1])];
+        const min = parseInt(values[0]).toLocaleString();
+        const max = parseFloat(values[1]) > 25000 ? 'max' : parseInt(values[1]).toLocaleString();
+        document.getElementById('elevationRangeValue').textContent = `${min} - ${max} ft`;
+    });
+
+    elevationSlider.noUiSlider.on('change', () => {
+        applyFilters();
+    });
+}
+
+// Update Slider Labels
+function updateMaxTimeLabel() {
+    const val = parseInt(document.getElementById('maxTimeSlider').value);
+    if (val >= 480) {
+        document.getElementById('maxTimeValue').textContent = 'No limit';
+    } else {
+        const hours = Math.floor(val / 60);
+        const mins = val % 60;
+        if (hours > 0 && mins > 0) {
+            document.getElementById('maxTimeValue').textContent = `${hours}h ${mins}m`;
+        } else if (hours > 0) {
+            document.getElementById('maxTimeValue').textContent = `${hours}h`;
+        } else {
+            document.getElementById('maxTimeValue').textContent = `${mins}m`;
+        }
+    }
+}
+
+function updateRadiusLabel() {
+    document.getElementById('radiusValue').textContent = document.getElementById('radiusSlider').value;
+    updateSearchRadius();
+}
+
+// Connect to Strava
+async function connectStrava(isAutoConnect = false) {
+    const statusEl = document.getElementById('connectionStatus');
+    const errorEl = document.getElementById('authError');
+    const connectBtn = document.getElementById('connectBtn');
+
+    if (!isAutoConnect) {
+        const clientId = document.getElementById('clientId').value.trim();
+        const clientSecret = document.getElementById('clientSecret').value.trim();
+        const refreshToken = document.getElementById('refreshToken').value.trim();
+
+        // Validate inputs
+        if (!clientId || !clientSecret || !refreshToken) {
+            showError('Please fill in all fields');
+            return;
+        }
+
+        // Save credentials
+        credentials = { clientId, clientSecret, refreshToken };
+    }
+
+    // Update UI
+    if (!isAutoConnect) {
+        connectBtn.disabled = true;
+        connectBtn.textContent = 'Connecting...';
+    }
+    statusEl.textContent = isAutoConnect ? 'Restoring session...' : 'Refreshing access token...';
+    errorEl.classList.add('hidden');
+
+    try {
+        // If we don't have a token or it's expired, refresh it
+        if (!accessToken || isTokenExpired()) {
+            const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    client_id: credentials.clientId,
+                    client_secret: credentials.clientSecret,
+                    refresh_token: credentials.refreshToken,
+                    grant_type: 'refresh_token'
+                })
+            });
+
+            const tokenData = await tokenResponse.json();
+
+            if (!tokenResponse.ok || !tokenData.access_token) {
+                throw new Error(tokenData.message || 'Failed to get access token');
+            }
+
+            accessToken = tokenData.access_token;
+            tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000);
+
+            // Update refresh token if a new one was provided
+            if (tokenData.refresh_token) {
+                credentials.refreshToken = tokenData.refresh_token;
+            }
+        }
+
+        statusEl.textContent = 'Fetching athlete info...';
+
+        // Get athlete info
+        const athleteResponse = await fetch('https://www.strava.com/api/v3/athlete', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+
+        const athleteData = await athleteResponse.json();
+
+        if (!athleteResponse.ok) {
+            throw new Error('Failed to fetch athlete info');
+        }
+
+        // Save session
+        saveSession();
+
+        // Update UI with success
+        const fullName = `${athleteData.firstname} ${athleteData.lastname}`;
+        document.getElementById('athleteName').textContent = fullName;
+        document.getElementById('athleteInfo').classList.remove('hidden');
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('filtersSection').classList.remove('hidden');
+        document.getElementById('logoutBtn').classList.remove('hidden');
+        statusEl.textContent = `Connected as ${fullName}`;
+        statusEl.classList.remove('text-red-400');
+        statusEl.classList.add('text-green-400');
+
+        // Initialize sliders if not already initialized
+        if (!document.getElementById('distanceSlider').noUiSlider) {
+            initializeSliders();
+        }
+
+        // Update session expiry display
+        updateSessionExpiry();
+
+        // Load routes
+        console.log('About to call loadRoutes()...');
+        await loadRoutes();
+        console.log('loadRoutes() completed');
+
+    } catch (error) {
+        console.error('Connection error:', error);
+        showError(error.message || 'Connection failed. Please check your credentials.');
+
+        if (!isAutoConnect) {
+            connectBtn.disabled = false;
+            connectBtn.textContent = 'Connect to Strava';
+        }
+
+        statusEl.textContent = 'Connection failed';
+        statusEl.classList.remove('text-green-400');
+        statusEl.classList.add('text-red-400');
+
+        // Clear invalid session
+        if (isAutoConnect) {
+            clearSession();
+            showAuthForm();
+        }
+    }
+}
+
+function showError(message) {
+    const errorEl = document.getElementById('authError');
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+}
+
+// Load Routes
+async function loadRoutes() {
+    console.log('loadRoutes() called');
+
+    // Ensure token is valid before loading
+    const tokenValid = await ensureValidToken();
+    console.log('Token valid:', tokenValid);
+    if (!tokenValid) {
+        console.log('Token not valid, aborting route load');
+        return;
+    }
+
+    document.getElementById('loadingIndicator').classList.remove('hidden');
+    console.log('Starting to fetch routes...');
+
+    // Show loading state in main grid
+    const grid = document.getElementById('routesGrid');
+    document.getElementById('emptyState').classList.add('hidden');
+    grid.classList.remove('hidden');
+    grid.innerHTML = `
+        <div class="col-span-full flex flex-col items-center justify-center py-20">
+            <div class="relative mb-6">
+                <svg class="animate-spin h-16 w-16 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+            <p class="text-xl font-semibold text-gray-300 mb-2" id="loadingTitle">Loading your routes...</p>
+            <p class="text-sm text-gray-500" id="loadingProgress">Connecting to Strava...</p>
+        </div>
+    `;
+
+    try {
+        let page = 1;
+        let allFetchedRoutes = [];
+        let hasMore = true;
+
+        const loadingTitle = document.getElementById('loadingTitle');
+        const loadingProgress = document.getElementById('loadingProgress');
+
+        // Fetch all pages
+        while (hasMore) {
+            console.log(`Fetching routes page ${page}...`);
+
+            // Update progress message
+            if (allFetchedRoutes.length > 0) {
+                loadingTitle.textContent = `Loaded ${allFetchedRoutes.length} routes`;
+                loadingProgress.textContent = `Fetching more from Strava...`;
+            } else {
+                loadingProgress.textContent = `Fetching routes from Strava...`;
+            }
+
+            const response = await fetch(
+                `https://www.strava.com/api/v3/athlete/routes?per_page=200&page=${page}`,
+                { headers: { 'Authorization': `Bearer ${accessToken}` } }
+            );
+
+            if (!response.ok) {
+                console.error(`Route fetch failed with status ${response.status}`);
+                // Check if it's an authentication error
+                if (response.status === 401) {
+                    console.log('Auth error, attempting token refresh...');
+                    loadingProgress.textContent = 'Refreshing authentication...';
+                    const refreshed = await refreshAccessToken();
+                    if (refreshed) {
+                        // Retry the request with new token
+                        console.log('Token refreshed, retrying...');
+                        continue;
+                    } else {
+                        throw new Error('Session expired. Please log in again.');
+                    }
+                }
+                throw new Error('Failed to fetch routes');
+            }
+
+            const routes = await response.json();
+            console.log(`Fetched ${routes.length} routes on page ${page}`);
+
+            if (routes.length === 0) {
+                hasMore = false;
+            } else {
+                allFetchedRoutes = allFetchedRoutes.concat(routes);
+                page++;
+            }
+        }
+
+        allRoutes = allFetchedRoutes;
+        console.log(`Total routes loaded: ${allRoutes.length}`);
+
+        // Debug: Log first route structure and decoded coordinates
+        if (allRoutes.length > 0) {
+            const sampleRoute = allRoutes[0];
+            const coords = getRouteStartCoordinates(sampleRoute);
+            console.log('Sample route data structure:', {
+                name: sampleRoute.name,
+                hasPolyline: !!(sampleRoute.map && sampleRoute.map.summary_polyline),
+                decodedStartCoords: coords,
+                sampleRoute: sampleRoute
+            });
+        }
+
+        // Show final loading message
+        loadingTitle.textContent = `${allRoutes.length} routes loaded!`;
+        loadingProgress.textContent = 'Applying filters...';
+
+        document.getElementById('totalRoutes').textContent = `of ${allRoutes.length} total`;
+
+        // Initialize map if not already done
+        if (!map) {
+            console.log('Initializing map after routes loaded...');
+            loadingProgress.textContent = 'Initializing map...';
+            setTimeout(() => initMap(), 100); // Small delay to ensure DOM is ready
+        }
+
+        // Apply initial filters
+        console.log('Applying filters...');
+        applyFilters();
+        console.log('Routes loaded and filtered successfully');
+
+    } catch (error) {
+        console.error('Error loading routes:', error);
+        showError('Failed to load routes. Please try again.');
+
+        // Show error in grid
+        grid.innerHTML = `
+            <div class="col-span-full text-center py-20 text-red-400">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-4">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p class="text-lg font-semibold">Failed to load routes</p>
+                <p class="text-sm mt-2 text-gray-400">${error.message}</p>
+                <button onclick="loadRoutes()" class="mt-4 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-semibold transition">
+                    Try Again
+                </button>
+            </div>
+        `;
+
+        // If authentication failed, show session expired dialog
+        if (error.message.includes('Session expired')) {
+            showSessionExpiredDialog();
+        }
+    } finally {
+        document.getElementById('loadingIndicator').classList.add('hidden');
+    }
+}
+
+// Apply Filters
+function applyFilters() {
+    const typeFilter = document.getElementById('typeFilter').value;
+    const minDistance = distanceRange[0];
+    const maxDistance = distanceRange[1];
+    const minElevation = elevationRange[0];
+    const maxElevation = elevationRange[1];
+    const maxTime = parseInt(document.getElementById('maxTimeSlider').value);
+    const starredOnly = document.getElementById('starredOnly').checked;
+    const maxRadius = parseFloat(document.getElementById('radiusSlider').value);
+
+    filteredRoutes = allRoutes.filter(route => {
+        // Convert distance from meters to miles
+        const distanceMiles = route.distance * 0.000621371;
+
+        // Convert elevation from meters to feet
+        const elevationFeet = route.elevation_gain * 3.28084;
+
+        // Convert estimated moving time from seconds to minutes
+        const estimatedMinutes = route.estimated_moving_time / 60;
+
+        // Type filter (1=Ride, 2=Run)
+        if (typeFilter !== 'all' && route.type !== parseInt(typeFilter)) {
+            return false;
+        }
+
+        // Distance range filter (maxDistance > 150 means unlimited)
+        if (distanceMiles < minDistance) {
+            return false;
+        }
+        if (maxDistance <= 150 && distanceMiles > maxDistance) {
+            return false;
+        }
+
+        // Elevation range filter (maxElevation > 25000 means unlimited)
+        if (elevationFeet < minElevation) {
+            return false;
+        }
+        if (maxElevation <= 25000 && elevationFeet > maxElevation) {
+            return false;
+        }
+
+        // Max time filter
+        if (maxTime < 480 && estimatedMinutes > maxTime) {
+            return false;
+        }
+
+        // Starred filter
+        if (starredOnly && !route.starred) {
+            return false;
+        }
+
+        // Proximity filter - Use polyline decoder to get coordinates
+        if (currentLocation) {
+            const coords = getRouteStartCoordinates(route);
+
+            // If we found coordinates, apply proximity filter
+            if (coords) {
+                const distance = calculateDistance(
+                    currentLocation.lat,
+                    currentLocation.lng,
+                    coords.lat,
+                    coords.lng
+                );
+
+                // Debug log for first few routes
+                if (allRoutes.indexOf(route) < 3) {
+                    console.log(`Route "${route.name}": ${distance.toFixed(1)} mi from location (max: ${maxRadius} mi)`);
+                }
+
+                if (distance > maxRadius) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    });
+
+    renderRoutes();
+}
+
+// Render Routes
+function renderRoutes() {
+    const grid = document.getElementById('routesGrid');
+    document.getElementById('routeCount').textContent = filteredRoutes.length;
+
+    // Sort routes
+    const sortBy = document.getElementById('sortBy').value;
+    const sortedRoutes = [...filteredRoutes].sort((a, b) => {
+        switch (sortBy) {
+            case 'name':
+                return a.name.localeCompare(b.name);
+            case 'proximity':
+                if (currentLocation) {
+                    const coordsA = getRouteStartCoordinates(a);
+                    const coordsB = getRouteStartCoordinates(b);
+
+                    const distA = coordsA ? calculateDistance(
+                        currentLocation.lat, currentLocation.lng,
+                        coordsA.lat, coordsA.lng
+                    ) : Infinity;
+                    const distB = coordsB ? calculateDistance(
+                        currentLocation.lat, currentLocation.lng,
+                        coordsB.lat, coordsB.lng
+                    ) : Infinity;
+                    return distA - distB;
+                }
+                return 0;
+            case 'distance-asc':
+                return a.distance - b.distance;
+            case 'distance-desc':
+                return b.distance - a.distance;
+            case 'elevation-asc':
+                return a.elevation_gain - b.elevation_gain;
+            case 'elevation-desc':
+                return b.elevation_gain - a.elevation_gain;
+            case 'time-asc':
+                return a.estimated_moving_time - b.estimated_moving_time;
+            case 'time-desc':
+                return b.estimated_moving_time - a.estimated_moving_time;
+            case 'created-desc':
+                return new Date(b.created_at) - new Date(a.created_at);
+            case 'created-asc':
+                return new Date(a.created_at) - new Date(b.created_at);
+            default:
+                return 0;
+        }
+    });
+
+    if (sortedRoutes.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full text-center py-20 text-gray-500">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-4 opacity-30">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <p class="text-lg font-semibold">No routes found</p>
+                <p class="text-sm mt-1">Try adjusting your filters</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = sortedRoutes.map(route => {
+        const distanceMiles = (route.distance * 0.000621371).toFixed(1);
+        const elevationFeet = Math.round(route.elevation_gain * 3.28084);
+        const typeName = route.type === 1 ? 'Ride' : route.type === 2 ? 'Run' : 'Other';
+        const typeColor = route.type === 1 ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : 'bg-green-500/10 text-green-400 border-green-500/30';
+
+        // Format estimated time
+        const estimatedMinutes = Math.round(route.estimated_moving_time / 60);
+        const hours = Math.floor(estimatedMinutes / 60);
+        const mins = estimatedMinutes % 60;
+        let timeStr = '';
+        if (hours > 0) {
+            timeStr = `${hours}h ${mins}m`;
+        } else {
+            timeStr = `${mins}m`;
+        }
+
+        let distanceInfo = '';
+        if (currentLocation) {
+            const coords = getRouteStartCoordinates(route);
+
+            if (coords) {
+                const dist = calculateDistance(
+                    currentLocation.lat,
+                    currentLocation.lng,
+                    coords.lat,
+                    coords.lng
+                );
+                distanceInfo = `
+                    <div class="text-[10px] text-gray-500 flex items-center gap-1 mt-3">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        ${dist.toFixed(1)} mi from you
+                    </div>
+                `;
+            }
+        }
+
+        const starIcon = route.starred ? `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="text-yellow-500">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+        ` : '';
+
+        return `
+            <div class="route-card bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+                <div class="p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${typeColor}">
+                                ${typeName}
+                            </span>
+                            ${starIcon}
+                        </div>
+                        <a href="https://www.strava.com/routes/${route.id_str}" target="_blank"
+                           class="text-gray-500 hover:text-orange-500 transition">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+
+                    <h3 class="text-sm font-bold text-white mb-4 line-clamp-2 min-h-[2.5rem]">
+                        ${route.name}
+                    </h3>
+
+                    <div class="grid grid-cols-3 gap-3 pt-4 border-t border-gray-700">
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase font-bold mb-1">Distance</div>
+                            <div class="text-lg font-bold text-orange-500">${distanceMiles}<span class="text-xs text-gray-400 ml-1">mi</span></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase font-bold mb-1">Elevation</div>
+                            <div class="text-lg font-bold text-orange-500">${elevationFeet}<span class="text-xs text-gray-400 ml-1">ft</span></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-500 uppercase font-bold mb-1">Time</div>
+                            <div class="text-lg font-bold text-orange-500">${timeStr}</div>
+                        </div>
+                    </div>
+
+                    ${distanceInfo}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Initialize Map
+function initMap() {
+    if (map) return; // Already initialized
+
+    console.log('Initializing map...');
+
+    // Create map centered on US (default)
+    map = L.map('map').setView([39.8283, -98.5795], 4);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Handle map clicks
+    map.on('click', function(e) {
+        setLocationFromMap(e.latlng.lat, e.latlng.lng);
+    });
+
+    console.log('Map initialized');
+}
+
+// Set location from map click
+function setLocationFromMap(lat, lng) {
+    console.log('Location set from map:', lat, lng);
+
+    currentLocation = { lat, lng };
+
+    // Remove old marker and circle if they exist
+    if (locationMarker) {
+        map.removeLayer(locationMarker);
+    }
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+    }
+
+    // Add marker
+    locationMarker = L.marker([lat, lng], {
+        icon: L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        })
+    }).addTo(map);
+
+    // Add search radius circle
+    const radiusMiles = parseFloat(document.getElementById('radiusSlider').value);
+    const radiusMeters = radiusMiles * 1609.34; // Convert miles to meters
+    searchCircle = L.circle([lat, lng], {
+        radius: radiusMeters,
+        color: '#fc4c02',
+        fillColor: '#fc4c02',
+        fillOpacity: 0.1,
+        weight: 2
+    }).addTo(map);
+
+    // Update UI
+    document.getElementById('locationInfo').textContent =
+        `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    document.getElementById('locationInfo').classList.remove('hidden');
+    document.getElementById('radiusControl').classList.remove('hidden');
+
+    // Enable proximity sort option
+    const proximitySort = document.getElementById('proximitySort');
+    proximitySort.disabled = false;
+
+    // Apply filters
+    applyFilters();
+}
+
+// Use current browser location
+function useCurrentLocation() {
+    console.log('Getting current location...');
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            console.log('Current location obtained:', lat, lng);
+
+            // Center map on current location and zoom in
+            map.setView([lat, lng], 13);
+
+            // Set the location
+            setLocationFromMap(lat, lng);
+        },
+        (error) => {
+            console.error('Geolocation error:', error);
+            alert('Could not get your location. Please enable location services or click on the map.');
+        }
+    );
+}
+
+// Clear location filter
+function clearLocationFilter() {
+    console.log('Clearing location filter...');
+
+    currentLocation = null;
+
+    // Remove marker and circle
+    if (locationMarker) {
+        map.removeLayer(locationMarker);
+        locationMarker = null;
+    }
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+        searchCircle = null;
+    }
+
+    // Hide UI elements
+    document.getElementById('locationInfo').classList.add('hidden');
+    document.getElementById('radiusControl').classList.add('hidden');
+
+    // Disable proximity sort
+    const proximitySort = document.getElementById('proximitySort');
+    proximitySort.disabled = true;
+    if (document.getElementById('sortBy').value === 'proximity') {
+        document.getElementById('sortBy').value = 'name';
+    }
+
+    // Reset map view to default
+    map.setView([39.8283, -98.5795], 4);
+
+    // Re-apply filters
+    applyFilters();
+}
+
+// Update search radius circle when slider changes
+function updateSearchRadius() {
+    if (!currentLocation || !searchCircle) return;
+
+    const radiusMiles = parseFloat(document.getElementById('radiusSlider').value);
+    const radiusMeters = radiusMiles * 1609.34;
+
+    searchCircle.setRadius(radiusMeters);
+}
+
+// Decode Google Polyline (used by Strava for map.summary_polyline)
+function decodePolyline(encoded) {
+    if (!encoded) return [];
+
+    const points = [];
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < encoded.length) {
+        let shift = 0;
+        let result = 0;
+        let byte;
+
+        // Decode latitude
+        do {
+            byte = encoded.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        const deltaLat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += deltaLat;
+
+        shift = 0;
+        result = 0;
+
+        // Decode longitude
+        do {
+            byte = encoded.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        const deltaLng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += deltaLng;
+
+        points.push([lat / 1e5, lng / 1e5]);
+    }
+
+    return points;
+}
+
+// Get route start coordinates (from polyline or direct fields)
+function getRouteStartCoordinates(route) {
+    // Try direct coordinate fields first
+    if (route.map && route.map.start_latlng && route.map.start_latlng.length === 2) {
+        return { lat: route.map.start_latlng[0], lng: route.map.start_latlng[1] };
+    }
+    if (route.start_latlng && route.start_latlng.length === 2) {
+        return { lat: route.start_latlng[0], lng: route.start_latlng[1] };
+    }
+    if (route.start_latitude && route.start_longitude) {
+        return { lat: route.start_latitude, lng: route.start_longitude };
+    }
+
+    // Decode polyline to get start coordinates
+    if (route.map && route.map.summary_polyline) {
+        const points = decodePolyline(route.map.summary_polyline);
+        if (points.length > 0) {
+            return { lat: points[0][0], lng: points[0][1] };
+        }
+    }
+
+    return null;
+}
+
+// Calculate Distance (Haversine Formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 3958.8; // Earth's radius in miles
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function toRadians(degrees) {
+    return degrees * (Math.PI / 180);
+}
+
+// Reset Filters
+function resetFilters() {
+    document.getElementById('typeFilter').value = 'all';
+    document.getElementById('distanceSlider').noUiSlider.set([0, 151]);
+    document.getElementById('elevationSlider').noUiSlider.set([0, 25100]);
+    document.getElementById('maxTimeSlider').value = 480;
+    document.getElementById('starredOnly').checked = false;
+    document.getElementById('radiusSlider').value = 5;
+    document.getElementById('sortBy').value = 'name';
+
+    updateMaxTimeLabel();
+    updateRadiusLabel();
+
+    // Clear location filter
+    clearLocationFilter();
+
+    applyFilters();
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeHelp();
+    }
+});
+
+// Auto-connect on page load if session exists
+window.addEventListener('load', async () => {
+    console.log('Page loaded, checking for saved session...');
+    const hasSession = loadSession();
+
+    if (hasSession) {
+        console.log('Saved session found, attempting auto-connect...');
+        // Pre-fill credentials in form (in case user wants to see them)
+        document.getElementById('clientId').value = credentials.clientId;
+        document.getElementById('clientSecret').value = credentials.clientSecret;
+        document.getElementById('refreshToken').value = credentials.refreshToken;
+
+        // Try to auto-connect
+        const statusEl = document.getElementById('connectionStatus');
+        statusEl.textContent = 'Restoring previous session...';
+        statusEl.classList.remove('text-gray-400');
+        statusEl.classList.add('text-yellow-400');
+
+        try {
+            console.log('Calling connectStrava(true)...');
+            await connectStrava(true);
+            console.log('Auto-connect completed successfully');
+        } catch (error) {
+            console.error('Auto-connect failed:', error);
+            // Session is invalid, clear it
+            clearSession();
+            showAuthForm();
+            statusEl.textContent = 'Session expired - please log in';
+            statusEl.classList.remove('text-yellow-400');
+            statusEl.classList.add('text-gray-400');
+        }
+    } else {
+        console.log('No saved session found');
+        // Load any saved credentials for convenience
+        const savedClientId = localStorage.getItem('strava_client_id');
+        const savedClientSecret = localStorage.getItem('strava_client_secret');
+        const savedRefreshToken = localStorage.getItem('strava_refresh_token');
+
+        if (savedClientId) document.getElementById('clientId').value = savedClientId;
+        if (savedClientSecret) document.getElementById('clientSecret').value = savedClientSecret;
+        if (savedRefreshToken) document.getElementById('refreshToken').value = savedRefreshToken;
+    }
+});
+</script>
+
 </body>
 </html>
