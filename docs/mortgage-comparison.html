@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage Scenario Comparator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .input-group {
+            position: relative;
+        }
+        .input-label {
+            position: absolute;
+            top: -0.75rem;
+            left: 0.75rem;
+            background-color: #1f2937;
+            padding: 0 0.25rem;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+        .input-field {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            color: #e5e7eb;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+        .output-card {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #3b82f6 25%, #60a5fa 50%, #3b82f6 75%);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 5s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 antialiased">
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Mortgage Scenario Comparator</h1>
+            <p class="mt-2 text-lg text-gray-400">Compare two mortgage scenarios side-by-side to find your best option.</p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+            
+            <!-- Scenario 1 -->
+            <div id="scenario1" class="scenario-container bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
+                <h2 class="text-2xl font-semibold text-center mb-6 text-blue-400">Scenario 1</h2>
+                
+                <div class="space-y-5">
+                    <!-- House Price -->
+                    <div class="input-group">
+                        <label for="housePrice1" class="input-label">House Price (£)</label>
+                        <input type="number" id="housePrice1" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 300000" value="300000">
+                    </div>
+
+                    <!-- Deposit -->
+                    <div class="input-group">
+                        <label for="deposit1" class="input-label">Deposit (£)</label>
+                        <input type="number" id="deposit1" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 30000" value="30000">
+                    </div>
+                    
+                    <!-- Interest Rate -->
+                    <div class="input-group">
+                        <label for="interestRate1" class="input-label">Interest Rate (%)</label>
+                        <input type="number" step="0.01" id="interestRate1" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 3.5" value="3.5">
+                    </div>
+
+                    <!-- Mortgage Term -->
+                    <div class="input-group">
+                        <label for="termYears1" class="input-label">Term (Years)</label>
+                        <input type="number" id="termYears1" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 25" value="25">
+                    </div>
+                    
+                    <!-- Overpayment Details -->
+                    <fieldset class="border border-gray-600 rounded-lg p-4">
+                        <legend class="text-sm font-medium text-gray-400 px-2">Optional Overpayment</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                             <div class="input-group">
+                                <label for="overpaymentAmount1" class="input-label">Amount (£)</label>
+                                <input type="number" id="overpaymentAmount1" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 10000">
+                            </div>
+                            <div class="input-group">
+                                <label for="overpaymentMonth1" class="input-label">Month (1-n)</label>
+                                <input type="number" id="overpaymentMonth1" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 12">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                </div>
+
+                <div class="mt-8 space-y-4">
+                     <div class="output-card p-4 rounded-lg text-center">
+                        <p class="text-sm font-medium text-gray-400">Monthly Payment</p>
+                        <p id="monthlyPayment1" class="text-3xl font-bold text-white shimmer">£0.00</p>
+                    </div>
+                     <div class="output-card p-4 rounded-lg text-center">
+                        <p class="text-sm font-medium text-gray-400">Total Cost of Mortgage</p>
+                        <p id="totalCost1" class="text-2xl font-semibold text-gray-300">£0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scenario 2 -->
+            <div id="scenario2" class="scenario-container bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
+                <h2 class="text-2xl font-semibold text-center mb-6 text-green-400">Scenario 2</h2>
+                
+                 <div class="space-y-5">
+                    <!-- House Price -->
+                    <div class="input-group">
+                        <label for="housePrice2" class="input-label">House Price (£)</label>
+                        <input type="number" id="housePrice2" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 300000" value="300000">
+                    </div>
+
+                    <!-- Deposit -->
+                    <div class="input-group">
+                        <label for="deposit2" class="input-label">Deposit (£)</label>
+                        <input type="number" id="deposit2" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 60000" value="60000">
+                    </div>
+                    
+                    <!-- Interest Rate -->
+                    <div class="input-group">
+                        <label for="interestRate2" class="input-label">Interest Rate (%)</label>
+                        <input type="number" step="0.01" id="interestRate2" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 3.0" value="3.0">
+                    </div>
+
+                    <!-- Mortgage Term -->
+                    <div class="input-group">
+                        <label for="termYears2" class="input-label">Term (Years)</label>
+                        <input type="number" id="termYears2" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 25" value="25">
+                    </div>
+                    
+                    <!-- Overpayment Details -->
+                    <fieldset class="border border-gray-600 rounded-lg p-4">
+                        <legend class="text-sm font-medium text-gray-400 px-2">Optional Overpayment</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                             <div class="input-group">
+                                <label for="overpaymentAmount2" class="input-label">Amount (£)</label>
+                                <input type="number" id="overpaymentAmount2" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 10000">
+                            </div>
+                            <div class="input-group">
+                                <label for="overpaymentMonth2" class="input-label">Month (1-n)</label>
+                                <input type="number" id="overpaymentMonth2" class="input-field w-full px-4 py-3 rounded-lg" placeholder="e.g., 24">
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <div class="mt-8 space-y-4">
+                     <div class="output-card p-4 rounded-lg text-center">
+                        <p class="text-sm font-medium text-gray-400">Monthly Payment</p>
+                        <p id="monthlyPayment2" class="text-3xl font-bold text-white shimmer">£0.00</p>
+                    </div>
+                     <div class="output-card p-4 rounded-lg text-center">
+                        <p class="text-sm font-medium text-gray-400">Total Cost of Mortgage</p>
+                        <p id="totalCost2" class="text-2xl font-semibold text-gray-300">£0.00</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Debounce function to limit the rate at which a function gets called.
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+
+        function calculateMortgage(scenarioId) {
+            // Get all input values for the given scenario
+            const housePrice = parseFloat(document.getElementById(`housePrice${scenarioId}`).value) || 0;
+            const deposit = parseFloat(document.getElementById(`deposit${scenarioId}`).value) || 0;
+            const interestRate = parseFloat(document.getElementById(`interestRate${scenarioId}`).value) || 0;
+            let termYears = parseInt(document.getElementById(`termYears${scenarioId}`).value) || 0;
+            const overpaymentAmount = parseFloat(document.getElementById(`overpaymentAmount${scenarioId}`).value) || 0;
+            const overpaymentMonth = parseInt(document.getElementById(`overpaymentMonth${scenarioId}`).value) || 0;
+
+            const loanAmount = housePrice - deposit;
+            const monthlyInterestRate = interestRate / 100 / 12;
+            let numberOfPayments = termYears * 12;
+
+            if (loanAmount <= 0 || monthlyInterestRate <= 0 || numberOfPayments <= 0) {
+                document.getElementById(`monthlyPayment${scenarioId}`).textContent = '£0.00';
+                document.getElementById(`totalCost${scenarioId}`).textContent = '£0.00';
+                return;
+            }
+
+            // Calculate standard monthly payment (M)
+            // M = P [ i(1 + i)^n ] / [ (1 + i)^n – 1]
+            // P = principal loan amount
+            // i = monthly interest rate
+            // n = number of months
+            const M = loanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+            
+            let remainingBalance = loanAmount;
+            let totalPaid = 0;
+            let monthlyPayment = M;
+            
+            // If there's no overpayment, the calculation is simple
+            if (overpaymentAmount <= 0 || overpaymentMonth <= 0 || overpaymentMonth > numberOfPayments) {
+                totalPaid = M * numberOfPayments;
+            } else {
+                // If there is an overpayment, we need to simulate the loan month by month
+                for (let month = 1; month <= numberOfPayments; month++) {
+                    const interestForMonth = remainingBalance * monthlyInterestRate;
+                    let principalPaid = monthlyPayment - interestForMonth;
+                    
+                    // Apply overpayment
+                    if (month === overpaymentMonth) {
+                         remainingBalance -= overpaymentAmount;
+                         totalPaid += overpaymentAmount;
+                    }
+
+                    // Check for overpayment of principal
+                    if(principalPaid > remainingBalance){
+                        principalPaid = remainingBalance;
+                        monthlyPayment = principalPaid + interestForMonth;
+                    }
+
+                    remainingBalance -= principalPaid;
+                    totalPaid += monthlyPayment;
+
+                    if (remainingBalance <= 0) {
+                        // Loan is paid off early
+                        numberOfPayments = month; // update the effective number of payments
+                        break;
+                    }
+                }
+            }
+
+
+            // Format and display results
+            const formatter = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });
+            document.getElementById(`monthlyPayment${scenarioId}`).textContent = formatter.format(M);
+            document.getElementById(`totalCost${scenarioId}`).textContent = formatter.format(totalPaid);
+        }
+
+        // --- Event Listeners ---
+        const scenarioContainers = document.querySelectorAll('.scenario-container');
+        
+        scenarioContainers.forEach(container => {
+            const scenarioId = container.id.slice(-1); // Get 1 or 2
+            const inputs = container.querySelectorAll('input');
+            
+            const debouncedCalculate = debounce(() => calculateMortgage(scenarioId), 300);
+
+            inputs.forEach(input => {
+                input.addEventListener('input', debouncedCalculate);
+            });
+            
+            // Initial calculation on page load
+            calculateMortgage(scenarioId);
+        });
+
+    </script>
+
+</body>
+</html>
