@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Productivity App</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Combined and Scoped CSS -->
+    <style>
+        /* General Body and App Container Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .app-container {
+            height: calc(100vh - 5rem); /* Full height minus header */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Tab Navigation Styles */
+        .tab-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: 2px solid transparent;
+            font-weight: 500;
+            color: #475569; /* slate-600 */
+            transition: all 0.2s ease-in-out;
+        }
+        .tab-button:hover {
+            background-color: #f1f5f9; /* slate-100 */
+            color: #1e293b; /* slate-800 */
+        }
+        .tab-button.active {
+            background-color: #ffffff;
+            color: #0f172a; /* slate-900 */
+            border-color: #e2e8f0; /* slate-200 */
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+
+        /* --- Scoped Styles for Markdown Editor --- */
+        #markdown-app {
+            background-color: #f1f5f9;
+        }
+        #markdown-app ::-webkit-scrollbar { width: 8px; height: 8px; }
+        #markdown-app ::-webkit-scrollbar-track { background: #f1f5f9; }
+        #markdown-app ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        #markdown-app ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        #markdown-app .resizer { background-color: #cbd5e1; cursor: col-resize; width: 8px; height: 100%; z-index: 5; transition: background-color 0.2s; }
+        #markdown-app .resizer:hover, #markdown-app .resizing { background-color: #3b82f6; }
+        #markdown-app .preview-content h1, #markdown-app .preview-content h2, #markdown-app .preview-content h3 { border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; }
+        #markdown-app .preview-content h1 { font-size: 2.25rem; }
+        #markdown-app .preview-content h2 { font-size: 1.875rem; }
+        #markdown-app .preview-content h3 { font-size: 1.5rem; }
+        #markdown-app .preview-content p { margin-bottom: 1rem; line-height: 1.6; }
+        #markdown-app .preview-content a { color: #2563eb; text-decoration: underline; }
+        #markdown-app .preview-content code { background-color: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
+        #markdown-app .preview-content pre { background-color: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; }
+        #markdown-app .preview-content pre code { background-color: transparent; padding: 0; }
+        #markdown-app .preview-content blockquote { border-left: 4px solid #94a3b8; padding-left: 1rem; color: #64748b; margin-left: 0; margin-bottom: 1rem; }
+        #markdown-app .preview-content ul, #markdown-app .preview-content ol { padding-left: 2rem; margin-bottom: 1rem; }
+        #markdown-app .preview-content ul { list-style-type: disc; list-style-position: inside; }
+        #markdown-app .preview-content ol { list-style-type: decimal; list-style-position: inside; }
+        #markdown-app .preview-content li { margin-bottom: 0.5rem; }
+        #markdown-app #editor-pane, #markdown-app #preview-pane {
+            height: calc(100vh - 5rem - 4rem - 3.5rem); /* Full - header - app-header - padding */
+        }
+        #markdown-app #markdown-input, #markdown-app #html-output {
+            height: 100%;
+        }
+
+
+        /* --- Scoped Styles for WebP Converter --- */
+        #webp-app {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #f4f7f6;
+            color: #333;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #webp-app .container { background-color: #ffffff; padding: 30px 40px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); text-align: center; width: 100%; max-width: 500px; }
+        #webp-app h1 { color: #007bff; margin-bottom: 25px; }
+        #webp-app label { display: block; margin-bottom: 8px; font-weight: bold; text-align: left; }
+        #webp-app input[type="file"], #webp-app select { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        #webp-app input[type="file"] { background-color: #e9ecef; cursor: pointer; }
+        #webp-app input[type="file"]::file-selector-button { margin-right: 10px; border: none; background: #007bff; padding: 8px 12px; border-radius: 4px; color: #fff; cursor: pointer; transition: background .2s ease-in-out; }
+        #webp-app input[type="file"]::file-selector-button:hover { background: #0056b3; }
+        #webp-app button { background-color: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s ease; width: 100%; }
+        #webp-app button:hover { background-color: #218838; }
+        #webp-app button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #webp-app .output-area { margin-top: 25px; text-align: center; }
+        #webp-app .output-area img { max-width: 100%; max-height: 200px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; }
+        #webp-app .output-area a { display: inline-block; background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background-color 0.3s ease; }
+        #webp-app .output-area a:hover { background-color: #0056b3; }
+        #webp-app .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #007bff; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #webp-app #statusMessage { margin-top: 15px; font-style: italic; color: #555; }
+
+        /* --- Scoped Styles for Bionic Reader --- */
+        #bionic-app { background-color: #f4f7f6; color: #333; line-height: 1.6; padding: 1.5rem; overflow-y: auto;}
+        #bionic-app .container { max-width: 1200px; }
+        #bionic-app textarea { min-height: 250px; resize: vertical; }
+        #bionic-app #outputArea { min-height: 350px; overflow-y: auto; border: 1px solid #d1d5db; padding: 1rem; background-color: #fff; border-radius: 0.5rem; box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1); white-space: normal; word-wrap: break-word; }
+        #bionic-app .bionic-bold { font-weight: 700; }
+        #bionic-app #outputArea h1, #bionic-app #outputArea h2, #bionic-app #outputArea h3, #bionic-app #outputArea h4, #bionic-app #outputArea h5, #bionic-app #outputArea h6 { font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+        #bionic-app #outputArea h1 { font-size: 2em; } #bionic-app #outputArea h2 { font-size: 1.75em; } #bionic-app #outputArea h3 { font-size: 1.5em; } #bionic-app #outputArea h4 { font-size: 1.25em; } #bionic-app #outputArea h5 { font-size: 1em; } #bionic-app #outputArea h6 { font-size: 0.875em; }
+        #bionic-app #outputArea p { margin-bottom: 1em; }
+        #bionic-app #outputArea ul, #bionic-app #outputArea ol { margin-bottom: 1em; padding-left: 2em; }
+        #bionic-app #outputArea li { margin-bottom: 0.5em; list-style-type: disc; }
+        #bionic-app #outputArea ol li { list-style-type: decimal; }
+        #bionic-app #outputArea strong { font-weight: 700; }
+        #bionic-app .controls-section { min-width: 250px; max-width: 300px; }
+        @media (min-width: 768px) { #bionic-app .main-layout { display: flex; gap: 1.5rem; } #bionic-app .content-section { flex-grow: 1; } }
+
+    </style>
+</head>
+<body class="h-full antialiased">
+    <!-- Main Header with Tab Navigation -->
+    <header class="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-20 flex-shrink-0 h-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center h-full">
+             <nav id="app-tabs" class="flex items-center space-x-2 bg-slate-200/50 p-1 rounded-lg">
+                <button data-app="markdown-app" class="tab-button active">Markdown Editor</button>
+                <button data-app="bionic-app" class="tab-button">Bionic Reader</button>
+                <button data-app="webp-app" class="tab-button">WebP Converter</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- App Containers -->
+    <div id="markdown-app" class="app-container">
+        <!-- Content from markdown_editor_app will be injected here by script -->
+    </div>
+    <div id="webp-app" class="app-container" style="display:none;">
+        <!-- Content from webp_converter_app will be injected here by script -->
+    </div>
+    <div id="bionic-app" class="app-container" style="display:none;">
+        <!-- Content from bionic_reader_app will be injected here by script -->
+    </div>
+
+    <script>
+        // --- TEMPLATES FOR EACH APP'S HTML ---
+        const appTemplates = {
+            "markdown-app": `
+                <header class="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-10 flex-shrink-0">
+                    <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+                        <div class="flex items-center justify-between h-16">
+                            <div class="flex items-center space-x-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                <h1 class="text-xl font-bold text-slate-800">Markdown Editor</h1>
+                            </div>
+                            <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg">
+                                <button id="boldBtn" title="Bold (Cmd+B)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
+                                <button id="italicBtn" title="Italic (Cmd+I)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
+                                <button id="strikeBtn" title="Strikethrough (Cmd+S)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="18" y2="12"></line></svg></button>
+                                <div class="w-px h-5 bg-slate-300 mx-1"></div>
+                                <button id="headingBtn" title="Heading (Cmd+H)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h8"></path><path d="M4 18V6"></path><path d="M12 18V6"></path><path d="m17 13 3-3-3-3"></path></svg></button>
+                                <button id="linkBtn" title="Link (Cmd+K)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg></button>
+                                <button id="bionicBtn" title="Send to Bionic Reader" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                            </div>
+                            <button id="exportButton" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-slate-50 hover:bg-slate-900/90 h-10 px-4 py-2">Export to .md</button>
+                        </div>
+                    </div>
+                </header>
+                <main id="main-container" class="flex-grow grid grid-cols-[1fr,auto,1fr] p-4 gap-0 max-w-full w-full">
+                    <div id="editor-pane" class="flex flex-col min-w-0"><label for="markdown-input" class="text-sm font-medium text-slate-600 mb-2 px-1">Editor</label><textarea id="markdown-input" class="w-full h-full p-4 rounded-lg border border-slate-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out resize-none bg-white font-mono text-sm"></textarea></div>
+                    <div id="resizer" class="resizer mx-2 rounded-full"></div>
+                    <div id="preview-pane" class="flex flex-col min-w-0"><label class="text-sm font-medium text-slate-600 mb-2 px-1">Preview</label><div id="html-output" class="w-full h-full p-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-y-auto preview-content"></div></div>
+                </main>
+            `,
+            "webp-app": `
+                <div class="container">
+                    <h1>WebP to PNG/JPG Converter</h1>
+                    <div><label for="webpFile">Choose a WebP file:</label><input type="file" id="webpFile" name="webpFile" accept=".webp"></div>
+                    <div><label for="outputFormat">Convert to:</label><select id="outputFormat" name="outputFormat"><option value="png">PNG</option><option value="jpeg">JPG (JPEG)</option></select></div>
+                    <div id="qualityControl" style="display:none;"><label for="jpegQuality">JPG Quality (0.1 - 1.0):</label><input type="range" id="jpegQuality" name="jpegQuality" min="0.1" max="1.0" step="0.05" value="0.9"><span id="jpegQualityValue">0.9</span></div>
+                    <button id="convertButton" disabled>Convert & Download</button>
+                    <div class="loader" id="loader"></div><p id="statusMessage"></p>
+                    <div class="output-area" id="outputArea"></div>
+                </div>
+            `,
+            "bionic-app": `
+                <div class="container mx-auto bg-white p-6 rounded-lg shadow-xl">
+                    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Bionic Reader Converter</h1>
+                    <div class="main-layout flex flex-col md:flex-row">
+                        <div class="content-section flex-grow">
+                            <div class="mb-6"><label for="inputText" class="block text-gray-700 text-sm font-semibold mb-2">Paste your text (Markdown supported):</label><textarea id="inputText" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3" placeholder="Enter text to convert..."></textarea></div>
+                            <div><label for="outputArea" class="block text-gray-700 text-sm font-semibold mb-2">Bionic Reader & Markdown Output:</label><div id="outputArea" class="text-gray-800"><p class="text-gray-500 italic">Your converted text will appear here.</p></div></div>
+                        </div>
+                        <div class="controls-section p-4 bg-gray-50 rounded-md shadow-inner mt-6 md:mt-0">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-700">Adjust Formatting</h2>
+                            <div class="mb-4"><label for="boldIntensity" class="block text-gray-700 text-sm font-medium mb-2">Number of Bold Letters:</label><input type="range" id="boldIntensity" name="boldIntensity" min="1" max="5" value="2" class="form-range accent-blue-600 w-full"><span id="intensityValue" class="block text-center text-gray-700 font-medium mt-1">2</span></div>
+                            <div class="mb-4"><label for="fontSize" class="block text-gray-700 text-sm font-medium mb-2">Font Size:</label><input type="range" id="fontSize" name="fontSize" min="12" max="24" value="16" class="form-range accent-blue-600 w-full"><span id="fontSizeValue" class="block text-center text-gray-700 font-medium mt-1">16px</span></div>
+                            <div class="mb-4"><label for="lineHeight" class="block text-gray-700 text-sm font-medium mb-2">Line Height:</label><input type="range" id="lineHeight" name="lineHeight" min="1.2" max="2.0" value="1.6" step="0.1" class="form-range accent-blue-600 w-full"><span id="lineHeightValue" class="block text-center text-gray-700 font-medium mt-1">1.6</span></div>
+                            <div class="mb-4"><label for="letterSpacing" class="block text-gray-700 text-sm font-medium mb-2">Letter Spacing:</label><input type="range" id="letterSpacing" name="letterSpacing" min="0" max="2" value="0" step="0.1" class="form-range accent-blue-600 w-full"><span id="letterSpacingValue" class="block text-center text-gray-700 font-medium mt-1">0px</span></div>
+                            <button id="convertBtn" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition ease-in-out duration-150 mt-4">Convert & Apply Settings</button>
+                            <button id="exportPdfBtn" class="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition ease-in-out duration-150 mt-4">Export to PDF</button>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        // --- GLOBAL APP INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- TAB SWITCHING LOGIC ---
+            const appTabs = document.getElementById('app-tabs');
+            const appContainers = document.querySelectorAll('.app-container');
+
+            appTabs.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const targetApp = e.target.dataset.app;
+                    
+                    appTabs.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    appContainers.forEach(container => {
+                        container.style.display = container.id === targetApp ? 'flex' : 'none';
+                    });
+                }
+            });
+
+            // --- INJECT APP HTML AND INITIALIZE SCRIPTS ---
+            Object.keys(appTemplates).forEach(appId => {
+                 document.getElementById(appId).innerHTML = appTemplates[appId];
+            });
+
+            // --- INITIALIZE MARKDOWN EDITOR ---
+            const markdownApp = document.getElementById('markdown-app');
+            if(markdownApp) {
+                const markdownInput = markdownApp.querySelector('#markdown-input');
+                const htmlOutput = markdownApp.querySelector('#html-output');
+                const exportButton = markdownApp.querySelector('#exportButton');
+                const resizer = markdownApp.querySelector('#resizer');
+                const mainContainer = markdownApp.querySelector('#main-container');
+                const boldBtn = markdownApp.querySelector('#boldBtn');
+                const italicBtn = markdownApp.querySelector('#italicBtn');
+                const strikeBtn = markdownApp.querySelector('#strikeBtn');
+                const headingBtn = markdownApp.querySelector('#headingBtn');
+                const linkBtn = markdownApp.querySelector('#linkBtn');
+                const bionicBtn = markdownApp.querySelector('#bionicBtn');
+                
+                const converter = new showdown.Converter({
+                    ghCompatibleHeaderId: true,
+                    simpleLineBreaks: true, // **FIX**: Set to true to render single line breaks
+                    strikethrough: true,
+                    tables: true,
+                    tasklists: true,
+                    openLinksInNewWindow: true,
+                    ghMentions: false,
+                });
+
+
+                const updatePreview = () => { htmlOutput.innerHTML = converter.makeHtml(markdownInput.value); };
+                
+                const exportMarkdown = () => {
+                    const blob = new Blob([markdownInput.value], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'document.md';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+
+                let isResizing = false;
+                resizer.addEventListener('mousedown', () => { isResizing = true; resizer.classList.add('resizing'); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
+                document.addEventListener('mousemove', (e) => {
+                    if (!isResizing) return;
+                    const containerLeft = mainContainer.getBoundingClientRect().left;
+                    const resizerPos = e.clientX - containerLeft;
+                    mainContainer.style.gridTemplateColumns = `${resizerPos}px 8px 1fr`;
+                });
+                document.addEventListener('mouseup', () => { isResizing = false; resizer.classList.remove('resizing'); document.body.style.cursor = 'default'; document.body.style.userSelect = 'auto'; });
+                
+                function wrapText(before, after) {
+                    const start = markdownInput.selectionStart, end = markdownInput.selectionEnd;
+                    const text = markdownInput.value, selectedText = text.substring(start, end);
+                    markdownInput.value = text.substring(0, start) + before + selectedText + after + text.substring(end);
+                    if (start === end) { markdownInput.selectionStart = markdownInput.selectionEnd = start + before.length; } else { markdownInput.selectionStart = start; markdownInput.selectionEnd = end + before.length + after.length; }
+                    markdownInput.focus(); updatePreview();
+                }
+                function insertLink() {
+                    const start = markdownInput.selectionStart, end = markdownInput.selectionEnd;
+                    const text = markdownInput.value, selectedText = text.substring(start, end);
+                    const placeholderUrl = 'https://', linkText = `[${selectedText || 'link text'}](${placeholderUrl})`;
+                    markdownInput.value = text.substring(0, start) + linkText + text.substring(end);
+                    markdownInput.focus();
+                    if (selectedText) { markdownInput.selectionStart = start + linkText.length - 1; markdownInput.selectionEnd = markdownInput.selectionStart; } else { markdownInput.selectionStart = start + linkText.length - placeholderUrl.length - 1; markdownInput.selectionEnd = start + linkText.length - 1; }
+                    updatePreview();
+                }
+                function insertHeading() {
+                    const start = markdownInput.selectionStart, text = markdownInput.value;
+                    let lineStart = text.lastIndexOf('\n', start - 1) + 1;
+                    markdownInput.value = text.substring(0, lineStart) + '# ' + text.substring(lineStart);
+                    markdownInput.selectionStart = markdownInput.selectionEnd = start + 2;
+                    markdownInput.focus(); updatePreview();
+                }
+                boldBtn.addEventListener('click', () => wrapText('**', '**'));
+                italicBtn.addEventListener('click', () => wrapText('*', '*'));
+                strikeBtn.addEventListener('click', () => wrapText('~~', '~~'));
+                headingBtn.addEventListener('click', () => insertHeading());
+                linkBtn.addEventListener('click', () => insertLink());
+                markdownInput.addEventListener('input', updatePreview);
+                exportButton.addEventListener('click', exportMarkdown);
+
+                bionicBtn.addEventListener('click', () => {
+                    const textToTransfer = markdownInput.value;
+                    const bionicReaderInput = document.querySelector('#bionic-app #inputText');
+                    const bionicReaderConvertBtn = document.querySelector('#bionic-app #convertBtn');
+                    const bionicReaderTab = document.querySelector('button[data-app="bionic-app"]');
+
+                    if (bionicReaderInput && bionicReaderConvertBtn && bionicReaderTab) {
+                        bionicReaderInput.value = textToTransfer;
+                        bionicReaderTab.click(); // Switch to the bionic reader tab
+                        bionicReaderConvertBtn.click(); // Trigger the conversion
+                    }
+                });
+
+
+                let isSyncing = false;
+                const syncScroll = (from, to) => {
+                    if (isSyncing) return;
+                    isSyncing = true;
+                    
+                    const fromScrollHeight = from.scrollHeight;
+                    const fromClientHeight = from.clientHeight;
+                    
+                    if (fromScrollHeight <= fromClientHeight) {
+                        isSyncing = false;
+                        return;
+                    }
+
+                    const scrollPercentage = from.scrollTop / (fromScrollHeight - fromClientHeight);
+                    
+                    const toScrollHeight = to.scrollHeight;
+                    const toClientHeight = to.clientHeight;
+
+                    to.scrollTop = scrollPercentage * (toScrollHeight - toClientHeight);
+                    
+                    setTimeout(() => { isSyncing = false; }, 50);
+                };
+
+                markdownInput.addEventListener('scroll', () => syncScroll(markdownInput, htmlOutput));
+                htmlOutput.addEventListener('scroll', () => syncScroll(htmlOutput, markdownInput));
+
+
+                markdownInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const cursorPosition = e.target.selectionStart;
+                        const text = e.target.value;
+                        const textBeforeCursor = text.substring(0, cursorPosition);
+                        const currentLine = textBeforeCursor.split('\n').pop();
+                        const listMatch = currentLine.match(/^(\s*)((?:\*|\-)|(?:\d+\.))\s+/);
+
+                        if (listMatch) {
+                            if (/^(\s*)((?:\*|\-)|(?:\d+\.))\s*$/.test(currentLine)) {
+                                e.preventDefault();
+                                const lineStart = textBeforeCursor.lastIndexOf('\n') + 1;
+                                const newText = text.substring(0, lineStart) + text.substring(cursorPosition);
+                                markdownInput.value = newText;
+                                markdownInput.selectionStart = markdownInput.selectionEnd = lineStart;
+                                updatePreview();
+                                return;
+                            } else {
+                                e.preventDefault();
+                                let nextMarker;
+                                const indent = listMatch[1] || '';
+                                const marker = listMatch[2];
+
+                                if (marker.includes('*') || marker.includes('-')) {
+                                    nextMarker = `${indent}${marker.trim()} `;
+                                } else {
+                                    const currentNumber = parseInt(marker, 10);
+                                    nextMarker = `${indent}${currentNumber + 1}. `;
+                                }
+
+                                const newText = text.substring(0, cursorPosition) + '\n' + nextMarker + text.substring(cursorPosition);
+                                markdownInput.value = newText;
+                                markdownInput.selectionStart = markdownInput.selectionEnd = cursorPosition + 1 + nextMarker.length;
+                                updatePreview();
+                                return;
+                            }
+                        }
+                    }
+
+                    const isModKey = e.metaKey || e.ctrlKey;
+                    if (isModKey) {
+                        let h = false;
+                        switch (e.key.toLowerCase()) {
+                            case 'b': wrapText('**', '**'); h=true; break;
+                            case 'i': wrapText('*', '*'); h=true; break;
+                            case 's': wrapText('~~', '~~'); h=true; break;
+                            case 'k': insertLink(); h=true; break;
+                            case 'h': insertHeading(); h=true; break;
+                        }
+                        if(h) e.preventDefault();
+                    }
+                });
+                markdownInput.value = '';
+                updatePreview(); markdownInput.focus();
+            }
+
+            // --- INITIALIZE WEBP CONVERTER ---
+            const webpApp = document.getElementById('webp-app');
+            if(webpApp) {
+                const webpFileElement = webpApp.querySelector('#webpFile');
+                const outputFormatElement = webpApp.querySelector('#outputFormat');
+                const convertButtonElement = webpApp.querySelector('#convertButton');
+                const outputAreaElement = webpApp.querySelector('#outputArea');
+                const loaderElement = webpApp.querySelector('#loader');
+                const statusMessageElement = webpApp.querySelector('#statusMessage');
+                const qualityControlElement = webpApp.querySelector('#qualityControl');
+                const jpegQualityElement = webpApp.querySelector('#jpegQuality');
+                const jpegQualityValueElement = webpApp.querySelector('#jpegQualityValue');
+                let selectedFile = null;
+                webpFileElement.addEventListener('change', function (event) {
+                    selectedFile = event.target.files[0];
+                    if (selectedFile) {
+                        if (selectedFile.type === "image/webp") { convertButtonElement.disabled = false; statusMessageElement.textContent = `Selected: ${selectedFile.name}`; outputAreaElement.innerHTML = ''; }
+                        else { selectedFile = null; convertButtonElement.disabled = true; statusMessageElement.textContent = 'Error: Please select a .webp file.'; }
+                    } else { convertButtonElement.disabled = true; statusMessageElement.textContent = ''; }
+                });
+                outputFormatElement.addEventListener('change', function () { qualityControlElement.style.display = this.value === 'jpeg' ? 'block' : 'none'; });
+                jpegQualityElement.addEventListener('input', function () { jpegQualityValueElement.textContent = this.value; });
+                convertButtonElement.addEventListener('click', function () {
+                    if (!selectedFile) return;
+                    loaderElement.style.display = 'block'; outputAreaElement.innerHTML = ''; statusMessageElement.textContent = 'Converting...'; convertButtonElement.disabled = true;
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        const image = new Image();
+                        image.onload = function () {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = image.width; canvas.height = image.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(image, 0, 0);
+                            let outputMimeType = outputFormatElement.value === 'png' ? 'image/png' : 'image/jpeg';
+                            let outputExtension = outputFormatElement.value === 'png' ? 'png' : 'jpg';
+                            const quality = parseFloat(jpegQualityElement.value);
+                            setTimeout(() => {
+                                const dataUrl = canvas.toDataURL(outputMimeType, outputMimeType === 'image/jpeg' ? quality : undefined);
+                                const originalFileName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.')) || 'converted_image';
+                                const downloadFileName = `${originalFileName}.${outputExtension}`;
+                                const previewImg = document.createElement('img'); previewImg.src = dataUrl;
+                                const downloadLink = document.createElement('a'); downloadLink.href = dataUrl; downloadLink.download = downloadFileName; downloadLink.textContent = `Download ${downloadFileName}`;
+                                outputAreaElement.appendChild(previewImg); outputAreaElement.appendChild(document.createElement('br')); outputAreaElement.appendChild(downloadLink);
+                                statusMessageElement.textContent = 'Conversion successful!';
+                                loaderElement.style.display = 'none'; convertButtonElement.disabled = false;
+                            }, 50);
+                        };
+                        image.onerror = function () { loaderElement.style.display = 'none'; statusMessageElement.textContent = 'Error: Could not load the image.'; convertButtonElement.disabled = false; };
+                        image.src = event.target.result;
+                    };
+                    reader.onerror = function () { loaderElement.style.display = 'none'; statusMessageElement.textContent = 'Error: Could not read file.'; convertButtonElement.disabled = false; };
+                    reader.readAsDataURL(selectedFile);
+                });
+            }
+
+            // --- INITIALIZE BIONIC READER ---
+            const bionicApp = document.getElementById('bionic-app');
+            if(bionicApp) {
+                const inputText = bionicApp.querySelector('#inputText');
+                const outputArea = bionicApp.querySelector('#outputArea');
+                const convertBtn = bionicApp.querySelector('#convertBtn');
+                const exportPdfBtn = bionicApp.querySelector('#exportPdfBtn');
+                const boldIntensitySlider = bionicApp.querySelector('#boldIntensity');
+                const intensityValueSpan = bionicApp.querySelector('#intensityValue');
+                const fontSizeSlider = bionicApp.querySelector('#fontSize');
+                const fontSizeValueSpan = bionicApp.querySelector('#fontSizeValue');
+                const lineHeightSlider = bionicApp.querySelector('#lineHeight');
+                const lineHeightValueSpan = bionicApp.querySelector('#lineHeightValue');
+                const letterSpacingSlider = bionicApp.querySelector('#letterSpacing');
+                const letterSpacingValueSpan = bionicApp.querySelector('#letterSpacingValue');
+                function applyBionicFormattingToWord(word, intensity) {
+                    const boldLength = Math.max(1, Math.min(intensity, Math.ceil(word.length / 2)));
+                    return `<span class="bionic-bold">${word.substring(0, boldLength)}</span>${word.substring(boldLength)}`;
+                }
+                function applyBionicFormattingToNode(node, intensity) {
+                    if (node.nodeType === 3) {
+                        const wordsAndSeparators = node.nodeValue.match(/(\S+|\s+)/g) || [];
+                        let formattedHtml = wordsAndSeparators.map(item => /\S/.test(item) ? applyBionicFormattingToWord(item, intensity) : item).join('');
+                        const tempSpan = document.createElement('span'); tempSpan.innerHTML = formattedHtml;
+                        while (tempSpan.firstChild) { node.parentNode.insertBefore(tempSpan.firstChild, node); }
+                        node.parentNode.removeChild(node);
+                    } else if (node.nodeType === 1 && node.tagName.toLowerCase() !== 'script' && node.tagName.toLowerCase() !== 'style') {
+                        for (let i = node.childNodes.length - 1; i >= 0; i--) { applyBionicFormattingToNode(node.childNodes[i], intensity); }
+                    }
+                }
+                function applyTextStyling() {
+                    const fontSize = fontSizeSlider.value + 'px', lineHeight = lineHeightSlider.value, letterSpacing = letterSpacingSlider.value + 'px';
+                    outputArea.style.fontSize = fontSize; outputArea.style.lineHeight = lineHeight; outputArea.style.letterSpacing = letterSpacing;
+                    fontSizeValueSpan.textContent = fontSize; lineHeightValueSpan.textContent = lineHeight; letterSpacingValueSpan.textContent = letterSpacing;
+                }
+                function performConversionAndStyling() {
+                    const markdownRenderedHtml = marked.parse(inputText.value);
+                    const tempElement = document.createElement('div'); tempElement.innerHTML = markdownRenderedHtml;
+                    applyBionicFormattingToNode(tempElement, parseInt(boldIntensitySlider.value, 10));
+                    outputArea.innerHTML = tempElement.innerHTML;
+                    applyTextStyling();
+                }
+                function exportToPdf() {
+                    html2canvas(outputArea, { scale: 2 }).then(canvas => {
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: [canvas.width, canvas.height] });
+                        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+                        pdf.save('bionic-reader-output.pdf');
+                    });
+                }
+                convertBtn.addEventListener('click', performConversionAndStyling);
+                boldIntensitySlider.addEventListener('input', () => { intensityValueSpan.textContent = boldIntensitySlider.value; performConversionAndStyling(); });
+                fontSizeSlider.addEventListener('input', () => { fontSizeValueSpan.textContent = fontSizeSlider.value + 'px'; applyTextStyling(); });
+                lineHeightSlider.addEventListener('input', () => { lineHeightValueSpan.textContent = lineHeightSlider.value; applyTextStyling(); });
+                letterSpacingSlider.addEventListener('input', () => { letterSpacingValueSpan.textContent = letterSpacingSlider.value + 'px'; applyTextStyling(); });
+                exportPdfBtn.addEventListener('click', exportToPdf);
+                applyTextStyling();
+            }
+        });
+    </script>
+</body>
+</html>
