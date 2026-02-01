@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Org Chart Visualiser - Pro</title>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* --- Themes & Variables --- */
+        :root {
+            /* Colors */
+            --primary: #0f172a;
+            --primary-light: #334155;
+            --accent: #3b82f6;
+            /* Blue-500 */
+            --accent-hover: #2563eb;
+            --surface: #ffffff;
+            --surface-translucent: rgba(255, 255, 255, 0.85);
+            --bg: #f1f5f9;
+            /* Slate-100 */
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+
+            /* Dimensions */
+            --sidebar-width: 380px;
+            --header-height: 64px;
+
+            /* Shadows & Radius */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+
+            /* Chart Specific */
+            --node-w: 220px;
+            --node-h: 120px;
+        }
+
+        /* --- Global Reset & Typography --- */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        /* --- Components --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-accent:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-main);
+            border-color: var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .icon {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* --- Layout --- */
+        .app-header {
+            height: var(--header-height);
+            background: var(--surface-translucent);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 50;
+        }
+
+        .header-title {
+            font-weight: 700;
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .app-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chart-viewport {
+            flex: 1;
+            background-image:
+                radial-gradient(circle at 1px 1px, #cbd5e1 1px, transparent 0);
+            background-size: 24px 24px;
+            background-color: #f8fafc;
+            /* Fallback */
+            position: relative;
+            cursor: grab;
+            overflow: hidden;
+        }
+
+        .chart-viewport:active {
+            cursor: grabbing;
+        }
+
+        /* --- Sidebar & Dashboard --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+            z-index: 40;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.02);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(100%);
+            width: 0;
+            border: none;
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-card,
+        .chart-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .mini-stat {
+            text-align: center;
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+        }
+
+        .mini-stat .val {
+            display: block;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .mini-stat .lbl {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* --- Filter Pills --- */
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pill {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .pill:hover {
+            background: #e2e8f0;
+        }
+
+        .pill.active {
+            background: #eff6ff;
+            color: #2563eb;
+            border-color: #bfdbfe;
+        }
+
+        /* --- D3 Node Styling --- */
+        .node rect.card-bg {
+            fill: #ffffff;
+            filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.08));
+        }
+
+        .node:hover rect.card-bg {
+            filter: drop-shadow(0px 8px 12px rgba(0, 0, 0, 0.15));
+            stroke: var(--accent);
+            stroke-width: 2px;
+        }
+
+        .pill.active {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .pill:hover {
+            border-color: var(--accent);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .pill.active:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .node text {
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+        }
+
+        .node-name {
+            font-weight: 700;
+            font-size: 13px;
+            fill: #1e293b;
+        }
+
+        .node-title {
+            font-size: 11px;
+            fill: #64748b;
+        }
+
+        .node-meta {
+            font-size: 10px;
+            fill: #94a3b8;
+        }
+
+        .node-pill {
+            rx: 4;
+        }
+
+        .link {
+            fill: none;
+            stroke: #cbd5e1;
+            stroke-width: 1.5px;
+            transition: opacity 0.3s;
+        }
+
+        /* --- Interactivity States --- */
+        .node.dimmed,
+        .grid-item.dimmed {
+            opacity: 0.2 !important;
+            filter: grayscale(1);
+        }
+
+        .link.dimmed {
+            opacity: 0.1 !important;
+        }
+
+        .node.highlighted rect.card-bg,
+        .grid-item.highlighted rect.card-bg {
+            stroke: var(--accent) !important;
+            stroke-width: 3px !important;
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
+        }
+
+        /* --- Toggle Button --- */
+        .sidebar-toggle {
+            position: absolute;
+            top: 16px;
+            right: 24px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            z-index: 100;
+            transition: transform 0.3s;
+        }
+
+        .sidebar-toggle:hover {
+            background: #f8fafc;
+        }
+
+        /* --- UI Utilities --- */
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        #loader.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e2e8f0;
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(4px);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 5000;
+            box-shadow: var(--shadow-lg);
+            max-width: 300px;
+            line-height: 1.4;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+
+        #tooltip table {
+            width: 100%;
+            table-layout: fixed;
+            /* Enforces max-width compliance */
+            border-collapse: collapse;
+        }
+
+        #tooltip td {
+            padding: 2px 8px 2px 0;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            /* Force break if needed */
+        }
+
+        #tooltip td:first-child {
+            width: 40%;
+            /* Dedicate space for the title */
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        /* Input group */
+        .input-group {
+            position: relative;
+            display: inline-block;
+        }
+
+        .input-group input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Search highlight */
+        .search-match rect.card-bg {
+            stroke: #ec4899 !important;
+            stroke-width: 3px !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                stroke-opacity: 1;
+            }
+
+            50% {
+                stroke-opacity: 0.4;
+            }
+
+            100% {
+                stroke-opacity: 1;
+            }
+        }
+
+        /* --- Error Panel --- */
+        .error-panel {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 320px;
+            background: white;
+            border-right: 2px solid #fbbf24;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+            z-index: 45;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .error-panel.visible {
+            transform: translateX(0);
+        }
+
+        .error-panel-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-bottom: 1px solid #fbbf24;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .error-panel-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #92400e;
+        }
+
+        .error-icon {
+            width: 20px;
+            height: 20px;
+            fill: #f59e0b;
+        }
+
+        .error-close {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            color: #92400e;
+            font-size: 20px;
+            line-height: 1;
+            transition: background 0.2s;
+        }
+
+        .error-close:hover {
+            background: rgba(146, 64, 14, 0.1);
+        }
+
+        .error-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .error-item {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .error-person {
+            font-weight: 600;
+            color: #78350f;
+            margin-bottom: 4px;
+            font-size: 0.875rem;
+        }
+
+        .error-reason {
+            font-size: 0.8rem;
+            color: #92400e;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <div style="font-weight:600; color:var(--text-main);">Processing Hierarchy...</div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip"></div>
+
+    <!-- Application -->
+    <header class="app-header">
+        <div class="header-title">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path
+                    d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+            </svg>
+            OrgVisualiser <span
+                style="font-weight:400; color:var(--text-muted); font-size:0.9em; margin-left:4px;">Pro</span>
+        </div>
+        <div class="header-controls">
+            <div class="input-group">
+                <button class="btn btn-primary">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
+                    </svg>
+                    Upload Data
+                </button>
+                <input type="file" id="fileInput" accept=".xlsx, .xls">
+            </div>
+
+            <button class="btn btn-ghost" onclick="app.downloadTemplate()">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                </svg>
+                Template
+            </button>
+
+            <button class="btn btn-accent" onclick="app.exportView()">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path
+                        d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                </svg>
+                Snapshot
+            </button>
+        </div>
+    </header>
+
+    <div class="app-container">
+
+        <!-- Error Panel (Left Side) -->
+        <div class="error-panel" id="errorPanel">
+            <div class="error-panel-header">
+                <div class="error-panel-title">
+                    <svg class="error-icon" viewBox="0 0 24 24">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor"
+                            stroke-width="2" fill="none" />
+                    </svg>
+                    <span id="errorPanelTitle">Data Issues</span>
+                </div>
+                <button class="error-close" onclick="app.hideErrorPanel()"
+                    aria-label="Close error panel">&times;</button>
+            </div>
+            <div class="error-panel-content" id="errorPanelContent">
+                <!-- Errors will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Main Chart Area -->
+        <div class="chart-viewport" id="chart-area">
+            <div id="d3-container" style="width:100%; height:100%;"></div>
+            <div id="empty-state">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"
+                    style="margin-bottom:16px">
+                    <path d="M3 3h18v18H3zM12 8v8M8 12h8" />
+                </svg>
+                <h3>No Data Visualized</h3>
+                <p>Upload an Excel file to generate the organization chart.</p>
+                <button class="btn btn-ghost" onclick="app.loadDemo()" style="margin-top:10px;">Load Demo Data</button>
+            </div>
+        </div>
+
+        <!-- Sidebar Toggle -->
+        <div style="position:relative;">
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="app.toggleSidebar()" style="display:none;">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">
+                    <span>Search</span>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="searchInput" placeholder="Search by name, title..."
+                        style="flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:6px; outline:none;"
+                        onkeydown="if(event.key==='Enter') app.ui.search()">
+                    <button class="btn btn-primary" style="padding:8px;" onclick="app.ui.search()">Go</button>
+                </div>
+                <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+                    <button class="btn btn-ghost btn-sm" onclick="app.chart.resetZoom()"
+                        style="font-size:0.75rem; width:100%">Fit View</button>
+                    <button class="btn btn-ghost btn-sm" onclick="app.ui.resetFilters()"
+                        style="font-size:0.75rem; width:100%">Reset All</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Hierarchy Layout</div>
+                <div class="filter-container">
+                    <div style="display:flex; align-items:center; gap:8px; width:100%; margin-bottom:8px;">
+                        <span style="font-size:0.8rem; color:#64748b; flex:1;">Grid Columns:</span>
+                        <input type="number" id="gridCols" value="2" min="1" max="10"
+                            style="width:50px; padding:4px; border:1px solid var(--border); border-radius:4px;"
+                            onchange="app.updateGrid(this.value)">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; width:100%;">
+                        <span style="font-size:0.8rem; color:#64748b; flex:1;">Start Level:</span>
+                        <input type="number" id="startLevel" value="0" min="0" max="20"
+                            style="width:50px; padding:4px; border:1px solid var(--border); border-radius:4px;"
+                            onchange="app.updateStartLevel(this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Layers (Depth)</div>
+                <div class="filter-container" id="layer-filters"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Categories</div>
+                <div class="filter-container" id="type-filters"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Grades</div>
+                <div class="filter-container" id="grade-filters"></div>
+            </div>
+
+            <div class="sidebar-section" style="border-bottom:none;">
+                <div class="sidebar-title">Dashboard</div>
+                <div class="stat-card">
+                    <div class="stat-grid">
+                        <div class="mini-stat">
+                            <span class="val" id="stat-total">0</span>
+                            <span class="lbl">Total Employees</span>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="val" id="stat-managers">0</span>
+                            <span class="lbl">Managers</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chartLevel"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chartSpan"></canvas>
+                </div>
+                <div class="stat-card">
+                    <canvas id="chartManagerRatio"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chartCategories"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chartGradeDistribution"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chartGradeDistributionBar"></canvas>
+                </div>
+            </div>
+
+            <div id="clearHighlightContainer" style="padding:15px; display:none;">
+                <button onclick="app.resetAll()"
+                    style="width:100%; padding:10px; background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">
+                    Clear Highlights
+                </button>
+            </div>
+        </aside>
+
+    </div>
+
+    <script>
+        /**
+         * Org Chart Visualiser v2
+         * Modularized Architecture
+         */
+
+        const CONFIG = {
+            boxW: 220, boxH: 120, gridGap: 24, duration: 750,
+            colors: {
+                vodafone: "#e60000",
+                vois: "#f97316", // Orange
+                three: "#000000",
+                other: "#3b82f6" // Blue
+            }
+        };
+
+        class DataManager {
+            constructor() {
+                this.rawNodes = [];
+                this.root = null;
+                this.allTypes = new Set();
+                this.allGrades = new Set();
+                this.errors = []; // Track parsing and hierarchy errors
+            }
+
+            async parseExcel(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const wb = XLSX.read(e.target.result, { type: 'array' });
+                            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                            this.processJson(json);
+                            resolve();
+                        } catch (err) { reject(err); }
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            loadDemo() {
+                // Generate a decent sized tree for demo
+                const data = [
+                    { Name: "CEO", Manager: "", Title: "Chief Executive Officer", Type: "Vodafone", Grade: "A" },
+                    { Name: "CTO", Manager: "CEO", Title: "Chief Tech Officer", Type: "Vodafone", Grade: "B" },
+                    { Name: "CFO", Manager: "CEO", Title: "Chief Financial Officer", Type: "Vodafone", Grade: "B" },
+                    { Name: "VP Eng", Manager: "CTO", Title: "VP Engineering", Type: "Vodafone", Grade: "C" },
+                    { Name: "VP Product", Manager: "CTO", Title: "VP Product", Type: "Vodafone", Grade: "C" },
+                    { Name: "Head of AI", Manager: "VP Eng", Title: "Head of AI", Type: "VOIS", Grade: "D" },
+                    { Name: "Head of Web", Manager: "VP Eng", Title: "Head of Web", Type: "VOIS", Grade: "D" },
+                    { Name: "Senior Dev 1", Manager: "Head of Web", Title: "Senior Dev", Type: "VOIS", Grade: "E" },
+                    { Name: "Senior Dev 2", Manager: "Head of Web", Title: "Senior Dev", Type: "External", Grade: "E" },
+                    { Name: "Product Mgr 1", Manager: "VP Product", Title: "PM", Type: "Vodafone", Grade: "D" },
+                    { Name: "Fin Analyst", Manager: "CFO", Title: "Analyst", Type: "Three", Grade: "E" }
+                ];
+                this.processJson(data);
+            }
+
+            processJson(data) {
+                this.rawNodes = [];
+                this.allTypes.clear();
+                this.allGrades.clear();
+                this.errors = []; // Reset errors
+
+                data.forEach((row, index) => {
+                    const k = (s) => Object.keys(row).find(key => key.toLowerCase().includes(s));
+                    const name = String(row[k('name') || k('employee')] || "").trim();
+
+                    // Track rows with missing names
+                    if (!name) {
+                        const rowIdentifier = row[k('title')] || row[k('manager')] || `Row ${index + 2}`;
+                        this.errors.push({
+                            person: rowIdentifier,
+                            reason: 'Missing name field'
+                        });
+                        return; // Skip this row but continue processing
+                    }
+
+                    let type = String(row[k('type') || k('category')] || "Other").trim();
+                    if (type.toLowerCase().includes("vodafone")) type = "Vodafone";
+
+                    const grade = String(row[k('grade') || k('level')] || "?").trim();
+
+                    this.allTypes.add(type);
+                    if (grade) this.allGrades.add(grade);
+
+                    this.rawNodes.push({
+                        name,
+                        parentId: String(row[k('manager') || k('boss')] || "").trim(),
+                        title: String(row[k('title') || k('job')] || "Unknown").trim(),
+                        type,
+                        grade,
+                        _raw: row
+                    });
+                });
+            }
+
+            extractSurname(fullName) {
+                if (!fullName) return null;
+                const parts = fullName.trim().split(/\s+/);
+                // Return last word as surname
+                return parts.length > 0 ? parts[parts.length - 1] : null;
+            }
+
+            getHierarchy(activeFilters, activeGradeFilters) {
+                // 1. Filter Nodes
+                const filtered = this.rawNodes.filter(n => {
+                    const typeMatch = activeFilters.has(n.type);
+                    const gradeMatch = !activeGradeFilters || activeGradeFilters.size === 0 || activeGradeFilters.has(n.grade);
+                    return typeMatch && gradeMatch;
+                });
+                const ids = new Set(filtered.map(n => n.name));
+
+                // Build a map for surname-based lookups (fallback)
+                const surnameMap = new Map(); // surname -> [full names]
+                filtered.forEach(n => {
+                    const surname = this.extractSurname(n.name);
+                    if (surname) {
+                        if (!surnameMap.has(surname)) {
+                            surnameMap.set(surname, []);
+                        }
+                        surnameMap.get(surname).push(n.name);
+                    }
+                });
+
+                // Helper function to find manager match
+                const findManagerMatch = (managerId) => {
+                    // Try exact match first
+                    if (ids.has(managerId)) {
+                        return managerId;
+                    }
+
+                    // Try surname match as fallback
+                    const managerSurname = this.extractSurname(managerId);
+                    if (managerSurname && surnameMap.has(managerSurname)) {
+                        const matches = surnameMap.get(managerSurname);
+                        if (matches.length === 1) {
+                            // Only use surname match if there's exactly one person with that surname
+                            return matches[0];
+                        }
+                    }
+
+                    return null; // No match found
+                };
+
+                // Update parent IDs to use matched names (full or surname-based)
+                filtered.forEach(n => {
+                    if (n.parentId && n.parentId !== "") {
+                        const match = findManagerMatch(n.parentId);
+                        if (match && match !== n.parentId) {
+                            // Store original for error reporting
+                            n._originalParentId = n.parentId;
+                            n.parentId = match;
+                        }
+                    }
+                });
+
+                // 2. Detect orphaned nodes (manager doesn't exist) and track as errors
+                const orphaned = filtered.filter(n => n.parentId !== "" && !ids.has(n.parentId));
+                orphaned.forEach(n => {
+                    // Only add error if it's not already tracked (to avoid duplicates on refresh)
+                    const alreadyTracked = this.errors.some(e => e.person === n.name && e.reason.includes('Invalid manager'));
+                    if (!alreadyTracked) {
+                        this.errors.push({
+                            person: n.name,
+                            reason: `Invalid manager reference: "${n._originalParentId || n.parentId}" not found`
+                        });
+                    }
+                });
+
+                // 3. Ensure consistency (remove orphans)
+                const safe = filtered.filter(n => n.parentId === "" || ids.has(n.parentId));
+
+                if (safe.length === 0) return null;
+
+                // Add unique IDs to ensure D3 joins don't fail on duplicate names
+                let idCounter = 0;
+                const nameToUniqueId = {};
+
+                safe.forEach(r => {
+                    r._uniqueId = "node_" + (idCounter++) + "_" + r.name.replace(/\s+/g, '');
+                    // For mapping, we need to handle duplicates gracefully. 
+                    // Stratification implies a tree, so duplicate names are problematic unless distinguishing features exist.
+                    // Assuming name is unique identifier for parent lookup for now (as standard hierarchy).
+                    // Use the *last* seen instance if duplicates to match standard behavior or just first?
+                    // In previous code, duplicates would break stratify anyway.
+                    nameToUniqueId[r.name] = r._uniqueId;
+                });
+
+                // 4. Stratify
+                try {
+                    const root = d3.stratify()
+                        .id(d => d._uniqueId) // Use the generated unique ID for D3's internal ID
+                        .parentId(d => {
+                            if (!d.parentId) return "";
+                            // Look up the unique ID of the parent
+                            return nameToUniqueId[d.parentId] || d.parentId; // Fallback to raw if not found (will error correctly in D3)
+                        })(safe);
+
+                    // Assign the original name as the 'id' property for rendering/lookup
+                    root.descendants().forEach(d => {
+                        d.id = d.data.name; // Use original name for external ID (e.g., for search/highlight)
+                    });
+
+                    return root;
+                } catch (e) {
+                    console.error("Stratification Error:", e);
+                    // Track circular dependency errors
+                    if (e.message && e.message.includes('cycle')) {
+                        this.errors.push({
+                            person: 'Multiple nodes',
+                            reason: 'Circular dependency detected in hierarchy'
+                        });
+                    } else {
+                        this.errors.push({
+                            person: 'Unknown',
+                            reason: `Hierarchy error: ${e.message || 'Unknown error'}`
+                        });
+                    }
+                    // Return null but don't alert - errors will be shown in panel
+                    return null;
+                }
+            }
+        }
+
+        class ChartRenderer {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.svg = null;
+                this.g = null;
+                this.zoom = null;
+                this.gridCols = 2;
+                this.root = null;
+                this.init();
+            }
+
+            init() {
+                this.container.innerHTML = "";
+                this.svg = d3.select(this.container).append("svg")
+                    .attr("width", "100%")
+                    .attr("height", "100%")
+                    .style("background", "transparent");
+
+                this.g = this.svg.append("g");
+
+                this.zoom = d3.zoom()
+                    .scaleExtent([0.1, 3])
+                    .on("zoom", (e) => this.g.attr("transform", e.transform));
+
+                this.svg.call(this.zoom).on("dblclick.zoom", null);
+            }
+
+            update(root) {
+                if (!root) { this.g.selectAll("*").remove(); return; }
+                this.root = root;
+
+                // Compute layout
+                this.condense(this.root); // Handle stacking
+
+                const treeLayout = d3.tree()
+                    .nodeSize([CONFIG.boxW + 40, CONFIG.boxH + 60])
+                    .separation((a, b) => {
+                        const aCols = a.data.isGrid ? this.gridCols : 1;
+                        const bCols = b.data.isGrid ? this.gridCols : 1;
+                        return (aCols + bCols) / 2 * 1.1; // More breathing room
+                    });
+
+                const treeData = treeLayout(this.root);
+                let nodes = treeData.descendants();
+                const links = treeData.links();
+
+                // Custom Layer calculations to handle variable height grids
+                const levelY = { 0: 50 }; // Initial padding
+                const maxDepth = d3.max(nodes, d => d.depth);
+
+                for (let d = 0; d <= maxDepth; d++) {
+                    const rowNodes = nodes.filter(n => n.depth === d);
+                    const rowMaxH = d3.max(rowNodes, n => {
+                        if (n.data.isGrid) {
+                            const rows = Math.ceil(n.data._leafNodes.length / this.gridCols);
+                            return rows * (CONFIG.boxH + CONFIG.gridGap);
+                        }
+                        return CONFIG.boxH;
+                    });
+                    levelY[d + 1] = levelY[d] + (rowMaxH || CONFIG.boxH) + 120; // 120 buffer
+                }
+                nodes.forEach(d => d.y = levelY[d.depth]);
+
+                // --- Draw Level Indicators (Background) ---
+                this.renderLevelLines(nodes, maxDepth, levelY);
+                // ------------------------------------------
+
+                // Render Nodes
+                const nodeSelection = this.g.selectAll('g.node')
+                    .data(nodes, d => d.data._uniqueId); // Use the unique ID for data join
+
+                const nodeEnter = nodeSelection.enter().append('g')
+                    .attr('class', 'node')
+                    .attr("transform", d => `translate(${d.x},${d.y + 50})`) // Initial fade-in pos
+                    .style("opacity", 0);
+
+                // Enter Transition
+                nodeEnter.transition().duration(CONFIG.duration)
+                    .attr("transform", d => `translate(${d.x},${d.y})`)
+                    .style("opacity", 1);
+
+                // Update Transition
+                nodeSelection.transition().duration(CONFIG.duration)
+                    .attr("transform", d => `translate(${d.x},${d.y})`)
+                    .style("opacity", 1);
+
+                // Exit Transition
+                nodeSelection.exit().transition().duration(CONFIG.duration / 2)
+                    .style("opacity", 0)
+                    .remove();
+
+                // Content
+                nodeEnter.each((d, i, nodes) => {
+                    const el = d3.select(nodes[i]);
+                    // Initial render (static structure)
+                    if (d.data.isGrid) {
+                        this.renderGrid(el, d);
+                    } else {
+                        this.renderCard(el, d);
+                    }
+                });
+
+                // Update Content for ALL nodes (Enter + Update)
+                // We need to re-select to get the merged selection or just operate on nodeSelection.merge(nodeEnter)
+                const nodeMerge = nodeEnter.merge(nodeSelection);
+
+                nodeMerge.each((d, i, nodes) => {
+                    const el = d3.select(nodes[i]);
+                    if (!d.data.isGrid) {
+                        this.updateCardState(el, d);
+                    } else {
+                        // For Grids: Completely re-render contents to ensure freshness
+                        // This handles leaf count changes or leaf data changes
+                        el.selectAll('*').remove();
+                        this.renderGrid(el, d);
+                    }
+                });
+
+
+                // Update Links
+                const linkSelection = this.g.selectAll('path.link')
+                    .data(links, d => d.target.data._uniqueId); // Use unique ID for links
+
+                linkSelection.enter().insert('path', 'g')
+                    .attr("class", "link")
+                    .attr('d', d => this.diagonal(d.source, d.target))
+                    .style("opacity", 0)
+                    .transition().duration(CONFIG.duration)
+                    .attr('d', d => this.diagonal(d.source, d.target))
+                    .style("opacity", 1);
+
+                linkSelection.transition().duration(CONFIG.duration)
+                    .attr('d', d => this.diagonal(d.source, d.target));
+
+                linkSelection.exit().remove();
+            }
+
+            diagonal(s, t) {
+                const startY = s.y + CONFIG.boxH / 2;
+                const endY = t.y - CONFIG.boxH / 2;
+                return `M${s.x},${startY} C${s.x},${startY + 60} ${t.x},${endY - 60} ${t.x},${endY}`;
+            }
+
+            renderCard(container, d) {
+                const w = CONFIG.boxW, h = CONFIG.boxH;
+                const type = (d.data.type || "Other").trim(); // Normalize
+
+                // Use (e, datum) to ensure we always use the currently bound data (fixing stale closure issues)
+                container.attr("cursor", "pointer")
+                    .attr("data-category", type) // Add data attribute for easier selection
+                    .on("click", (e, datum) => {
+                        e.stopPropagation();
+                        // For manual calls (grids), datum might be undefined if not bound.
+                        // Fallback to closure 'd' if datum matches or if datum is missing (manual render)
+                        // But for manual render we should bind.
+                        const activeData = datum || d;
+
+                        if (!activeData.data.isGrid) {
+                            app.toggleNode(activeData);
+                        }
+                    })
+                    .on("mouseenter", (e, datum) => app.ui.showTooltip(e, (datum || d).data._raw))
+                    .on("mouseleave", app.ui.hideTooltip);
+
+                // Card BG
+                container.append('rect').attr('class', 'card-bg')
+                    .attr('width', w).attr('height', h)
+                    .attr('x', -w / 2).attr('y', -h / 2)
+                    .attr('rx', 8).attr('ry', 8);
+
+                // Color Strip
+                container.append('rect')
+                    .attr('class', 'color-strip')
+                    .attr('width', 6).attr('height', h)
+                    .attr('x', -w / 2).attr('y', -h / 2)
+                    .attr('rx', 4);
+
+                // Text Content Group
+                const content = container.append('g').attr("transform", `translate(${-w / 2 + 20}, -30)`);
+                content.append('text').attr('class', 'node-name');
+                content.append('text').attr('class', 'node-title').attr('y', 20);
+                content.append('text').attr('class', 'node-meta').attr('y', 40);
+                content.append('text').attr('class', 'node-reports').attr('y', 55)
+                    .style('font-size', '9px')
+                    .style('fill', '#64748b')
+                    .style('font-weight', '500');
+
+                // Right Side Grade Label
+                container.append('text')
+                    .attr('class', 'node-grade')
+                    .attr('x', w / 2 - 15) // Right aligned
+                    .attr('y', 0) // Vertically centered
+                    .attr('text-anchor', 'end')
+                    .style('font-weight', 'bold')
+                    .style('font-size', '24px')
+                    .style('fill', '#e2e8f0'); // Subtle placeholder color
+
+                // Expander Button Group (initially hidden)
+                const btn = container.append('g').attr('class', 'expander-btn')
+                    .style('display', 'none')
+                    .attr('transform', `translate(0, ${h / 2})`);
+
+                btn.append('circle').attr('r', 10).style('fill', '#fff').style('stroke', '#cbd5e1');
+                btn.append('text').attr('class', 'expander-text').attr('y', 4).attr('text-anchor', 'middle')
+                    .style('font-size', '14px').style('font-weight', 'bold').style('pointer-events', 'none').style('fill', '#64748b');
+            }
+
+            updateCardState(container, d) {
+                // Update static texts (in case data changes, usually static but good practice)
+                container.select('.node-name').text(this.truncate(d.data.name, 25));
+                container.select('.node-title').text(this.truncate(d.data.title, 30));
+                container.select('.node-meta').text((d.data.type || "").toUpperCase()).style('fill', this.getTypeColor(d.data.type));
+
+                // Update Grade
+                container.select('.node-grade')
+                    .text(d.data.grade || "")
+                    .style('fill', '#94a3b8'); // Gray for now
+
+                container.select('.card-bg')
+                    .style('stroke', this.getTypeColor(d.data.type))
+                    .style('stroke-width', (d.children || d._children) ? 3 : 0);
+
+                container.select('.color-strip').style('fill', this.getTypeColor(d.data.type));
+
+                // Update report counts by category
+                const reportCounts = this.getReportCountsByCategory(d);
+                container.select('.node-reports').text(reportCounts);
+
+                // Update Expander logic
+                const btn = container.select('.expander-btn');
+                if (d.children || d._children) {
+                    btn.style('display', 'block');
+                    btn.select('text').text(d.children ? '-' : '+');
+                } else {
+                    btn.style('display', 'none');
+                }
+            }
+
+            renderGrid(container, d) {
+                d.data._leafNodes.forEach((leaf, idx) => {
+                    const col = idx % this.gridCols;
+                    const row = Math.floor(idx / this.gridCols);
+                    const xOff = (col - (this.gridCols - 1) / 2) * (CONFIG.boxW + CONFIG.gridGap);
+                    const yOff = row * (CONFIG.boxH + CONFIG.gridGap);
+
+                    const g = container.append('g')
+                        .attr('class', 'grid-item') // Add class for selection
+                        .attr('transform', `translate(${xOff}, ${yOff})`);
+
+                    // Bind data manually so click handler works with (e, datum)
+                    g.datum(leaf);
+
+                    this.renderCard(g, leaf);
+                    this.updateCardState(g, leaf);
+                });
+            }
+
+
+
+            condense(node) {
+                if (node.children) {
+                    let leafs = [], others = [];
+                    node.children.forEach(c => {
+                        this.condense(c);
+                        if (!c.children && !c._children && !c.data.isGrid) leafs.push(c);
+                        else others.push(c);
+                    });
+                    if (leafs.length > 1) {
+                        // Create logic grid node
+                        let gridNode = d3.hierarchy({ isGrid: true, _leafNodes: leafs });
+                        gridNode.parent = node;
+                        gridNode.depth = node.depth + 1;
+                        node.children = [...others, gridNode];
+                    }
+                }
+            }
+
+            renderLevelLines(nodes, maxDepth, levelY) {
+                // Ensure layer exists
+                let layer = this.g.select('.level-indicators');
+                if (layer.empty()) {
+                    layer = this.g.insert('g', ':first-child').attr('class', 'level-indicators');
+                } else {
+                    layer.selectAll('*').remove();
+                }
+
+                if (!nodes || nodes.length === 0) return;
+
+                // Calculate X bounds of the tree
+                // min x and max x
+                const minX = d3.min(nodes, d => d.x);
+                const maxX = d3.max(nodes, d => d.x);
+                const padding = 200; // Extend line beyond nodes
+
+                for (let d = 0; d <= maxDepth; d++) {
+                    const y = levelY[d] - 60; // Offset above the row
+
+                    const g = layer.append('g').attr('transform', `translate(0, ${y})`);
+
+                    // Line
+                    g.append('line')
+                        .attr('x1', minX - padding)
+                        .attr('x2', maxX + padding)
+                        .attr('stroke', '#cbd5e1')
+                        .attr('stroke-width', 1)
+                        .attr('stroke-dasharray', '5,5');
+
+                    // Label
+                    const startLvl = parseInt(app.startLevel || 0);
+                    const labelTitle = `Level ${d + startLvl}`;
+                    g.append('text')
+                        .attr('x', minX - padding)
+                        .attr('y', -5)
+                        .attr('fill', '#64748b')
+                        .style('font-size', '16px')
+                        .style('font-weight', '700')
+                        .style('text-transform', 'uppercase')
+                        .style('letter-spacing', '1.5px')
+                        .text(labelTitle);
+                }
+            }
+
+            getTypeColor(type) {
+                type = (type || "").toLowerCase();
+                if (type.includes("vodafone")) return CONFIG.colors.vodafone;
+                if (type.includes("vois")) return CONFIG.colors.vois;
+                if (type.includes("three")) return CONFIG.colors.three;
+                return CONFIG.colors.other;
+            }
+
+            getReportCountsByCategory(node) {
+                // Get all direct reports (visible and hidden)
+                const allChildren = [...(node.children || []), ...(node._children || [])];
+
+                if (allChildren.length === 0) {
+                    return ""; // No reports
+                }
+
+                const counts = {};
+
+                // Recursive function to count all descendants
+                const countDescendants = (n) => {
+                    const children = [...(n.children || []), ...(n._children || [])];
+
+                    children.forEach(child => {
+                        if (child.data.isGrid) {
+                            // For grid nodes, count the leaf nodes
+                            child.data._leafNodes.forEach(leaf => {
+                                const type = leaf.data.type || "Other";
+                                counts[type] = (counts[type] || 0) + 1;
+
+                                // Recursively count descendants of this leaf
+                                countDescendants(leaf);
+                            });
+                        } else {
+                            const type = child.data.type || "Other";
+                            counts[type] = (counts[type] || 0) + 1;
+
+                            // Recursively count descendants of this child
+                            countDescendants(child);
+                        }
+                    });
+                };
+
+                // Start counting from this node
+                countDescendants(node);
+
+                // Format as readable string
+                const parts = [];
+                let total = 0;
+
+                for (const [type, count] of Object.entries(counts)) {
+                    parts.push(`${type}: ${count}`);
+                    total += count;
+                }
+
+                // Add total if more than one category
+                const categoriesCount = Object.keys(counts).length;
+                if (categoriesCount > 1) {
+                    parts.push(`Total: ${total}`);
+                }
+
+                return parts.length > 0 ? parts.join(", ") : "";
+            }
+
+            truncate(str, n) {
+                return (str.length > n) ? str.substr(0, n - 1) + '..' : str;
+            }
+
+            resetZoom() {
+                if (!this.g) return;
+                const b = this.g.node().getBBox();
+                const fullW = this.container.clientWidth;
+                const fullH = this.container.clientHeight;
+
+                if (b.width === 0) return;
+                const s = 0.9 / Math.max(b.width / fullW, b.height / fullH);
+
+                this.svg.transition().duration(CONFIG.duration)
+                    .call(this.zoom.transform,
+                        d3.zoomIdentity.translate(fullW / 2, 100).scale(Math.min(s, 1.2)).translate(-(b.x + b.width / 2), -b.y)
+                    );
+            }
+
+            applyHighlight(predicate) {
+                // 1. Reset: Dim everything first
+                d3.selectAll('.node, .grid-item').classed('dimmed', true).classed('highlighted', false);
+                d3.selectAll('.link').classed('dimmed', true);
+
+                // 2. Identify Strict Matches
+                const selection = d3.selectAll('.node, .grid-item').filter(function (d) {
+                    if (!d) return false;
+                    return predicate(d, this);
+                });
+
+                // 3. Apply Highlight to matches
+                selection.classed('dimmed', false).classed('highlighted', true);
+
+                // 4. Handle Parent Grid Wrappers
+                d3.selectAll('.node').filter(function (d) {
+                    if (!d || !d.data.isGrid) return false;
+                    const container = d3.select(this);
+                    if (container.classed('highlighted')) return true;
+                    return !container.select('.grid-item.highlighted').empty();
+                }).classed('dimmed', false).classed('highlighted', true);
+
+                document.getElementById('clearHighlightContainer').style.display = 'block';
+            }
+
+            clearHighlight() {
+                this.highlightState = null;
+                d3.selectAll('.node, .grid-item').classed('dimmed', false).classed('highlighted', false);
+                d3.selectAll('.link').classed('dimmed', false);
+                document.getElementById('clearHighlightContainer').style.display = 'none';
+            }
+        }
+
+        class UIManager {
+            constructor() {
+                this.charts = {};
+            }
+
+            renderFilters(allTypes, activeFilters) {
+                const container = document.getElementById('type-filters');
+                container.innerHTML = "";
+                allTypes.forEach(t => {
+                    const pill = document.createElement('div');
+                    pill.className = `pill ${activeFilters.has(t) ? 'active' : ''}`;
+                    pill.innerText = t;
+                    pill.onclick = () => app.toggleFilter(t);
+                    container.appendChild(pill);
+                });
+            }
+
+            renderGradeFilters(grades, activeSet) {
+                const container = document.getElementById('grade-filters');
+                container.innerHTML = "";
+                Array.from(grades).sort().forEach(g => {
+                    const pill = document.createElement('div');
+                    pill.className = `pill ${activeSet.has(g) ? 'active' : ''}`;
+                    pill.innerText = g;
+                    pill.onclick = () => app.toggleGradeFilter(g);
+                    container.appendChild(pill);
+                });
+            }
+
+            renderLayers(maxDepth) {
+                const container = document.getElementById('layer-filters');
+                container.innerHTML = "";
+                const startLvl = parseInt(app.startLevel || 0);
+                for (let i = 0; i <= maxDepth; i++) {
+                    const pill = document.createElement('div');
+                    pill.className = `pill`;
+                    pill.innerText = `Level ${i + startLvl}`;
+                    pill.onclick = () => app.filterToLayer(i);
+                    container.appendChild(pill);
+                }
+            }
+
+            updateDashboard(root, rawLength) {
+                if (!root) return;
+                // Support both Hierarchy Node (initial load) and Array (filtered subset)
+                const nodes = Array.isArray(root) ? root : root.descendants();
+                let total = 0, mgrs = 0, types = {}, levels = {}, grades = {};
+                let spanCounts = {}; // Key: number of reports, Value: count of managers
+                let levelMgrRatio = {}; // Key: Level, Value: {mgr: 0, ic: 0}
+
+                const startLvl = parseInt(app.startLevel || 0);
+
+                const processNode = (d, isFromGrid = false) => {
+                    total++;
+
+                    // Types
+                    const t = (d.data.type || "Other").trim(); // Normalize
+                    types[t] = (types[t] || 0) + 1;
+
+                    // Grades
+                    const g = (d.data.grade || "?").trim();
+                    grades[g] = (grades[g] || 0) + 1;
+
+                    // Levels
+                    // Use robust depth check. For Filtered views involving grid items, d.depth isn't set by d3.tree
+                    const trueDepth = (d.depth !== undefined) ? d.depth : (d.parent ? d.parent.depth + 1 : 0);
+                    // Adjust for isFromGrid if needed (actually logic above covers it: grid items have parent grid which has depth)
+                    // But if passed directly in filtered list...
+                    const depth = isFromGrid ? trueDepth : trueDepth;
+
+                    const lvl = "L" + (depth + startLvl);
+                    levels[lvl] = (levels[lvl] || 0) + 1;
+
+                    if (!levelMgrRatio[lvl]) levelMgrRatio[lvl] = { mgr: 0, ic: 0 };
+
+                    // ICs in grid are always ICs for dashboard purposes
+                    if (isFromGrid) {
+                        levelMgrRatio[lvl].ic++;
+                        return;
+                    }
+
+                    // For regular nodes (not part of a grid's _leafNodes)
+                    // Check both visible and hidden children to determine if manager
+                    let hasChildren = false;
+                    if ((d.children && d.children.length > 0) || (d._children && d._children.length > 0)) {
+                        hasChildren = true;
+                    }
+
+                    if (hasChildren) {
+                        mgrs++;
+                        levelMgrRatio[lvl].mgr++;
+
+                        // Span of Control Calc - use all children (visible + hidden)
+                        let reportCount = 0;
+                        const allChildren = [...(d.children || []), ...(d._children || [])];
+                        allChildren.forEach(c => {
+                            if (c.data.isGrid) reportCount += c.data._leafNodes.length;
+                            else reportCount++;
+                        });
+
+                        // Binning for Span
+                        let bin = "";
+                        if (reportCount <= 2) bin = "1-2";
+                        else if (reportCount <= 5) bin = "3-5";
+                        else if (reportCount <= 10) bin = "6-10";
+                        else if (reportCount <= 20) bin = "11-20";
+                        else bin = "20+";
+
+                        spanCounts[bin] = (spanCounts[bin] || 0) + 1;
+
+                    } else {
+                        levelMgrRatio[lvl].ic++;
+                    }
+                };
+
+                nodes.forEach(d => {
+                    // Skip grid wrapper nodes for stats, we want actual people
+                    if (d.data.isGrid) {
+                        // Process contents of grid
+                        if (d.data._leafNodes) {
+                            d.data._leafNodes.forEach(leaf => {
+                                // leaf is a d3 hierarchy node, so it has depth and parent
+                                processNode(leaf, true);
+                            });
+                        }
+                    } else {
+                        processNode(d, false);
+                    }
+                });
+
+                document.getElementById('stat-total').innerText = total;
+                document.getElementById('stat-managers').innerText = mgrs;
+
+                this.drawChart('chartLevel', 'bar', levels, 'Headcount by Level', (label) => app.setGraphFilter('level', label));
+                this.drawChart('chartCategories', 'bar', types, 'Headcount by Category', (label) => app.setGraphFilter('category', label));
+                this.drawChart('chartGradeDistribution', 'doughnut', grades, 'Grade Distribution', (label) => app.setGraphFilter('grade', label));
+                this.drawChart('chartGradeDistributionBar', 'bar', grades, 'Grade Distribution (Bar)', (label) => app.setGraphFilter('grade', label));
+
+                // Sort Span Bins order
+                const spanOrder = ["1-2", "3-5", "6-10", "11-20", "20+"];
+                const sortedSpan = {};
+                spanOrder.forEach(k => { if (spanCounts[k]) sortedSpan[k + " Reports"] = spanCounts[k]; });
+                this.drawChart('chartSpan', 'bar', sortedSpan, 'Span of Control', (label) => app.setGraphFilter('span', label));
+
+                // Manager Ratio Chart
+                this.drawRatioChart('chartManagerRatio', levelMgrRatio, 'Composition by Level');
+            }
+
+            drawRatioChart(id, dataObj, title) {
+                if (this.charts[id]) this.charts[id].destroy();
+                const ctx = document.getElementById(id).getContext('2d');
+
+                // Sort keys numerically
+                const labels = Object.keys(dataObj).sort((a, b) => {
+                    const na = parseInt(a.replace('L', ''));
+                    const nb = parseInt(b.replace('L', ''));
+                    return na - nb;
+                });
+
+                const mgrData = labels.map(l => dataObj[l].mgr);
+                const icData = labels.map(l => dataObj[l].ic);
+
+                this.charts[id] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Managers', data: mgrData, backgroundColor: '#f97316' }, // Orange
+                            { label: 'Ind. Contributors', data: icData, backgroundColor: '#64748b' } // Slate
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: { x: { stacked: true }, y: { stacked: true } },
+                        plugins: { legend: { position: 'bottom' }, title: { display: true, text: title } },
+                        onClick: (evt, elements) => {
+                            if (elements.length > 0) {
+                                const i = elements[0].index;
+                                const datasetIndex = elements[0].datasetIndex;
+                                const label = labels[i]; // e.g. "L3"
+                                const type = datasetIndex === 0 ? 'Manager' : 'Individual Contributor';
+                                // Use a composite key for the value
+                                app.setGraphFilter('composition', `${label}:${type}`);
+                            } else {
+                                app.clearGraphFilter();
+                            }
+                        }
+                    }
+                });
+            }
+
+            drawChart(id, type, dataObj, title, onClickHandler) {
+                if (this.charts[id]) this.charts[id].destroy();
+
+                // Sort Level keys accurately if applicable
+                let labels = Object.keys(dataObj);
+                if (id === 'chartLevel') {
+                    labels.sort((a, b) => {
+                        const na = parseInt(a.replace('L', ''));
+                        const nb = parseInt(b.replace('L', ''));
+                        return na - nb;
+                    });
+                }
+                const data = labels.map(k => dataObj[k]);
+
+                const ctx = document.getElementById(id).getContext('2d');
+                this.charts[id] = new Chart(ctx, {
+                    type: type,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: ['#3b82f6', '#f97316', '#10b981', '#64748b', '#ef4444']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: type === 'doughnut', position: 'bottom' }, title: { display: true, text: title } },
+                        onClick: (evt, elements) => {
+                            if (elements.length > 0) {
+                                const i = elements[0].index;
+                                const label = labels[i];
+                                if (onClickHandler) onClickHandler(label);
+                            } else {
+                                app.clearGraphFilter();
+                            }
+                        }
+                    }
+                });
+            }
+
+
+            showTooltip(e, data) {
+                const t = document.getElementById('tooltip');
+                let html = `<table>`;
+                for (let k in data) {
+                    if (!k.startsWith('_')) html += `<tr><td style="color:#94a3b8">${k}:</td><td>${data[k]}</td></tr>`;
+                }
+                html += `</table>`;
+                t.innerHTML = html;
+                t.style.opacity = 1;
+
+                // Position logic
+                const padding = 20;
+                let left = e.pageX + padding;
+                let top = e.pageY + padding;
+
+                // Check right edge
+                const rect = t.getBoundingClientRect();
+                if (left + rect.width > window.innerWidth) {
+                    left = e.pageX - rect.width - padding;
+                }
+
+                // Check bottom edge
+                if (top + rect.height > window.innerHeight) {
+                    top = e.pageY - rect.height - padding;
+                }
+
+                t.style.left = Math.max(10, left) + "px"; // Ensure not off-screen left
+                t.style.top = top + "px";
+            }
+
+            hideTooltip() { document.getElementById('tooltip').style.opacity = 0; }
+
+            search() {
+                const val = document.getElementById('searchInput').value.toLowerCase();
+                if (!val) return;
+                // Search logic in app controller
+                app.performSearch(val);
+            }
+
+            resetFilters() { app.resetAll(); }
+        }
+
+        class App {
+            constructor() {
+                this.dataMgr = new DataManager();
+                this.chart = new ChartRenderer('d3-container');
+                this.ui = new UIManager();
+                this.sidebarOpen = true;
+                this.startLevel = 0;
+
+                this.activeFilters = new Set();
+                this.activeGradeFilters = new Set();
+                this.highlightState = null;
+                this.filterState = null; // Unified state
+
+                // Listeners
+                document.getElementById('fileInput').addEventListener('change', (e) => this.handleUpload(e));
+            }
+
+            // Unified Filter State
+            // filterState = { type: 'level'|'grade'|'partition'|'span'|'category', value: '...' }
+            setGraphFilter(type, value) {
+                // Toggle logic with robust string comparison
+                if (this.filterState && this.filterState.type === type && String(this.filterState.value).trim() === String(value).trim()) {
+                    this.clearGraphFilter();
+                    return;
+                }
+                this.filterState = { type, value: String(value).trim() };
+                this.applyGraphFilter();
+            }
+
+            clearGraphFilter() {
+                this.filterState = null;
+                this.chart.clearHighlight();
+            }
+
+            applyGraphFilter() {
+                if (!this.filterState) return;
+                const { type, value } = this.filterState;
+                const visibleNodes = [];
+
+                this.chart.applyHighlight((d) => {
+                    const data = d.data;
+                    let match = false;
+
+                    // Robust depth calculation used for filters and downstream dashboard
+                    const depth = (d.depth !== undefined) ? d.depth : (d.parent ? d.parent.depth + 1 : 0);
+
+                    if (type === 'level') {
+                        const targetDepth = parseInt(value.replace('L', '')) - (this.startLevel || 0);
+                        match = depth === targetDepth;
+                    }
+                    else if (type === 'grade') match = (data.grade || "?").trim() === value;
+                    else if (type === 'category') match = (data.type || "Other").trim() === value;
+                    else if (type === 'span') match = this.checkSpan(d, value);
+                    else if (type === 'composition') {
+                        const [lvlLabel, role] = value.split(':');
+                        const targetDepth = parseInt(lvlLabel.replace('L', '')) - (this.startLevel || 0);
+                        if (depth !== targetDepth) match = false;
+                        else {
+                            const hasChildren = d.children && d.children.length > 0;
+                            if (role === 'Manager') match = hasChildren;
+                            else match = !hasChildren;
+                        }
+                    }
+
+                    if (match) visibleNodes.push(d);
+                    return match;
+                });
+
+                // if (visibleNodes.length > 0) this.ui.updateDashboard(visibleNodes);
+            }
+
+            checkSpan(d, rangeLabel) {
+                if (!d.children || d.children.length === 0) return false;
+                // Parse range "1-2", "20+"
+                const parts = rangeLabel.replace(' Reports', '').split('-');
+                let min = 0, max = Infinity;
+                if (parts.length === 2) {
+                    min = parseInt(parts[0]);
+                    max = parseInt(parts[1]);
+                } else if (rangeLabel.includes('+')) {
+                    min = parseInt(rangeLabel);
+                }
+
+                let count = 0;
+                d.children.forEach(c => {
+                    if (c.data.isGrid) count += c.data._leafNodes.length;
+                    else count++;
+                });
+                return count >= min && count <= max;
+            }
+
+
+            async handleUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                document.getElementById('loader').classList.add('active');
+                try {
+                    await this.dataMgr.parseExcel(file);
+                    this.initData();
+                } catch (err) {
+                    alert("Error parsing file: " + err);
+                } finally {
+                    document.getElementById('loader').classList.remove('active');
+                }
+            }
+
+            loadDemo() {
+                this.dataMgr.loadDemo();
+                this.initData();
+            }
+
+            initData() {
+                this.activeFilters = new Set(this.dataMgr.allTypes);
+                this.activeGradeFilters = new Set(this.dataMgr.allGrades);
+                this.refreshChart();
+                this.ui.renderFilters(this.dataMgr.allTypes, this.activeFilters);
+                this.ui.renderGradeFilters(this.dataMgr.allGrades, this.activeGradeFilters);
+
+                // UI State
+                document.getElementById('sidebar').classList.remove('collapsed');
+                document.getElementById('sidebarToggle').style.display = 'flex';
+                document.getElementById('empty-state').style.display = 'none';
+
+                // Show error panel if there are errors
+                if (this.dataMgr.errors.length > 0) {
+                    this.showErrorPanel();
+                }
+            }
+
+            refreshChart() {
+                const root = this.dataMgr.getHierarchy(this.activeFilters, this.activeGradeFilters);
+                this.chart.update(root);
+                this.ui.updateDashboard(root);
+                setTimeout(() => this.chart.resetZoom(), 500);
+
+                if (root) {
+                    let maxD = 0;
+                    root.each(d => maxD = Math.max(maxD, d.depth));
+                    this.ui.renderLayers(maxD);
+                }
+
+                // Update error panel if errors exist
+                if (this.dataMgr.errors.length > 0) {
+                    this.showErrorPanel();
+                } else {
+                    this.hideErrorPanel();
+                }
+            }
+
+            toggleFilter(type) {
+                if (this.activeFilters.has(type)) this.activeFilters.delete(type);
+                else this.activeFilters.add(type);
+                this.refreshChart();
+                this.ui.renderFilters(this.dataMgr.allTypes, this.activeFilters);
+            }
+
+            toggleGradeFilter(grade) {
+                if (this.activeGradeFilters.has(grade)) this.activeGradeFilters.delete(grade);
+                else this.activeGradeFilters.add(grade);
+                this.refreshChart();
+                this.ui.renderGradeFilters(this.dataMgr.allGrades, this.activeGradeFilters);
+            }
+
+            highlightByGrade(grade) {
+                this.chart.highlightByGrade(grade);
+            }
+
+            filterToLayer(depth) {
+                // Expand/Collapse logic
+                const root = this.chart.root;
+                root.each(d => {
+                    if (d.depth === depth) {
+                        // Expand if collapsing, Collapse if expanding? 
+                        // Simple logic: collapse all below this depth
+                        if (d.children) { d._children = d.children; d.children = null; }
+                    } else if (d.depth < depth) {
+                        if (d._children) { d.children = d._children; d._children = null; }
+                    }
+                });
+                this.chart.update(root);
+                this.ui.updateDashboard(root);
+            }
+
+            toggleNode(d) {
+                if (d.children) { d._children = d.children; d.children = null; }
+                else { d.children = d._children; d._children = null; }
+                this.chart.update(this.chart.root);
+                this.ui.updateDashboard(this.chart.root);
+            }
+
+            updateGrid(val) {
+                this.chart.gridCols = parseInt(val) || 1;
+                this.refreshChart();
+            }
+
+            updateStartLevel(val) {
+                this.startLevel = parseInt(val) || 0;
+                this.refreshChart();
+            }
+
+            toggleSidebar() {
+                const sb = document.getElementById('sidebar');
+                const handle = document.getElementById('sidebarToggle');
+                sb.classList.toggle('collapsed');
+                const isClosed = sb.classList.contains('collapsed');
+                handle.querySelector('svg').style.transform = isClosed ? 'rotate(180deg)' : 'rotate(0deg)';
+
+                // Wait for transition then resize chart
+                setTimeout(() => this.chart.resetZoom(), 350);
+            }
+
+            resetAll() {
+                this.activeFilters = new Set(this.dataMgr.allTypes);
+                this.refreshChart();
+                this.chart.clearHighlight();
+            }
+
+            // --- Highlighting Logic ---
+            renderCard(container, d) {
+                const w = CONFIG.boxW, h = CONFIG.boxH;
+                const type = (d.data.type || "Other").trim(); // Normalize
+
+                // Use (e, datum) to ensure we always use the currently bound data (fixing stale closure issues)
+                container.attr("cursor", "pointer")
+                    .attr("data-category", type) // Add data attribute for easier selection
+                    .on("click", (e, datum) => {
+                        e.stopPropagation();
+                        const activeData = datum || d;
+                        if (!activeData.data.isGrid) {
+                            app.toggleNode(activeData);
+                        }
+                    })
+                    .on("mouseenter", (e, datum) => app.ui.showTooltip(e, (datum || d).data._raw))
+                    .on("mouseleave", app.ui.hideTooltip);
+
+                // Card BG
+                container.append('rect').attr('class', 'card-bg')
+                    .attr('width', w).attr('height', h)
+                    .attr('x', -w / 2).attr('y', -h / 2)
+                    .attr('rx', 8).attr('ry', 8);
+
+                // Color Strip
+                container.append('rect')
+                    .attr('class', 'color-strip')
+                    .attr('width', 6).attr('height', h)
+                    .attr('x', -w / 2).attr('y', -h / 2)
+                    .attr('rx', 4);
+
+                // Text Content Group
+                const content = container.append('g').attr("transform", `translate(${-w / 2 + 20}, -30)`);
+                content.append('text').attr('class', 'node-name');
+                content.append('text').attr('class', 'node-title').attr('y', 20);
+                content.append('text').attr('class', 'node-meta').attr('y', 40);
+
+                // Expander Button Group (initially hidden)
+                const btn = container.append('g').attr('class', 'expander-btn')
+                    .style('display', 'none')
+                    .attr('transform', `translate(0, ${h / 2})`);
+
+                btn.append('circle').attr('r', 10).style('fill', '#fff').style('stroke', '#cbd5e1');
+                btn.append('text').attr('class', 'expander-text').attr('y', 4).attr('text-anchor', 'middle')
+                    .style('font-size', '14px').style('font-weight', 'bold').style('pointer-events', 'none').style('fill', '#64748b');
+            }
+
+            // --- Highlighting Logic ---
+            highlightByType(typeLabel) {
+                // Deprecated - Use setGraphFilter
+                app.setGraphFilter('category', typeLabel);
+            }
+
+            // ... (legacy methods can be removed or redirected) ...
+            highlightByLevel(l) { app.setGraphFilter('level', l); }
+            highlightBySpan(l) { app.setGraphFilter('span', l); }
+            highlightByGrade(l) { app.setGraphFilter('grade', l); }
+
+
+
+            highlightByLevel(levelLabel) {
+                // Toggle logic
+                if (this.highlightState && this.highlightState.type === 'level' && this.highlightState.value === levelLabel) {
+                    this.clearHighlight();
+                    return;
+                }
+                this.highlightState = { type: 'level', value: levelLabel };
+
+                // Parse level label back to depth
+                const val = parseInt(levelLabel.replace('L', ''));
+                const targetDepth = val - (this.startLevel || 0);
+
+                this.applyHighlight(d => d.depth === targetDepth);
+            }
+
+            highlightBySpan(rangeLabel) {
+                // Toggle logic
+                if (this.highlightState && this.highlightState.type === 'span' && this.highlightState.value === rangeLabel) {
+                    this.clearHighlight();
+                    return;
+                }
+                this.highlightState = { type: 'span', value: rangeLabel };
+
+                // Parse range "1-2 Reports", "20+ Reports"
+                const parts = rangeLabel.replace(' Reports', '').split('-');
+                let min = 0, max = Infinity;
+                if (parts.length === 2) {
+                    min = parseInt(parts[0]);
+                    max = parseInt(parts[1]);
+                } else if (rangeLabel.includes('+')) {
+                    min = parseInt(rangeLabel);
+                }
+
+                this.applyHighlight(d => {
+                    // Calculate report count for this node
+                    if (!d.children || d.children.length === 0) return false;
+
+                    let count = 0;
+                    d.children.forEach(c => {
+                        if (c.data.isGrid) count += c.data._leafNodes.length;
+                        else count++;
+                    });
+
+                    return count >= min && count <= max;
+                });
+            }
+
+            highlightByComposition(levelLabel, type) {
+                // Toggle logic
+                const key = levelLabel + "_" + type;
+                if (this.highlightState && this.highlightState.type === 'composition' && this.highlightState.value === key) {
+                    this.clearHighlight();
+                    return;
+                }
+                this.highlightState = { type: 'composition', value: key };
+
+                const val = parseInt(levelLabel.replace('L', ''));
+                const targetDepth = val - (this.startLevel || 0);
+
+                // Create a lookup of who has reports in the RAW data (not filtered tree)
+                const personHasReports = new Map();
+                app.dataMgr.rawNodes.forEach(node => {
+                    if (node.parentId && node.parentId !== "") {
+                        personHasReports.set(node.parentId, true);
+                    }
+                });
+
+                this.applyHighlight(d => {
+                    if (d.depth !== targetDepth) return false;
+
+                    // Check if this person is a manager in the RAW dataset
+                    const isManager = personHasReports.has(d.data.name) || false;
+
+                    if (type === 'Manager') return isManager;
+                    else return !isManager;
+                });
+            }
+
+            highlightByGrade(gradeLabel) {
+                if (this.highlightState && this.highlightState.type === 'grade' && this.highlightState.value === gradeLabel) {
+                    this.clearHighlight();
+                    return;
+                }
+                this.highlightState = { type: 'grade', value: gradeLabel };
+                this.applyHighlight(d => (d.data.grade || "?").trim() === gradeLabel);
+            }
+
+            applyHighlight(predicate) {
+                d3.selectAll('.node').classed('dimmed', true).classed('highlighted', false);
+                d3.selectAll('.link').classed('dimmed', true);
+
+                d3.selectAll('.node').filter(d => predicate(d))
+                    .classed('dimmed', false)
+                    .classed('highlighted', true);
+
+                document.getElementById('clearHighlightContainer').style.display = 'block';
+            }
+
+
+
+            performSearch(term) {
+                const root = this.chart.root;
+                const match = root.descendants().find(d => {
+                    let n = d.data.isGrid ? d.data._leafNodes.find(l => l.data.name.toLowerCase().includes(term)) : d;
+                    if (n && n.data.name && n.data.name.toLowerCase().includes(term)) return true;
+                });
+
+                if (match) {
+                    let curr = match;
+                    while (curr.parent) {
+                        if (curr.parent._children) {
+                            curr.parent.children = curr.parent._children;
+                            curr.parent._children = null;
+                        }
+                        curr = curr.parent;
+                    }
+                    this.chart.update(this.chart.root);
+
+                    const targetNode = root.descendants().find(d => {
+                        if (d.data.isGrid) return d.data._leafNodes.some(l => l.data.name.toLowerCase().includes(term));
+                        return d.data.name && d.data.name.toLowerCase().includes(term);
+                    });
+
+                    if (targetNode) {
+                        const fullW = this.chart.container.clientWidth;
+                        const fullH = this.chart.container.clientHeight;
+                        this.chart.svg.transition().duration(1000).call(
+                            this.chart.zoom.transform,
+                            d3.zoomIdentity.translate(fullW / 2 - targetNode.x, fullH / 2 - targetNode.y).scale(1.2)
+                        );
+                        this.applyHighlight(d => d === targetNode);
+                    }
+                }
+            }
+
+            downloadTemplate() {
+                const ws = XLSX.utils.json_to_sheet([
+                    { Name: "CEO", Manager: "", Title: "CEO", Type: "Vodafone", Grade: "A" },
+                    { Name: "CTO", Manager: "CEO", Title: "Chief Tech Officer", Type: "Vodafone", Grade: "B" }
+                ]);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Org");
+                XLSX.writeFile(wb, "OrgTemplate.xlsx");
+            }
+
+            exportView() {
+                html2canvas(document.getElementById('chart-area')).then(c => {
+                    const a = document.createElement('a');
+                    a.download = 'org_snapshot.png';
+                    a.href = c.toDataURL();
+                    a.click();
+                });
+            }
+
+            showErrorPanel() {
+                const panel = document.getElementById('errorPanel');
+                const content = document.getElementById('errorPanelContent');
+                const title = document.getElementById('errorPanelTitle');
+
+                const errors = this.dataMgr.errors;
+                if (errors.length === 0) {
+                    this.hideErrorPanel();
+                    return;
+                }
+
+                // Update title with count
+                title.textContent = `Data Issues (${errors.length})`;
+
+                // Build error list HTML
+                let html = '';
+                errors.forEach(error => {
+                    html += `
+                        <div class="error-item">
+                            <div class="error-person">${this.escapeHtml(error.person)}</div>
+                            <div class="error-reason">${this.escapeHtml(error.reason)}</div>
+                        </div>
+                    `;
+                });
+
+                content.innerHTML = html;
+                panel.classList.add('visible');
+            }
+
+            hideErrorPanel() {
+                const panel = document.getElementById('errorPanel');
+                panel.classList.remove('visible');
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        const app = new App();
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initiative Priority Matrix</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SheetJS for Excel -->
+    <script lang="javascript" src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .matrix-grid {
+            background-image: 
+                linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+                linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+            background-size: 25% 25%;
+        }
+        .noselect {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Custom Scrollbar for the description area */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Animation for modals */
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fadeIn 0.15s ease-out forwards; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- Icons ---
+        const UploadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>;
+        const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
+        const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+        const XIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
+        const LayersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>;
+        const TableIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18"/></svg>;
+        const GridIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
+        const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+        const ArrowUpDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>;
+        const AlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+        const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>;
+        const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
+
+        const STORAGE_KEY = 'matrix_app_data_v3';
+
+        // --- Utils ---
+        const normalize = (val, min, max) => {
+            if (max === min) return 50;
+            let n = ((val - min) / (max - min)) * 100;
+            return Math.max(0, Math.min(100, n));
+        };
+
+        const denormalize = (pct, min, max) => {
+             const val = (pct / 100) * (max - min) + min;
+             return Math.round(val * 100) / 100;
+        };
+
+        const getQuadrant = (x, y) => {
+            if (y < 50 && x >= 50) return { label: "Quick Wins", color: "bg-green-100 text-green-800 border-green-200" };
+            if (y >= 50 && x >= 50) return { label: "Major Projects", color: "bg-blue-100 text-blue-800 border-blue-200" };
+            if (y < 50 && x < 50) return { label: "Fill-ins", color: "bg-gray-100 text-gray-800 border-gray-200" };
+            if (y >= 50 && x < 50) return { label: "Thankless Tasks", color: "bg-red-100 text-red-800 border-red-200" };
+            return { label: "Unknown", color: "bg-gray-100" };
+        };
+
+        // Standard palette for auto-assigning theme colors
+        const THEME_COLORS = [
+            "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", 
+            "#ec4899", "#06b6d4", "#f97316", "#6366f1", "#84cc16"
+        ];
+
+        const App = () => {
+            const [data, setData] = useState([]);
+            const [themes, setThemes] = useState({});
+            const [metadata, setMetadata] = useState({ valueMin: 0, valueMax: 10, effortMin: 0, effortMax: 10 });
+            
+            const [draggingId, setDraggingId] = useState(null);
+            const [hoverId, setHoverId] = useState(null);
+            
+            // "initiative" or "theme"
+            const [editType, setEditType] = useState(null); 
+            const [editingItem, setEditingItem] = useState(null);
+
+            // View Control
+            const [activeTab, setActiveTab] = useState('matrix'); // 'matrix' or 'table'
+            const [viewMode, setViewMode] = useState('both'); // For Matrix: 'initiatives', 'themes', 'both'
+            
+            // New State for Theme Filtering
+            const [selectedThemeFilter, setSelectedThemeFilter] = useState(null);
+            
+            // Table View State
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedQuadrantFilter, setSelectedQuadrantFilter] = useState('');
+            const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+            const [collapsedThemes, setCollapsedThemes] = useState(new Set());
+
+            // Clear Data Modal State
+            const [showClearModal, setShowClearModal] = useState(false);
+
+            const matrixRef = useRef(null);
+            const dragHasMoved = useRef(false);
+
+            // Load from local storage
+            useEffect(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        setData(parsed.data || []);
+                        setThemes(parsed.themes || {});
+                        setMetadata(parsed.metadata);
+                    } catch (e) {
+                        console.error("Failed to load local data", e);
+                    }
+                }
+            }, []);
+
+            // Save to local storage
+            useEffect(() => {
+                if (data.length > 0) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, themes, metadata }));
+                }
+            }, [data, themes, metadata]);
+
+            // --- Derived Data: Themes on Matrix ---
+            const themeAggregates = useMemo(() => {
+                const aggs = {};
+                Object.keys(themes).forEach(tName => {
+                    aggs[tName] = { name: tName, count: 0, totalX: 0, totalY: 0, ...themes[tName] };
+                });
+
+                data.forEach(item => {
+                    if (item.theme && themes[item.theme]) {
+                        if (!aggs[item.theme]) {
+                            aggs[item.theme] = { name: item.theme, count: 0, totalX: 0, totalY: 0, color: '#94a3b8', description: '' };
+                        }
+                        aggs[item.theme].count++;
+                        aggs[item.theme].totalX += item.x;
+                        aggs[item.theme].totalY += item.y;
+                    }
+                });
+
+                return Object.values(aggs).map(t => ({
+                    ...t,
+                    x: t.count > 0 ? t.totalX / t.count : 50,
+                    y: t.count > 0 ? t.totalY / t.count : 50,
+                    size: 30 + (t.count * 8)
+                })).filter(t => t.count > 0);
+            }, [data, themes]);
+
+            // --- Table View Logic ---
+            const sortedAndGroupedData = useMemo(() => {
+                if (activeTab !== 'table') return {};
+                
+                // 1. Filter
+                const filtered = data.filter(item => {
+                    const q = searchQuery.toLowerCase();
+                    const matchesSearch = item.name.toLowerCase().includes(q) || 
+                           (item.description || '').toLowerCase().includes(q) ||
+                           (item.theme || '').toLowerCase().includes(q);
+                    
+                    const itemQuad = getQuadrant(item.x, item.y).label;
+                    const matchesQuad = selectedQuadrantFilter ? itemQuad === selectedQuadrantFilter : true;
+
+                    return matchesSearch && matchesQuad;
+                });
+
+                // 2. Group
+                const groups = {};
+                const themeNames = [...new Set([...Object.keys(themes), ...data.map(i => i.theme || 'Unassigned')])].sort();
+                
+                // Ensure 'Unassigned' is last if it exists
+                const unassignedIdx = themeNames.indexOf('Unassigned');
+                if (unassignedIdx > -1) {
+                    themeNames.push(themeNames.splice(unassignedIdx, 1)[0]);
+                }
+
+                // Add empty groups just in case we want to show headers for empty themes (optional, here we skip empty)
+                themeNames.forEach(t => groups[t] = []);
+                
+                filtered.forEach(item => {
+                    const t = item.theme || 'Unassigned';
+                    if (!groups[t]) groups[t] = [];
+                    groups[t].push(item);
+                });
+
+                // 3. Sort inside groups
+                Object.keys(groups).forEach(key => {
+                    if (groups[key].length === 0) {
+                        delete groups[key];
+                        return;
+                    }
+                    if (sortConfig.key) {
+                        groups[key].sort((a, b) => {
+                            let valA, valB;
+                            if (sortConfig.key === 'name') {
+                                valA = a.name.toLowerCase();
+                                valB = b.name.toLowerCase();
+                            } else if (sortConfig.key === 'value') {
+                                valA = a.x; // x is normalized value
+                                valB = b.x;
+                            } else if (sortConfig.key === 'effort') {
+                                valA = a.y; // y is normalized effort
+                                valB = b.y;
+                            } else if (sortConfig.key === 'quadrant') {
+                                valA = getQuadrant(a.x, a.y).label;
+                                valB = getQuadrant(b.x, b.y).label;
+                            }
+
+                            if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                            if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                            return 0;
+                        });
+                    }
+                });
+
+                return groups;
+            }, [data, themes, activeTab, searchQuery, sortConfig, selectedQuadrantFilter]);
+
+            const handleSort = (key) => {
+                let direction = 'asc';
+                if (sortConfig.key === key && sortConfig.direction === 'asc') {
+                    direction = 'desc';
+                }
+                setSortConfig({ key, direction });
+            };
+
+            const toggleThemeCollapse = (themeName) => {
+                setCollapsedThemes(prev => {
+                    const next = new Set(prev);
+                    if (next.has(themeName)) {
+                        next.delete(themeName);
+                    } else {
+                        next.add(themeName);
+                    }
+                    return next;
+                });
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const bstr = evt.target.result;
+                    const workbook = XLSX.read(bstr, { type: 'binary' });
+                    const wsname = workbook.SheetNames[0];
+                    const ws = workbook.Sheets[wsname];
+                    const jsonData = XLSX.utils.sheet_to_json(ws);
+                    processExcelData(jsonData);
+                };
+                reader.readAsBinaryString(file);
+                
+                // Reset the input value so the same file can be selected again immediately
+                e.target.value = ""; 
+            };
+
+            const processExcelData = (json) => {
+                if (json.length === 0) return;
+
+                const keys = Object.keys(json[0]);
+                const nameKey = keys.find(k => /name|initiative|task|title|feature/i.test(k)) || keys[0];
+                const valueKey = keys.find(k => /value|impact|benefit|importance/i.test(k)) || keys[1];
+                const effortKey = keys.find(k => /effort|cost|difficulty|complex/i.test(k)) || keys[2];
+                const descKey = keys.find(k => /desc|detail|summary|note/i.test(k));
+                const themeKey = keys.find(k => /theme|group|category/i.test(k));
+
+                let vMin = Infinity, vMax = -Infinity;
+                let eMin = Infinity, eMax = -Infinity;
+
+                json.forEach(row => {
+                    const v = parseFloat(row[valueKey]) || 0;
+                    const e = parseFloat(row[effortKey]) || 0;
+                    if (v < vMin) vMin = v;
+                    if (v > vMax) vMax = v;
+                    if (e < eMin) eMin = e;
+                    if (e > eMax) eMax = e;
+                });
+
+                if (vMin === vMax) { vMin = 0; vMax = 10; }
+                if (eMin === eMax) { eMin = 0; eMax = 10; }
+
+                setMetadata({ valueMin: vMin, valueMax: vMax, effortMin: eMin, effortMax: eMax });
+
+                const newThemes = { ...themes };
+                let colorIdx = 0;
+
+                const processedData = json.map((row, idx) => {
+                    const val = parseFloat(row[valueKey]) || 0;
+                    const eff = parseFloat(row[effortKey]) || 0;
+                    const themeName = themeKey ? (row[themeKey] || "").trim() : "";
+                    
+                    if (themeName && !newThemes[themeName]) {
+                        newThemes[themeName] = { 
+                            color: THEME_COLORS[colorIdx % THEME_COLORS.length], 
+                            description: "" 
+                        };
+                        colorIdx++;
+                    }
+
+                    return {
+                        id: idx,
+                        name: row[nameKey] || `Item ${idx + 1}`,
+                        description: descKey ? (row[descKey] || "") : "",
+                        theme: themeName,
+                        originalValue: val,
+                        originalEffort: eff,
+                        x: normalize(val, vMin, vMax),
+                        y: normalize(eff, eMin, eMax),
+                        originalRow: row,
+                        keys: { nameKey, valueKey, effortKey, descKey, themeKey }
+                    };
+                });
+
+                setThemes(newThemes);
+                setData(processedData);
+            };
+
+            const handleDownload = () => {
+                if (data.length === 0) return;
+
+                const exportData = data.map(item => {
+                    const newRow = { ...item.originalRow };
+                    
+                    const nameK = item.keys.nameKey;
+                    const valK = item.keys.valueKey;
+                    const effK = item.keys.effortKey;
+                    const descK = item.keys.descKey || "Description";
+                    const themeK = item.keys.themeKey || "Theme";
+
+                    const newVal = denormalize(item.x, metadata.valueMin, metadata.valueMax);
+                    const newEff = denormalize(item.y, metadata.effortMin, metadata.effortMax);
+
+                    newRow[nameK] = item.name;
+                    newRow[valK] = newVal;
+                    newRow[effK] = newEff;
+                    newRow[descK] = item.description;
+                    newRow[themeK] = item.theme;
+
+                    return newRow;
+                });
+
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Prioritized Initiatives");
+                XLSX.writeFile(wb, "initiatives_with_themes.xlsx");
+            };
+
+            const generateSampleFile = () => {
+                const sampleData = [
+                    { Initiative: "Migrate to Cloud", Value: 9, Effort: 8, Description: "Move legacy servers to AWS.", Theme: "Infrastructure" },
+                    { Initiative: "Fix Login Bug", Value: 8, Effort: 2, Description: "Users timeout too quickly.", Theme: "Maintenance" },
+                    { Initiative: "Update Logo", Value: 2, Effort: 3, Description: "Rebrand with new color scheme.", Theme: "Brand" },
+                    { Initiative: "Rewrite Codebase", Value: 5, Effort: 10, Description: "Full refactor from Java to Go.", Theme: "Infrastructure" },
+                    { Initiative: "Automate Reports", Value: 7, Effort: 5, Description: "Weekly PDF generation.", Theme: "Operations" },
+                    { Initiative: "Team Building", Value: 6, Effort: 4, Description: "Monthly pizza party.", Theme: "Culture" },
+                ];
+                const ws = XLSX.utils.json_to_sheet(sampleData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+                XLSX.writeFile(wb, "sample_matrix_data.xlsx");
+            };
+
+            const confirmClearData = () => {
+                setData([]);
+                setThemes({});
+                setMetadata({ valueMin: 0, valueMax: 10, effortMin: 0, effortMax: 10 });
+                localStorage.removeItem(STORAGE_KEY);
+                setShowClearModal(false);
+            };
+
+            // --- Modal Saving ---
+            const saveInitiative = () => {
+                if (editingItem.theme && !themes[editingItem.theme]) {
+                    setThemes(prev => ({
+                        ...prev,
+                        [editingItem.theme]: { color: THEME_COLORS[Object.keys(prev).length % THEME_COLORS.length], description: "" }
+                    }));
+                }
+                setData(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
+                setEditingItem(null);
+                setEditType(null);
+            };
+
+            const saveTheme = () => {
+                setThemes(prev => ({
+                    ...prev,
+                    [editingItem.name]: { color: editingItem.color, description: editingItem.description }
+                }));
+                setEditingItem(null);
+                setEditType(null);
+            };
+
+            // --- Drag Logic ---
+            const handleMouseMove = (e) => {
+                if (draggingId === null || !matrixRef.current) return;
+                dragHasMoved.current = true;
+                const rect = matrixRef.current.getBoundingClientRect();
+                const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+                const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+                setData(prev => prev.map(item => item.id === draggingId ? { ...item, x, y } : item));
+            };
+
+            const handleMouseUp = () => {
+                if (draggingId !== null && !dragHasMoved.current) {
+                    const item = data.find(i => i.id === draggingId);
+                    if (item) {
+                        setEditingItem({...item});
+                        setEditType('initiative');
+                    }
+                }
+                setDraggingId(null);
+            };
+
+            useEffect(() => {
+                if (draggingId !== null) {
+                    window.addEventListener('mousemove', handleMouseMove);
+                    window.addEventListener('mouseup', handleMouseUp);
+                }
+                return () => {
+                    window.removeEventListener('mousemove', handleMouseMove);
+                    window.removeEventListener('mouseup', handleMouseUp);
+                };
+            }, [draggingId]);
+
+            const availableThemes = Object.keys(themes);
+
+            return (
+                <div className="flex h-screen overflow-hidden text-slate-800">
+
+                    {/* --- CONFIRM CLEAR MODAL --- */}
+                    {showClearModal && (
+                        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 text-center">
+                                <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <AlertIcon />
+                                </div>
+                                <h3 className="font-bold text-lg text-slate-800 mb-2">Clear all data?</h3>
+                                <p className="text-sm text-slate-500 mb-6">This will remove all initiatives and themes. This action cannot be undone.</p>
+                                <div className="flex gap-3 justify-center">
+                                    <button onClick={() => setShowClearModal(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
+                                    <button onClick={confirmClearData} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Yes, Clear All</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* --- MODAL: EDIT INITIATIVE --- */}
+                    {editType === 'initiative' && editingItem && (
+                        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+                                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><EditIcon /> Edit Initiative</h3>
+                                    <button onClick={() => setEditType(null)} className="text-slate-400 hover:text-slate-600"><XIcon /></button>
+                                </div>
+                                <div className="p-6 space-y-4 overflow-y-auto custom-scroll">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Title</label>
+                                        <input className="w-full p-2 border rounded" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                                        <textarea className="w-full p-2 border rounded h-24" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Theme</label>
+                                        <div className="flex gap-2">
+                                            <input 
+                                                className="flex-1 p-2 border rounded" 
+                                                value={editingItem.theme || ''} 
+                                                onChange={e => setEditingItem({...editingItem, theme: e.target.value})}
+                                                placeholder="Type theme name..."
+                                            />
+                                            {availableThemes.length > 0 && (
+                                                <select 
+                                                    className="w-32 p-2 border rounded text-sm bg-slate-50 truncate"
+                                                    onChange={e => {
+                                                        if (e.target.value) setEditingItem({...editingItem, theme: e.target.value});
+                                                    }}
+                                                    value={availableThemes.includes(editingItem.theme) ? editingItem.theme : ""}
+                                                >
+                                                    <option value="">Select...</option>
+                                                    {availableThemes.map(t => <option key={t} value={t}>{t}</option>)}
+                                                </select>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 pt-2">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Value Score</label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded font-mono font-bold text-center text-slate-700"
+                                                value={Math.round(denormalize(editingItem.x, metadata.valueMin, metadata.valueMax))}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value) || 0;
+                                                    const newX = normalize(val, metadata.valueMin, metadata.valueMax);
+                                                    setEditingItem({...editingItem, x: newX});
+                                                }}
+                                            />
+                                            <div className="text-[10px] text-slate-400 text-center mt-1">Range: {metadata.valueMin} - {metadata.valueMax}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Effort Score</label>
+                                            <input 
+                                                type="number" 
+                                                className="w-full p-2 border rounded font-mono font-bold text-center text-slate-700"
+                                                value={Math.round(denormalize(editingItem.y, metadata.effortMin, metadata.effortMax))}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value) || 0;
+                                                    const newY = normalize(val, metadata.effortMin, metadata.effortMax);
+                                                    setEditingItem({...editingItem, y: newY});
+                                                }}
+                                            />
+                                            <div className="text-[10px] text-slate-400 text-center mt-1">Range: {metadata.effortMin} - {metadata.effortMax}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 border-t flex justify-end gap-2">
+                                    <button onClick={() => setEditType(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded">Cancel</button>
+                                    <button onClick={saveInitiative} className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- MODAL: EDIT THEME --- */}
+                    {editType === 'theme' && editingItem && (
+                        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh]">
+                                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><LayersIcon /> Edit Theme</h3>
+                                    <button onClick={() => setEditType(null)} className="text-slate-400 hover:text-slate-600"><XIcon /></button>
+                                </div>
+                                <div className="p-6 space-y-4 overflow-y-auto custom-scroll">
+                                    <div className="text-lg font-bold text-center">{editingItem.name}</div>
+                                    <div className="flex gap-2 items-center justify-center">
+                                        <input type="color" className="w-10 h-10 cursor-pointer border rounded" value={editingItem.color} onChange={e => setEditingItem({...editingItem, color: e.target.value})} />
+                                        <span className="text-sm text-slate-500 font-mono">{editingItem.color}</span>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                                        <textarea className="w-full p-2 border rounded h-24 text-sm" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} placeholder="Describe this theme..." />
+                                    </div>
+                                    <div className="pt-2 border-t border-slate-100">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Initiatives ({editingItem.count})</label>
+                                        <div className="space-y-1 max-h-32 overflow-y-auto custom-scroll border rounded p-1 bg-slate-50">
+                                            {data.filter(i => i.theme === editingItem.name).length === 0 ? (
+                                                <div className="text-xs text-slate-400 p-2 text-center italic">No initiatives linked</div>
+                                            ) : (
+                                                data.filter(i => i.theme === editingItem.name).map(item => (
+                                                    <div 
+                                                        key={item.id}
+                                                        onClick={() => { setEditingItem({...item}); setEditType('initiative'); }}
+                                                        className="flex items-center justify-between p-2 bg-white rounded border border-slate-100 cursor-pointer hover:border-blue-400 hover:text-blue-600 group transition-colors"
+                                                    >
+                                                        <span className="text-xs font-medium truncate">{item.name}</span>
+                                                        <EditIcon className="w-3 h-3 text-slate-300 group-hover:text-blue-400" />
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-center text-slate-400 mt-2">
+                                        Location is calculated automatically.
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-50 border-t flex justify-between gap-2">
+                                    <button 
+                                        onClick={() => { 
+                                            setSelectedThemeFilter(editingItem.name); 
+                                            setEditType(null); 
+                                            setActiveTab('matrix');
+                                        }} 
+                                        className="px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-2"
+                                    >
+                                        <GridIcon size={14} /> Focus on Matrix
+                                    </button>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setEditType(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded">Cancel</button>
+                                        <button onClick={saveTheme} className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- SIDEBAR --- */}
+                    <div className="w-80 bg-white border-r border-slate-200 flex flex-col shadow-lg z-10">
+                        <div className="p-6 border-b border-slate-200">
+                            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                <span className="bg-blue-600 text-white p-1 rounded">PM</span> Priority Matrix
+                            </h1>
+                            <p className="text-xs text-slate-500 mt-2">Upload Excel, prioritize, export.</p>
+                        </div>
+
+                        <div className="p-4 space-y-3">
+                            <label className="flex items-center justify-center gap-2 w-full p-3 bg-blue-50 text-blue-700 font-medium rounded-lg cursor-pointer hover:bg-blue-100 transition border border-blue-200">
+                                <UploadIcon /> Upload Excel
+                                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+                            </label>
+                            
+                            {data.length === 0 ? (
+                                <button onClick={generateSampleFile} className="text-xs text-center text-slate-500 hover:text-blue-600 hover:underline w-full block">Download Sample</button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <button onClick={handleDownload} className="flex-1 flex items-center justify-center gap-2 p-2 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition">
+                                        <DownloadIcon size={16}/> Export
+                                    </button>
+                                    <button onClick={() => setShowClearModal(true)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 border border-red-200"><TrashIcon size={16}/></button>
+                                </div>
+                            )}
+
+                            {/* Matrix View Toggles - Only show if in Matrix Mode */}
+                            {activeTab === 'matrix' && (
+                                <div className="bg-slate-100 p-1 rounded-lg flex text-xs font-medium text-slate-600">
+                                    <button onClick={() => setViewMode('initiatives')} className={`flex-1 py-1.5 rounded ${viewMode === 'initiatives' ? 'bg-white shadow text-blue-600' : 'hover:text-slate-900'}`}>Items</button>
+                                    <button onClick={() => setViewMode('themes')} className={`flex-1 py-1.5 rounded ${viewMode === 'themes' ? 'bg-white shadow text-blue-600' : 'hover:text-slate-900'}`}>Themes</button>
+                                    <button onClick={() => setViewMode('both')} className={`flex-1 py-1.5 rounded ${viewMode === 'both' ? 'bg-white shadow text-blue-600' : 'hover:text-slate-900'}`}>Both</button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50 custom-scroll">
+                            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                                {viewMode === 'themes' && activeTab === 'matrix' ? 'Themes' : 'Initiatives'} List
+                            </h3>
+                            {data.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400 text-sm">No data loaded.</div>
+                            ) : viewMode === 'themes' && activeTab === 'matrix' ? (
+                                themeAggregates.map(t => (
+                                    <div key={t.name} onClick={() => { setEditingItem(t); setEditType('theme'); }} className="p-3 bg-white border border-slate-200 rounded-lg flex items-center gap-3 cursor-pointer hover:border-blue-400">
+                                        <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }}></div>
+                                        <div className="flex-1">
+                                            <div className="font-medium text-sm">{t.name}</div>
+                                            <div className="text-xs text-slate-500">{t.count} items</div>
+                                        </div>
+                                        <EditIcon className="text-slate-300" />
+                                    </div>
+                                ))
+                            ) : (
+                                data.map(item => {
+                                    const quad = getQuadrant(item.x, item.y);
+                                    const themeColor = item.theme && themes[item.theme] ? themes[item.theme].color : null;
+                                    return (
+                                        <div 
+                                            key={item.id} 
+                                            onClick={() => { setEditingItem({...item}); setEditType('initiative'); }}
+                                            onMouseEnter={() => setHoverId(item.id)}
+                                            onMouseLeave={() => setHoverId(null)}
+                                            className={`p-3 rounded-lg border bg-white transition cursor-pointer hover:shadow-md group relative ${hoverId === item.id ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200'}`}
+                                        >
+                                            {themeColor && <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r" style={{ backgroundColor: themeColor }}></div>}
+                                            <div className="pl-2">
+                                                <div className="font-medium text-sm truncate">{item.name}</div>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${quad.color}`}>{quad.label}</span>
+                                                    {item.theme && <span className="text-[10px] text-slate-400 px-1 border rounded">{item.theme}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    {/* --- MAIN CONTENT AREA --- */}
+                    <div className="flex-1 flex flex-col relative bg-slate-50 overflow-hidden">
+                        
+                        {/* Tab Bar / Header */}
+                        <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-20">
+                            
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button 
+                                    onClick={() => setActiveTab('matrix')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === 'matrix' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    <GridIcon /> Matrix View
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('table')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === 'table' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    <TableIcon /> Table View
+                                </button>
+                            </div>
+
+                            {/* Global Actions or Search (context dependent) */}
+                            {activeTab === 'table' && (
+                                <div className="flex gap-3">
+                                    <div className="relative">
+                                        <select 
+                                            className="pl-3 pr-8 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none appearance-none bg-white cursor-pointer"
+                                            value={selectedQuadrantFilter}
+                                            onChange={e => setSelectedQuadrantFilter(e.target.value)}
+                                        >
+                                            <option value="">All Quadrants</option>
+                                            <option value="Quick Wins">Quick Wins</option>
+                                            <option value="Major Projects">Major Projects</option>
+                                            <option value="Fill-ins">Fill-ins</option>
+                                            <option value="Thankless Tasks">Thankless Tasks</option>
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <ArrowUpDownIcon size={12} />
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"/>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search initiatives..." 
+                                            className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none w-64"
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* --- CONTENT: MATRIX --- */}
+                        {activeTab === 'matrix' && (
+                            <div className="flex-1 p-8 flex items-center justify-center relative overflow-hidden">
+                                
+                                {/* Theme Filter Controls */}
+                                <div className="absolute top-6 left-6 z-20 flex items-center gap-2 bg-white/80 backdrop-blur p-2 rounded-lg border border-slate-200 shadow-sm">
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Filter:</span>
+                                    <select 
+                                        className="p-1.5 border border-slate-300 rounded text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+                                        value={selectedThemeFilter || ''}
+                                        onChange={(e) => setSelectedThemeFilter(e.target.value || null)}
+                                    >
+                                        <option value="">Show All Themes</option>
+                                        {Object.keys(themes).map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                    {selectedThemeFilter && (
+                                        <button 
+                                            onClick={() => setSelectedThemeFilter(null)}
+                                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded border border-slate-200 transition"
+                                            title="Clear Filter"
+                                        >
+                                            <XIcon size={14} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Axis Labels */}
+                                <div className="absolute left-2 top-1/2 -translate-y-1/2 -rotate-90 text-sm font-bold text-slate-400 tracking-widest pointer-events-none">EFFORT (Low &rarr; High)</div>
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-sm font-bold text-slate-400 tracking-widest pointer-events-none">VALUE (Low &rarr; High)</div>
+
+                                <div ref={matrixRef} className="w-full max-w-4xl aspect-square bg-white shadow-xl rounded-xl border border-slate-300 relative matrix-grid overflow-hidden">
+                                    <div className="absolute top-4 left-4 text-slate-300 font-bold text-2xl uppercase select-none pointer-events-none">Fill-ins</div>
+                                    <div className="absolute top-4 right-4 text-slate-300 font-bold text-2xl uppercase select-none pointer-events-none text-right">Quick Wins</div>
+                                    <div className="absolute bottom-4 left-4 text-slate-300 font-bold text-2xl uppercase select-none pointer-events-none">Thankless</div>
+                                    <div className="absolute bottom-4 right-4 text-slate-300 font-bold text-2xl uppercase select-none pointer-events-none text-right">Major Projects</div>
+                                    <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-slate-300 transform -translate-x-1/2"></div>
+                                    <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-300 transform -translate-y-1/2"></div>
+
+                                    {/* Render Themes (Only if no specific filter is active) */}
+                                    {(viewMode === 'themes' || viewMode === 'both') && !selectedThemeFilter && themeAggregates.map(t => (
+                                        <div
+                                            key={t.name}
+                                            onClick={(e) => { e.stopPropagation(); setEditingItem(t); setEditType('theme'); }}
+                                            style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${t.size}px`, height: `${t.size}px`, backgroundColor: t.color + '40', borderColor: t.color }}
+                                            className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 flex items-center justify-center cursor-pointer hover:opacity-80 transition-all z-20 group"
+                                        >
+                                            <div className="text-[10px] font-bold text-slate-700 bg-white/80 px-1 rounded shadow-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity absolute -top-6 whitespace-nowrap z-50">
+                                                {t.name} ({t.count})
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Render Initiatives (Show if viewMode allows OR if a specific filter is active) */}
+                                    {(viewMode === 'initiatives' || viewMode === 'both' || selectedThemeFilter) && data
+                                        .filter(item => !selectedThemeFilter || item.theme === selectedThemeFilter)
+                                        .map(item => {
+                                            const tColor = item.theme && themes[item.theme] ? themes[item.theme].color : '#2563eb';
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    onMouseDown={(e) => { e.preventDefault(); dragHasMoved.current = false; setDraggingId(item.id); }}
+                                                    onMouseEnter={() => setHoverId(item.id)}
+                                                    onMouseLeave={() => setHoverId(null)}
+                                                    style={{ left: `${item.x}%`, top: `${item.y}%`, backgroundColor: tColor }}
+                                                    className={`absolute w-5 h-5 -ml-2.5 -mt-2.5 rounded-full border-2 border-white shadow-sm cursor-grab active:cursor-grabbing transition-transform z-30 ${draggingId === item.id ? 'scale-150 z-50 ring-2 ring-black/20' : 'hover:scale-125'} ${hoverId === item.id ? 'z-40 scale-125' : ''}`}
+                                                >
+                                                    {(hoverId === item.id || draggingId === item.id) && (
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-800 text-white text-xs rounded-md shadow-xl z-50 pointer-events-none p-2 animate-fade-in">
+                                                            <div className="font-bold mb-1 truncate">{item.name}</div>
+                                                            {item.theme && <div className="text-[10px] text-blue-200 mb-1">{item.theme}</div>}
+                                                            {item.description && <div className="text-slate-300 line-clamp-2 mb-2 leading-tight border-b border-slate-700 pb-1">{item.description}</div>}
+                                                            <div className="flex justify-between text-[10px] text-slate-400">
+                                                                <span>Val: {Math.round(denormalize(item.x, metadata.valueMin, metadata.valueMax))}</span>
+                                                                <span>Eff: {Math.round(denormalize(item.y, metadata.effortMin, metadata.effortMax))}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    }
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- CONTENT: TABLE VIEW --- */}
+                        {activeTab === 'table' && (
+                            <div className="flex-1 overflow-y-auto p-6">
+                                <div className="bg-white rounded-lg shadow border border-slate-200 overflow-hidden">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                                <th className="p-4 font-bold cursor-pointer hover:bg-slate-100" onClick={() => handleSort('name')}>
+                                                    <div className="flex items-center gap-1">Initiative <ArrowUpDownIcon/></div>
+                                                </th>
+                                                <th className="p-4 font-bold cursor-pointer hover:bg-slate-100" onClick={() => handleSort('value')}>
+                                                    <div className="flex items-center gap-1">Value <ArrowUpDownIcon/></div>
+                                                </th>
+                                                <th className="p-4 font-bold cursor-pointer hover:bg-slate-100" onClick={() => handleSort('effort')}>
+                                                    <div className="flex items-center gap-1">Effort <ArrowUpDownIcon/></div>
+                                                </th>
+                                                <th className="p-4 font-bold cursor-pointer hover:bg-slate-100" onClick={() => handleSort('quadrant')}>
+                                                    <div className="flex items-center gap-1">Quadrant <ArrowUpDownIcon/></div>
+                                                </th>
+                                                <th className="p-4 font-bold w-1/3">Description</th>
+                                                <th className="p-4 font-bold text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.keys(sortedAndGroupedData).length === 0 ? (
+                                                <tr><td colSpan="6" className="p-8 text-center text-slate-400">No matching initiatives found.</td></tr>
+                                            ) : (
+                                                Object.keys(sortedAndGroupedData).map(themeName => {
+                                                    const isCollapsed = collapsedThemes.has(themeName);
+                                                    return (
+                                                        <React.Fragment key={themeName}>
+                                                            {/* Group Header */}
+                                                            <tr 
+                                                                className="bg-slate-50/50 border-b border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                                                                onClick={() => toggleThemeCollapse(themeName)}
+                                                            >
+                                                                <td colSpan="6" className="p-2 pl-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-slate-400">
+                                                                            {isCollapsed ? <ChevronRightIcon size={14} /> : <ChevronDownIcon size={14} />}
+                                                                        </span>
+                                                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: themes[themeName]?.color || '#cbd5e1' }}></div>
+                                                                        <span className="font-bold text-slate-700 text-sm">{themeName}</span>
+                                                                        <span className="text-xs text-slate-400">({sortedAndGroupedData[themeName].length})</span>
+                                                                        {themes[themeName] && (
+                                                                            <button 
+                                                                                onClick={(e) => { 
+                                                                                    e.stopPropagation();
+                                                                                    setEditingItem({...themes[themeName], name: themeName, count: sortedAndGroupedData[themeName].length}); 
+                                                                                    setEditType('theme'); 
+                                                                                }}
+                                                                                className="text-xs text-blue-600 hover:underline ml-2"
+                                                                            >
+                                                                                Edit Theme
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            {/* Items - Conditional Render */}
+                                                            {!isCollapsed && sortedAndGroupedData[themeName].map(item => {
+                                                                const quad = getQuadrant(item.x, item.y);
+                                                                return (
+                                                                    <tr key={item.id} className="border-b border-slate-100 hover:bg-blue-50/30 transition group">
+                                                                        <td className="p-4 text-sm font-medium text-slate-800">{item.name}</td>
+                                                                        <td className="p-4 text-sm text-slate-600 font-mono">{Math.round(denormalize(item.x, metadata.valueMin, metadata.valueMax))}</td>
+                                                                        <td className="p-4 text-sm text-slate-600 font-mono">{Math.round(denormalize(item.y, metadata.effortMin, metadata.effortMax))}</td>
+                                                                        <td className="p-4">
+                                                                            <span className={`text-[10px] px-2 py-1 rounded-full border whitespace-nowrap font-medium ${quad.color}`}>
+                                                                                {quad.label}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="p-4 text-sm text-slate-500 truncate max-w-xs" title={item.description}>{item.description}</td>
+                                                                        <td className="p-4 text-right">
+                                                                            <button 
+                                                                                onClick={() => { setEditingItem({...item}); setEditType('initiative'); }}
+                                                                                className="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-blue-100 transition"
+                                                                            >
+                                                                                <EditIcon size={14} />
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </React.Fragment>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

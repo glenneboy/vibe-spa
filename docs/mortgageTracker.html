@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Mortgage Burn Down Tracker (UK)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #005a9c;
+            --secondary-color: #f0f8ff;
+            --border-color: #ccc;
+            --text-color: #333;
+            --header-color: #fff;
+            --success-color: #28a745;
+            --info-color: #17a2b8;
+            --highlight-color: #ffffe0; /* Light yellow for highlighting */
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--header-color);
+            padding: 2em;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        .section {
+            margin-bottom: 2em;
+            padding: 1.5em;
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+        .section p.description { font-style: italic; color: #555; font-size: 0.9em; }
+        .form-group {
+            margin-bottom: 1em;
+            flex: 1; /* For flex layouts */
+        }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .input-group { display: flex; gap: 10px; }
+        .controls { display: flex; justify-content: center; gap: 1em; margin-top: 2em; }
+        button {
+            background-color: var(--primary-color);
+            color: var(--header-color);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+        button:hover { background-color: #003d6b; }
+        button.add-btn { background-color: var(--success-color); }
+        button.add-btn:hover { background-color: #218838; }
+        button.save-btn { background-color: var(--info-color); }
+        button.save-btn:hover { background-color: #138496; }
+        button.remove-btn {
+            background-color: #dc3545;
+            font-size: 0.8em;
+            padding: 5px 10px;
+        }
+        button.remove-btn:hover { background-color: #c82333; }
+        #mortgage-container .mortgage-card {
+            border: 2px dashed var(--primary-color);
+            padding: 1.5em;
+            margin-bottom: 1.5em;
+            border-radius: 5px;
+            position: relative;
+        }
+        .dynamic-entry { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 0.5em; }
+        #results-summary {
+            background-color: var(--secondary-color);
+            padding: 1.5em;
+            border-left: 5px solid var(--success-color);
+            border-radius: 5px;
+            font-size: 1.1em;
+        }
+        #results-summary p { margin: 0.5em 0; }
+        #results-summary strong { color: var(--primary-color); }
+        #save-confirm { color: var(--info-color); text-align: center; opacity: 0; transition: opacity 0.5s ease; height: 1.2em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 2em; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: right; }
+        th { background-color: var(--primary-color); color: var(--header-color); text-align: center; }
+        tbody tr:nth-child(even) { background-color: #f9f9f9; }
+        tbody tr.overpayment-row { background-color: var(--highlight-color); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Advanced Mortgage Burn Down Tracker</h1>
+
+        <div id="user-info-section" class="section">
+            <h2>Your Information</h2>
+            <div class="form-group"><label for="dob">Your Date of Birth</label><input type="date" id="dob" name="dob"></div>
+        </div>
+
+        <div id="mortgages-section" class="section">
+            <h2>Mortgage Details</h2>
+            <div id="mortgage-container"></div>
+            <button onclick="addMortgage()" class="add-btn">+ Add Another Mortgage</button>
+        </div>
+
+        <div id="global-rates-section" class="section">
+            <h2>Global Future Interest Rate Changes</h2>
+            <p class="description">These rates will apply to ALL mortgages on the specified dates.</p>
+            <div id="global-rates-list"></div>
+            <button type="button" class="add-btn" onclick="addGlobalFutureRate()">+ Add Future Rate</button>
+        </div>
+
+        <div id="global-overpayments-section" class="section">
+            <h2>Global Lump Sum Overpayments</h2>
+            <p class="description">Fixed amount (£) overpayments are distributed pro-rata based on each mortgage's remaining balance. Percentage (%) overpayments apply to each mortgage individually.</p>
+            <div id="global-overpayments-list"></div>
+            <button type="button" class="add-btn" onclick="addGlobalOverpayment()">+ Add Overpayment</button>
+        </div>
+
+        <div class="controls">
+            <button onclick="saveData()">Save Configuration</button>
+            <button onclick="calculateBurnDown()">Calculate & Save</button>
+        </div>
+        <p id="save-confirm">Configuration saved!</p>
+        
+        <div id="results" style="display: none;">
+            <h2>Results</h2>
+            <div id="results-summary"></div>
+            <div id="chart-container" style="margin-top: 2em;"><canvas id="burnDownChart"></canvas></div>
+            <div id="table-container">
+                <table id="amortization-table">
+                    <thead><tr><th>Date</th><th>Age</th><th>Projected Rem. Term</th><th>Total Payment</th><th>Principal Paid</th><th>Interest Paid</th><th>Remaining Balance</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <template id="mortgage-template">
+        <div class="mortgage-card">
+            <button class="remove-btn" style="position: absolute; top: 10px; right: 10px;" onclick="this.parentElement.remove()">Remove</button>
+            <div class="form-group"><label>Mortgage Name</label><input type="text" class="mortgage-name" placeholder="Main Home"></div>
+            <div class="input-group">
+                <div class="form-group"><label>Remaining Principal (£)</label><input type="number" class="principal" placeholder="300000"></div>
+                <div class="form-group"><label>Initial Interest Rate (%)</label><input type="number" step="0.01" class="interest-rate" placeholder="5.25"></div>
+            </div>
+            <div class="input-group">
+                 <div class="form-group"><label>Remaining Term (Years)</label><input type="number" class="term-years" placeholder="25"></div>
+                <div class="form-group"><label>Remaining Term (Months)</label><input type="number" class="term-months" placeholder="0"></div>
+            </div>
+        </div>
+    </template>
+    
+    <script>
+        const DATA_KEY = 'mortgageTrackerData_v2';
+        let chartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => loadData());
+
+        function addMortgage(data = null) {
+            const clone = document.getElementById('mortgage-template').content.cloneNode(true);
+            const card = clone.querySelector('.mortgage-card');
+            if (data) {
+                card.querySelector('.mortgage-name').value = data.name;
+                card.querySelector('.principal').value = data.principal;
+                card.querySelector('.interest-rate').value = data.interestRate;
+                card.querySelector('.term-years').value = data.termYears;
+                card.querySelector('.term-months').value = data.termMonths;
+            }
+            document.getElementById('mortgage-container').appendChild(clone);
+        }
+
+        function addGlobalFutureRate(data = null) {
+            const list = document.getElementById('global-rates-list');
+            const entry = document.createElement('div');
+            entry.className = 'dynamic-entry';
+            entry.innerHTML = `
+                <div class="form-group" style="flex: 2;"><label style="font-size:0.8em;">New Rate (%)</label><input type="number" step="0.01" class="future-rate"></div>
+                <div class="form-group" style="flex: 2;"><label style="font-size:0.8em;">From Date</label><input type="date" class="future-rate-date"></div>
+                <div class="form-group" style="flex: 2;"><label style="font-size:0.8em;">Effect</label>
+                    <select class="future-rate-strategy">
+                        <option value="increase_payment">Increase Payment</option>
+                        <option value="increase_term">Increase Term</option>
+                    </select>
+                </div>
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">X</button>`;
+            if (data) {
+                entry.querySelector('.future-rate').value = data.rate;
+                entry.querySelector('.future-rate-date').value = data.date;
+                entry.querySelector('.future-rate-strategy').value = data.strategy;
+            }
+            list.appendChild(entry);
+        }
+        
+        function addGlobalOverpayment(data = null) {
+            const list = document.getElementById('global-overpayments-list');
+            const entry = document.createElement('div');
+            entry.className = 'dynamic-entry';
+            entry.innerHTML = `
+                <div class="form-group" style="flex: 2;"><label style="font-size:0.8em;">Amount</label><input type="number" step="any" class="lump-sum-value"></div>
+                <div class="form-group" style="flex: 1;"><label style="font-size:0.8em;">Type</label>
+                    <select class="lump-sum-type"><option value="fixed">£</option><option value="percent">%</option></select>
+                </div>
+                <div class="form-group" style="flex: 2;"><label style="font-size:0.8em;">On Date</label><input type="date" class="lump-sum-date"></div>
+                <div class="form-group" style="flex: 2;"><label style="font-size:0.8em;">Effect</label>
+                    <select class="lump-sum-strategy"><option value="reduce_term">Reduce Term</option><option value="reduce_payment">Reduce Payment</option></select>
+                </div>
+                <button type="button" class="remove-btn" onclick="this.parentElement.remove()">X</button>`;
+            if (data) {
+                entry.querySelector('.lump-sum-value').value = data.value;
+                entry.querySelector('.lump-sum-type').value = data.type;
+                entry.querySelector('.lump-sum-date').value = data.date;
+                entry.querySelector('.lump-sum-strategy').value = data.strategy;
+            }
+            list.appendChild(entry);
+        }
+
+        function saveData() {
+            const dataToSave = { dob: document.getElementById('dob').value, mortgages: [], futureRates: [], lumpSums: [] };
+            document.querySelectorAll('#mortgage-container .mortgage-card').forEach((card, i) => {
+                dataToSave.mortgages.push({
+                    name: card.querySelector('.mortgage-name').value || `Mortgage ${i+1}`, principal: card.querySelector('.principal').value,
+                    interestRate: card.querySelector('.interest-rate').value, termYears: card.querySelector('.term-years').value,
+                    termMonths: card.querySelector('.term-months').value
+                });
+            });
+            document.querySelectorAll('#global-rates-list .dynamic-entry').forEach(e => dataToSave.futureRates.push({ rate: e.querySelector('.future-rate').value, date: e.querySelector('.future-rate-date').value, strategy: e.querySelector('.future-rate-strategy').value }));
+            document.querySelectorAll('#global-overpayments-list .dynamic-entry').forEach(e => dataToSave.lumpSums.push({ value: e.querySelector('.lump-sum-value').value, type: e.querySelector('.lump-sum-type').value, date: e.querySelector('.lump-sum-date').value, strategy: e.querySelector('.lump-sum-strategy').value }));
+            
+            localStorage.setItem(DATA_KEY, JSON.stringify(dataToSave));
+            const confirmMsg = document.getElementById('save-confirm');
+            confirmMsg.style.opacity = '1';
+            setTimeout(() => { confirmMsg.style.opacity = '0'; }, 2000);
+        }
+        
+        function loadData() {
+            const savedData = localStorage.getItem(DATA_KEY);
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                document.getElementById('dob').value = data.dob;
+                document.getElementById('mortgage-container').innerHTML = '';
+                (data.mortgages || []).forEach(m => addMortgage(m));
+                (data.futureRates || []).forEach(fr => addGlobalFutureRate(fr));
+                (data.lumpSums || []).forEach(ls => addGlobalOverpayment(ls));
+            } else {
+                addMortgage();
+            }
+        }
+        
+        function getParsedData() {
+            const mortgages = [];
+            document.querySelectorAll('#mortgage-container .mortgage-card').forEach((card, i) => {
+                mortgages.push({
+                    name: card.querySelector('.mortgage-name').value || `Mortgage ${i+1}`,
+                    principal: parseFloat(card.querySelector('.principal').value) || 0,
+                    initialRate: (parseFloat(card.querySelector('.interest-rate').value) || 0) / 100,
+                    termMonths: (parseInt(card.querySelector('.term-years').value) || 0) * 12 + (parseInt(card.querySelector('.term-months').value) || 0),
+                    remainingPrincipal: parseFloat(card.querySelector('.principal').value) || 0,
+                });
+            });
+
+            const futureRates = [];
+            document.querySelectorAll('#global-rates-list .dynamic-entry').forEach(e => { if (e.querySelector('.future-rate').value && e.querySelector('.future-rate-date').value) futureRates.push({ rate: parseFloat(e.querySelector('.future-rate').value) / 100, date: new Date(e.querySelector('.future-rate-date').value), strategy: e.querySelector('.future-rate-strategy').value }); });
+            futureRates.sort((a, b) => a.date - b.date);
+            
+            const lumpSums = [];
+            document.querySelectorAll('#global-overpayments-list .dynamic-entry').forEach(e => { if (e.querySelector('.lump-sum-value').value && e.querySelector('.lump-sum-date').value) lumpSums.push({ value: parseFloat(e.querySelector('.lump-sum-value').value), type: e.querySelector('.lump-sum-type').value, date: new Date(e.querySelector('.lump-sum-date').value), strategy: e.querySelector('.lump-sum-strategy').value }); });
+            lumpSums.sort((a, b) => a.date - b.date);
+
+            return { mortgages, futureRates, lumpSums };
+        }
+        
+        function calculateMonthlyPayment(principal, monthlyRate, termMonths) {
+            if (principal <= 0 || termMonths <= 0) return 0;
+            if (monthlyRate <= 0) return principal / termMonths;
+            return principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+        }
+        
+        function calculateRemainingMonths(principal, monthlyRate, monthlyPayment) {
+            if (principal <= 0) return 0;
+            if (monthlyPayment <= 0) return Infinity;
+            if (monthlyRate > 0 && monthlyPayment <= principal * monthlyRate) return Infinity;
+            if (monthlyRate <= 0) return Math.ceil(principal / monthlyPayment);
+            const n = -Math.log(1 - (principal * monthlyRate) / monthlyPayment) / Math.log(1 + monthlyRate);
+            return Math.ceil(n);
+        }
+
+        function calculateBurnDown() {
+            const dobInput = document.getElementById('dob').value;
+            if (!dobInput) { alert("Please enter your Date of Birth."); return; }
+            saveData();
+            const dob = new Date(dobInput);
+            const { mortgages, futureRates, lumpSums } = getParsedData();
+            
+            mortgages.forEach(m => {
+                m.currentStandardPayment = calculateMonthlyPayment(m.principal, m.initialRate / 12, m.termMonths);
+                m.currentRate = m.initialRate;
+            });
+
+            let currentDate = new Date(); currentDate.setDate(1);
+            let schedule = [];
+            let totalRemaining = mortgages.reduce((sum, m) => sum + m.remainingPrincipal, 0);
+            let totalInterestPaid = 0, totalLumpSumPaid = 0;
+            
+            for (let month = 0; month < 720 && totalRemaining > 0.01; month++) {
+                let monthTotalPayment = 0, monthTotalPrincipalPaid = 0, monthTotalInterestPaid = 0, monthLumpSum = 0;
+                
+                const applicableFutureRate = futureRates.filter(fr => fr.date <= currentDate).pop();
+                const rateChangeEvent = futureRates.find(fr => fr.date.getFullYear() === currentDate.getFullYear() && fr.date.getMonth() === currentDate.getMonth());
+                const scheduledLumpSum = lumpSums.find(ls => ls.date.getFullYear() === currentDate.getFullYear() && ls.date.getMonth() === currentDate.getMonth());
+                
+                const intendedOverpayments = new Array(mortgages.length).fill(0);
+                if (scheduledLumpSum) {
+                    if (scheduledLumpSum.type === 'fixed') {
+                        const totalPrincipalForDistribution = mortgages.reduce((sum, m) => sum + m.remainingPrincipal, 0);
+                        if (totalPrincipalForDistribution > 0) {
+                            mortgages.forEach((m, i) => intendedOverpayments[i] = scheduledLumpSum.value * (m.remainingPrincipal / totalPrincipalForDistribution));
+                        }
+                    } else { // percent
+                        mortgages.forEach((m, i) => intendedOverpayments[i] = m.remainingPrincipal * (scheduledLumpSum.value / 100));
+                    }
+                }
+
+                mortgages.forEach((m, i) => {
+                    if (m.remainingPrincipal <= 0) return;
+                    
+                    if (applicableFutureRate) m.currentRate = applicableFutureRate.rate;
+                    
+                    // --- BUG FIX STARTS HERE: Use else if to prioritize rate change logic ---
+                    if (rateChangeEvent && rateChangeEvent.strategy === 'increase_payment') {
+                        const remainingTerm = m.termMonths - month;
+                        if (remainingTerm > 0) {
+                           m.currentStandardPayment = calculateMonthlyPayment(m.remainingPrincipal, m.currentRate / 12, remainingTerm);
+                        }
+                    } else if (scheduledLumpSum && scheduledLumpSum.strategy === 'reduce_payment') {
+                        const actualOverpaymentForThisMortgage = Math.min(intendedOverpayments[i], m.remainingPrincipal);
+                        const principalAfterLumpSum = m.remainingPrincipal - actualOverpaymentForThisMortgage;
+                        const remainingTerm = m.termMonths - month;
+                        m.currentStandardPayment = calculateMonthlyPayment(principalAfterLumpSum, m.currentRate / 12, remainingTerm);
+                    }
+                    // --- BUG FIX ENDS HERE ---
+                    
+                    const intendedLumpSum = intendedOverpayments[i];
+                    const interestForMonth = m.remainingPrincipal * (m.currentRate / 12);
+                    let totalPaymentThisMonth = m.currentStandardPayment + intendedLumpSum;
+                    const finalPaymentAmount = m.remainingPrincipal + interestForMonth;
+                    if (totalPaymentThisMonth > finalPaymentAmount) {
+                        totalPaymentThisMonth = finalPaymentAmount;
+                    }
+
+                    const actualOverpaymentMade = Math.max(0, totalPaymentThisMonth - m.currentStandardPayment);
+                    monthLumpSum += actualOverpaymentMade;
+                    totalLumpSumPaid += actualOverpaymentMade;
+                    
+                    const principalPaid = totalPaymentThisMonth - interestForMonth;
+                    m.remainingPrincipal -= principalPaid;
+                    if (m.remainingPrincipal < 0.01) m.remainingPrincipal = 0;
+
+                    monthTotalPayment += totalPaymentThisMonth;
+                    monthTotalPrincipalPaid += principalPaid;
+                    monthTotalInterestPaid += interestForMonth;
+                    totalInterestPaid += interestForMonth;
+                });
+                
+                let maxProjectedTerm = 0;
+                mortgages.forEach(m => {
+                    if (m.remainingPrincipal > 0) {
+                        const term = calculateRemainingMonths(m.remainingPrincipal, m.currentRate / 12, m.currentStandardPayment);
+                        if (term > maxProjectedTerm) maxProjectedTerm = term;
+                    }
+                });
+
+                totalRemaining = mortgages.reduce((sum, m) => sum + m.remainingPrincipal, 0);
+                const nextDate = new Date(currentDate); nextDate.setMonth(currentDate.getMonth() + 1);
+                schedule.push({ date: nextDate, payment: monthTotalPayment, principalPaid: monthTotalPrincipalPaid, interestPaid: monthTotalInterestPaid, balance: totalRemaining, lumpSumAmount: monthLumpSum, individualBalances: mortgages.map(m => m.remainingPrincipal), remainingTermMonths: maxProjectedTerm });
+                currentDate = nextDate;
+            }
+            displayResults(schedule, dob, totalInterestPaid, totalLumpSumPaid, mortgages);
+        }
+
+        function displayResults(schedule, dob, totalInterestPaid, totalLumpSumPaid, mortgages) {
+            document.getElementById('results').style.display = 'block';
+            if (schedule.length === 0) return;
+            
+            const summaryDiv = document.getElementById('results-summary');
+            const finalEntry = schedule[schedule.length - 1];
+            const payoffDate = finalEntry.date;
+            const ageAtPayoff = (payoffDate - dob) / (1000 * 60 * 60 * 24 * 365.25);
+            summaryDiv.innerHTML = `
+                <p><strong>Final Payoff Date:</strong> ${payoffDate.toLocaleDateString('en-GB', { year: 'numeric', month: 'long' })}</p>
+                <p><strong>Total Interest Paid:</strong> ${totalInterestPaid.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })}</p>
+                <p><strong>Total Overpayments Made:</strong> ${totalLumpSumPaid.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })}</p>
+                <p><strong>Age at Payoff:</strong> ${Math.floor(ageAtPayoff)} years old</p>`;
+            
+            if (chartInstance) chartInstance.destroy();
+            const chartColors = ['#e6194B', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990'];
+            const datasets = [{
+                label: 'Total Remaining Balance',
+                data: schedule.map(s => s.balance),
+                borderColor: 'rgba(0, 90, 156, 1)',
+                backgroundColor: 'rgba(0, 90, 156, 0.2)',
+                fill: true,
+                tension: 0.1
+            }];
+            mortgages.forEach((mortgage, index) => {
+                datasets.push({ label: mortgage.name, data: schedule.map(s => s.individualBalances[index]), borderColor: chartColors[index % chartColors.length], fill: false, tension: 0.1 });
+            });
+            const ctx = document.getElementById('burnDownChart').getContext('2d');
+            chartInstance = new Chart(ctx, { type: 'line', data: { labels: schedule.map(s => s.date.toLocaleDateString('en-GB', { year: 'numeric', month: 'short' })), datasets: datasets }, options: { responsive: true, scales: { y: { ticks: { callback: value => '£' + value.toLocaleString('en-GB') }}} } });
+
+            const tableBody = document.querySelector('#amortization-table tbody');
+            tableBody.innerHTML = '';
+            schedule.forEach(entry => {
+                const age = Math.floor((entry.date - dob) / (1000 * 60 * 60 * 24 * 365.25));
+                const overpaymentClass = entry.lumpSumAmount > 0 ? 'overpayment-row' : '';
+                
+                const remYears = Math.floor(entry.remainingTermMonths / 12);
+                const remMonths = entry.remainingTermMonths % 12;
+                const remainingTermStr = isFinite(entry.remainingTermMonths) ? `${remYears}y ${remMonths}m` : 'Never';
+
+                tableBody.insertAdjacentHTML('beforeend', `
+                    <tr class="${overpaymentClass}">
+                        <td style="text-align:left;">${entry.date.toLocaleDateString('en-GB', { year: 'numeric', month: 'long' })}</td>
+                        <td>${age}</td>
+                        <td style="text-align:center;">${remainingTermStr}</td>
+                        <td>${entry.payment.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })}</td>
+                        <td>${entry.principalPaid.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })}</td>
+                        <td>${entry.interestPaid.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })}</td>
+                        <td>${entry.balance.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' })}</td>
+                    </tr>`);
+            });
+        }
+    </script>
+</body>
+</html>

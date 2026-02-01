@@ -1,0 +1,2787 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Structure Analysis & Planning</title>
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #E60000;
+            /* Vodafone Red-ish */
+            --primary-dark: #cc0000;
+            --secondary: #2c2c2c;
+            --background: #0f1214;
+            /* Deep dark background */
+            --surface: #1a1d21;
+            --surface-hover: #24282e;
+            --text-main: #ffffff;
+            --text-secondary: #a0a0a0;
+            --success: #00b341;
+            --warning: #ff9900;
+            --danger: #ff3333;
+            --border: #333333;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            background: rgba(26, 29, 33, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: white;
+            box-shadow: 0 0 15px rgba(230, 0, 0, 0.4);
+        }
+
+        .app-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .status-indicator {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-secondary);
+        }
+
+        .status-dot.active {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .status-dot.error {
+            background-color: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+        }
+
+        /* --- Navigation --- */
+        nav {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 0;
+            position: relative;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-link.active {
+            color: var(--text-main);
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1.55rem;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            box-shadow: 0 -2px 10px var(--primary);
+        }
+
+        /* --- Main Content --- */
+        main {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .view-section {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+            padding: 2rem;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- Modal Backdrop --- */
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(2px);
+        }
+
+        /* --- Toast Notification --- */
+        #toast-notification {
+            visibility: hidden;
+            min-width: 300px;
+            background-color: var(--surface);
+            color: var(--text-main);
+            text-align: center;
+            border-radius: 12px;
+            padding: 16px 24px;
+            position: fixed;
+            z-index: 2000;
+            left: 50%;
+            bottom: 40px;
+            font-size: 1.1rem;
+            font-weight: 500;
+
+            /* Visuals */
+            border: 1px solid var(--primary);
+            border-left: 6px solid var(--primary);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+            /* Animation State: Hidden */
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #toast-notification.show {
+            visibility: visible;
+            /* Animation State: Shown */
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* --- Modern Table --- */
+        .modern-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: #1e2226;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            font-size: 0.9rem;
+        }
+
+        .modern-table thead {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modern-table th {
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .modern-table td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            transition: background 0.2s;
+        }
+
+        .modern-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .modern-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* --- Components --- */
+        /* --- Components --- */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: #444;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        /* --- Dashboard Grid --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .metric-card {
+            text-align: center;
+        }
+
+        .big-number {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .sub-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* --- Planning View Styles --- */
+        .planning-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 1.5rem;
+            height: calc(100vh - 120px);
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        #team-search {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--background);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+
+        .scroll-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .team-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .team-item:hover {
+            background: var(--surface-hover);
+        }
+
+        .team-item.selected {
+            background: rgba(230, 0, 0, 0.1);
+            border-left: 3px solid var(--primary);
+        }
+
+        .team-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .team-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        /* Workspace */
+        .workspace-panel {
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        #empty-state {
+            text-align: center;
+            margin-top: 20%;
+            opacity: 0.5;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .badge {
+            background: var(--surface-hover);
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        /* BSC Card */
+        .bsc-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .bsc-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .bsc-item {
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .bsc-item.success {
+            border-color: var(--success);
+            background: rgba(0, 179, 65, 0.05);
+        }
+
+        .bsc-item.fail {
+            border-color: var(--danger);
+            background: rgba(255, 51, 51, 0.05);
+        }
+
+        .bsc-item .icon {
+            font-family: 'Material Icons', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .bsc-item .status {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Members Grid */
+        .members-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .member-card {
+            background: var(--background);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .member-card.accenture {
+            border-left: 3px solid #6600cc;
+        }
+
+        .member-card.vodafone {
+            border-left: 3px solid #e60000;
+        }
+
+        .member-name {
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .member-role {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        /* --- Loading / Error Overlay --- */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--background);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--surface);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 2rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-box {
+            background: rgba(255, 51, 51, 0.1);
+            border: 1px solid var(--danger);
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 600px;
+            display: none;
+        }
+
+        code {
+            background: #000;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #ff9999;
+        }
+
+        /* Tooltip Styles */
+        /* Global Tooltip */
+        #global-tooltip {
+            position: fixed;
+            background: #1e2226;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            width: 250px;
+            z-index: 9999;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s ease;
+            white-space: normal;
+            line-height: 1.4;
+            display: none;
+            /* hidden by default */
+        }
+
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 4px;
+        }
+
+        .tooltip-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .tooltip-label {
+            color: var(--text-secondary);
+        }
+
+        .tooltip-value {
+            font-weight: 600;
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading-overlay">
+        <div class="loader" id="spinner"></div>
+        <h1 id="loading-text">Loading Data Assets...</h1>
+        <p style="color: grey; margin-top: 10px;">Looking for CSV files in local directory</p>
+
+        <div id="error-container" class="error-box">
+            <h2 style="color: var(--danger);">Unable to Load Data</h2>
+            <p style="margin-bottom: 1rem;">
+                Browsers restrict access to local files directly (CORS/File Protocol).
+                To run this tool, you must serve the directory via a local web server.
+            </p>
+            <p style="margin-bottom: 1rem;"><strong>Try running this command in your terminal:</strong></p>
+            <p><code style="display:block; padding: 1rem;">python3 -m http.server 8000</code></p>
+            <p style="margin-bottom: 1rem;">Then visit:</p>
+            <a href="http://localhost:8000/team_analysis.html"
+                style="color: var(--primary); font-weight: bold;">http://localhost:8000/team_analysis.html</a>
+            <br><br>
+            <p style="font-size: 0.9rem; color: #aaa;">Missing files? Ensure <code>PeopleData.csv</code>,
+                <code>people_teamLink.csv</code>, and <code>teams.csv</code> are in the same folder.
+            </p>
+        </div>
+    </div>
+
+    <!-- Global Floating Tooltip -->
+    <div id="global-tooltip"></div>
+
+    <header>
+        <div class="brand">
+            <div class="logo-icon">V</div>
+            <div class="app-title">Team Structure Analysis</div>
+        </div>
+        <nav>
+            <a class="nav-link active" onclick="switchTab('dashboard')">Insights Dashboard</a>
+            <a class="nav-link" onclick="switchTab('planning')">Team Planning</a>
+            <a class="nav-link" onclick="switchTab('automodeler')">Auto-Modeler</a>
+            <a class="nav-link" onclick="switchTab('proposals')">Proposed Changes</a>
+        </nav>
+        <div class="status-indicator">
+            <div id="status-dot" class="status-dot"></div>
+            <span id="status-text">Connecting...</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard" class="view-section active">
+            <div class="dashboard-grid">
+                <!-- Summary Metrics -->
+                <div class="card metric-card">
+                    <h2>Total People</h2>
+                    <div class="big-number" id="metric-people">-</div>
+                </div>
+                <div class="card metric-card">
+                    <h2>Active Teams</h2>
+                    <div class="big-number" id="metric-teams">-</div>
+                </div>
+
+                <!-- Graphs -->
+                <div class="card" style="grid-column: span 2;">
+                    <h2>Allocation by Area</h2>
+                    <canvas id="chart-allocation"></canvas>
+                </div>
+                <div class="card">
+                    <h2>Workforce Split</h2>
+                    <canvas id="chart-workforce"></canvas>
+                </div>
+                <div class="card" style="grid-column: span 3;">
+                    <h2>Team Movements Over Time</h2>
+                    <canvas id="chart-movements"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLANNING VIEW -->
+        <div id="planning" class="view-section">
+            <div class="planning-container">
+                <!-- Left: Team List -->
+                <div class="panel team-list-panel">
+                    <div class="panel-header">
+                        <h2>Teams</h2>
+                        <input type="text" id="team-search" placeholder="Search teams..." onkeyup="renderTeamList()">
+
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <select id="filter-area" onchange="renderTeamList()"
+                                style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid #ddd;">
+                                <option value="">All Areas</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <select id="filter-subarea" onchange="renderTeamList()"
+                                style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid #ddd;">
+                                <option value="">All Sub-Areas</option>
+                            </select>
+                        </div>
+                        <div style="margin-top: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="filter-changes-only" onchange="renderTeamList()"
+                                style="width: 16px; height: 16px;">
+                            <label for="filter-changes-only"
+                                style="font-size: 0.85rem; color: var(--text-secondary); cursor: pointer;">Show teams
+                                with changes</label>
+                        </div>
+                    </div>
+                    <div id="team-list-container" class="scroll-list">
+                        <!-- Items injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Right: Workspace -->
+                <div class="panel workspace-panel">
+                    <div id="empty-state">
+                        <div class="logo-icon" style="width: 60px; height: 60px; font-size: 2rem; margin: 0 auto 1rem;">
+                            V</div>
+                        <h2>Select a Team to Analyse</h2>
+                        <p style="color: var(--text-secondary);">View Balanced Scorecard status and simulate moves.</p>
+                    </div>
+
+                    <div id="team-detail-view" style="display: none;">
+                        <div class="detail-header">
+                            <h1 id="detail-team-name">Team Name</h1>
+                            <div class="badges">
+                                <span class="badge" id="detail-area">Area</span>
+                                <span class="badge" id="detail-cost">£0/day</span>
+                            </div>
+                        </div>
+
+                        <!-- BSC Scorecard -->
+                        <div class="bsc-card" id="bsc-container">
+                            <h3>Balanced Scorecard Status</h3>
+                            <div class="bsc-grid">
+                                <div class="bsc-item" id="bsc-influence">
+                                    <div class="icon">key</div>
+                                    <div class="label">Key Role Influence</div>
+                                    <div class="status">Checking...</div>
+                                </div>
+                                <div class="bsc-item" id="bsc-presence">
+                                    <div class="icon">group</div>
+                                    <div class="label">Accenture Presence</div>
+                                    <div class="status">Checking...</div>
+                                </div>
+                                <div class="bsc-item" id="bsc-duration">
+                                    <div class="icon">history</div>
+                                    <div class="label">Duration > 2 PIs</div>
+                                    <div class="status">Checking...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Strategic Aims (Co-location) -->
+                        <div class="bsc-card" style="margin-top: 1rem;">
+                            <h3>Vodafone Strategic Aims</h3>
+                            <div class="bsc-grid" style="grid-template-columns: 1fr;">
+                                <div class="bsc-item" id="bsc-colocation">
+                                    <div class="icon">location_on</div>
+                                    <div class="label">Vodafone Co-location (>80%)</div>
+                                    <div class="status">Checking...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Members List -->
+                        <div class="members-section">
+                            <div class="section-header">
+                                <h3>Current Members</h3>
+                                <!-- Action buttons could go here -->
+                            </div>
+                            <div id="members-list" class="members-grid">
+                                <!-- Members injected by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AUTO-MODELER VIEW -->
+        <div id="automodeler" class="view-section">
+            <div class="panel"
+                style="max-width: 1400px; margin: 0 auto; height: 100%; display: flex; flex-direction: column;">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2>Auto-Modeler Suggestions</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Review and approve automated
+                            suggestions.</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <select id="auto-filter-area" class="filter-select"
+                            style="padding: 6px; border-radius: 4px; border: 1px solid #444; background: #14171a; color: white;">
+                            <option value="">All Areas</option>
+                        </select>
+                        <select id="auto-filter-subarea" class="filter-select"
+                            style="padding: 6px; border-radius: 4px; border: 1px solid #444; background: #14171a; color: white;">
+                            <option value="">All Sub-Areas</option>
+                        </select>
+                        <button onclick="runAutoModeler()" style="font-size: 0.9rem;">
+                            <span class="material-icons"
+                                style="font-size: 1rem; vertical-align: text-bottom; margin-right: 4px;">autorenew</span>
+                            Run Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1.5rem; flex: 1; overflow: hidden; padding: 1rem;">
+                    <!-- Column 1: VF Strategic Aims -->
+                    <div
+                        style="flex: 1; display: flex; flex-direction: column; background: #fff; border-radius: 8px; border: 1px solid #eee;">
+                        <div style="padding: 1rem; border-bottom: 1px solid #eee; background: #fafafa;">
+                            <h3 style="margin:0; display:flex; align-items:center;">
+                                <span class="material-icons"
+                                    style="color: #E60000; margin-right: 8px;">location_on</span>
+                                Vodafone Strategic Aims
+                            </h3>
+                            <p style="margin:0; font-size:0.8rem; color:#666;">Single Location Target (100%)</p>
+                        </div>
+                        <div id="suggestions-strategic" class="scroll-list" style="padding: 1rem; flex: 1;"></div>
+                    </div>
+
+                    <!-- Column 2: Balanced Scorecard -->
+                    <div
+                        style="flex: 1; display: flex; flex-direction: column; background: #fff; border-radius: 8px; border: 1px solid #eee;">
+                        <div style="padding: 1rem; border-bottom: 1px solid #eee; background: #fafafa;">
+                            <h3 style="margin:0; display:flex; align-items:center;">
+                                <span class="material-icons" style="color: #007bff; margin-right: 8px;">analytics</span>
+                                Balanced Scorecard
+                            </h3>
+                            <p style="margin:0; font-size:0.8rem; color:#666;">Influence (Key Roles) & Presence (50/50)
+                            </p>
+                        </div>
+                        <div id="suggestions-bsc" class="scroll-list" style="padding: 1rem; flex: 1;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROPOSED CHANGES VIEW -->
+        <div id="proposals" class="view-section">
+            <div style="display: flex; height: 100%; gap: 1rem; max-width: 1600px; margin: 0 auto;">
+
+                <!-- Left: Impact Analysis -->
+                <div class="panel" style="width: 400px; display: flex; flex-direction: column; overflow-y: auto;">
+                    <div class="panel-header">
+                        <h2>Impact Analysis</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem;">Projected state if all changes are
+                            applied.</p>
+                    </div>
+                    <div style="padding: 1rem;">
+                        <div class="card" style="margin-bottom: 1rem;">
+                            <h3>BSC Compliance</h3>
+                            <canvas id="chart-impact-bsc"></canvas>
+                        </div>
+                        <div class="card">
+                            <h3>Co-location Compliance</h3>
+                            <canvas id="chart-impact-colo"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Change List -->
+                <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                    <div class="panel-header"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h2>Proposed Changes Log</h2>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">Review, edit, or remove approved
+                                changes.</p>
+                        </div>
+                        <button onclick="exportProposals()" class="secondary">
+                            <span class="material-icons"
+                                style="font-size: 1rem; vertical-align: text-bottom; margin-right: 4px;">download</span>
+                            Export to Excel
+                        </button>
+                    </div>
+                    <div class="scroll-list" style="padding: 1.5rem;">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Person</th>
+                                    <th>From Team</th>
+                                    <th>To Team</th>
+                                    <th>Notes / Action</th>
+                                    <th style="width: 100px; text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="proposals-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                        <div id="no-proposals-msg"
+                            style="text-align: center; padding: 4rem 2rem; color: var(--text-secondary); display: none;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"><span
+                                    class="material-icons" style="font-size:3rem">playlist_add_check</span></div>
+                            <div>No approved changes yet.</div>
+                            <div style="font-size: 0.8rem; opacity: 0.6; margin-top: 0.5rem;">Go to Team Planning or
+                                Auto-Modeler to propose moves.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Manual Move Modal -->
+    <!-- Manual Move Modal -->
+    <dialog id="move-modal" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        padding: 0;
+        border: 1px solid #444;
+        border-radius: 16px;
+        width: 650px;
+        max-width: 90vw;
+        overflow: hidden;
+        background: transparent;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+        outline: none;
+    ">
+        <div style="background: #1e2226; color: var(--text-main); display: flex; flex-direction: column; height: 100%;">
+            <!-- Header -->
+            <div
+                style="padding: 1.5rem 2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02);">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.5px;">Propose Move</h3>
+                <div id="move-modal-subtitle"
+                    style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.4rem;">Select a new
+                    destination</div>
+            </div>
+
+            <!-- Body -->
+            <div style="padding: 2rem;">
+                <div style="margin-bottom: 2rem;">
+                    <label
+                        style="display: block; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 0.8rem;">Select
+                        New Team</label>
+                    <div style="position: relative;">
+                        <select id="move-target-select" style="
+                            width: 100%; 
+                            padding: 1rem; 
+                            background: #14171a; 
+                            border: 1px solid #333; 
+                            color: white; 
+                            border-radius: 8px; 
+                            font-size: 1rem; 
+                            appearance: none;
+                            cursor: pointer;
+                            transition: border-color 0.2s;
+                        " onfocus="this.style.borderColor = '#E60000'" onblur="this.style.borderColor = '#333'">
+                            <option value="" disabled selected>Select a team...</option>
+                        </select>
+                        <span class="material-icons"
+                            style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: #666;">expand_more</span>
+                    </div>
+                </div>
+
+                <!-- Impact Preview -->
+                <div id="move-impact-container"
+                    style="display: none; background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 2rem;">
+                    <!-- JS Injected -->
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label
+                        style="display: block; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 0.8rem;">Reason
+                        / Notes</label>
+                    <textarea id="move-notes" rows="3" placeholder="Why is this move happening?" style="
+                        width: 100%; 
+                        padding: 1rem; 
+                        background: #14171a; 
+                        border: 1px solid #333; 
+                        color: white; 
+                        border-radius: 8px; 
+                        font-size: 0.95rem; 
+                        resize: vertical;
+                    " onfocus="this.style.borderColor = '#E60000'" onblur="this.style.borderColor = '#333'"></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div
+                style="padding: 1.5rem 2rem; background: rgba(0, 0, 0, 0.2); border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button onclick="closeMoveModal()"
+                    style="background: transparent; border: 1px solid #444; color: var(--text-secondary); padding: 0.8rem 1.5rem;">Cancel</button>
+                <button id="btn-confirm-move" onclick="confirmManualMove()" disabled style="
+                    background: var(--primary); 
+                    color: white; 
+                    border: none; 
+                    padding: 0.8rem 2rem; 
+                    box-shadow: 0 4px 15px rgba(230, 0, 0, 0.3);
+                    opacity: 0.5; 
+                    cursor: not-allowed; 
+                    transition: all 0.2s;
+                ">Confirm Move</button>
+            </div>
+        </div>
+        </div>
+    </dialog>
+
+    <!-- Impact Details Modal -->
+    <dialog id="impact-details-modal" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        padding: 0;
+        border: 1px solid #444;
+        border-radius: 16px;
+        width: 800px;
+        max-width: 90vw;
+        height: 70vh;
+        overflow: hidden;
+        background: transparent;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+        outline: none;
+    ">
+        <div style="background: #1e2226; color: var(--text-main); display: flex; flex-direction: column; height: 100%;">
+            <!-- Header -->
+            <div
+                style="padding: 1.5rem 2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h3 id="impact-modal-title"
+                        style="margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.5px;">Impact Details
+                    </h3>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.4rem;">Teams moving to
+                        preferred state</div>
+                </div>
+                <button onclick="document.getElementById('impact-details-modal').close()"
+                    style="background:transparent; border:none; color:var(--text-secondary); cursor:pointer;">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding: 0; flex: 1; overflow-y: auto;">
+                <table class="modern-table" style="border-radius: 0;">
+                    <thead style="position: sticky; top: 0; z-index: 10;">
+                        <tr>
+                            <th>Team</th>
+                            <th>Current State</th>
+                            <th>Future State</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="impact-details-body">
+                        <!-- JS Injected -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        // State
+        const APP_STATE = {
+            loaded: false,
+            raw: { people: [], assignments: [], teams: [] },
+            processed: {
+                teams: {}, // Map<TeamName, TeamObject>
+                people: {}, // Map<Email, PersonObject>
+                areas: {}
+            },
+            proposedChanges: [] // Array of { id, team, category, action, deltaAcc, deltaVf }
+        };
+
+        // File Config
+        const FILES = [
+            { key: 'people', file: 'PeopleData.csv' },
+            { key: 'assignments', file: 'people_teamLink.csv' },
+            { key: 'teams', file: 'teams.csv' }
+        ];
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load Saved Changes
+            const saved = localStorage.getItem('team_analysis_proposals');
+            if (saved) {
+                try {
+                    APP_STATE.proposedChanges = JSON.parse(saved);
+                    console.log("Loaded saved proposals:", APP_STATE.proposedChanges.length);
+                } catch (e) {
+                    console.error("Failed to load saved proposals", e);
+                }
+            }
+            loadAllData();
+        });
+
+        function saveProposals() {
+            localStorage.setItem('team_analysis_proposals', JSON.stringify(APP_STATE.proposedChanges));
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+
+            // Nav Highlighting
+            const links = document.querySelectorAll('.nav-link');
+            if (tabId === 'dashboard') links[0].classList.add('active');
+            if (tabId === 'planning') links[1].classList.add('active');
+            if (tabId === 'automodeler') links[2].classList.add('active');
+            if (tabId === 'proposals') {
+                links[3].classList.add('active');
+                renderImpactAnalysis(); // Auto-refresh graphs
+                renderProposedChanges();
+            }
+        }
+
+        async function loadAllData() {
+            setStatus('loading', 'Loading CSVs...');
+
+            try {
+                const results = await Promise.all(FILES.map(f => fetchCsv(f.file)));
+
+                // Store Raw Data
+                APP_STATE.raw.people = results[0];
+                APP_STATE.raw.assignments = results[1];
+                APP_STATE.raw.teams = results[2];
+                APP_STATE.loaded = true;
+
+                console.log("Raw Data Loaded:", APP_STATE.raw);
+
+                processData();
+                populateFilters();
+                renderTeamList();
+                renderDashboard();
+
+                // Hide Overlay
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    setStatus('success', 'Data Analyzed & Ready');
+                }, 800);
+
+            } catch (err) {
+                console.error("Load Error:", err);
+                setStatus('error', 'Failed to load data');
+                showErrorUI();
+            }
+        }
+
+        function fetchCsv(filename) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(filename, {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function (results) {
+                        if (results.errors.length > 0) {
+                            console.warn(`Warnings in ${filename}:`, results.errors);
+                        }
+                        resolve(results.data);
+                    },
+                    error: function (err) {
+                        reject(err);
+                    }
+                });
+            });
+        }
+
+        function processData() {
+            const { people, assignments, teams } = APP_STATE.raw;
+            const pMap = {};
+            const tMap = {};
+            const areaMap = {};
+            const today = new Date();
+
+            // 1. Index People (Filter for Active Only)
+            people.forEach(p => {
+                // Strict Status Check
+                const status = (p.state || p.Status || '').trim();
+                if (status !== 'Active') return;
+
+                // Date Check
+                if (p.endDate) {
+                    const end = new Date(p.endDate);
+                    if (!isNaN(end) && end < today) return; // Expired
+                }
+
+                // Key = person email usually. Normalize.
+                const key = (p.person || p.email || '').toLowerCase().trim();
+                if (!key) return;
+
+                pMap[key] = {
+                    ...p,
+                    cost: parseCurrency(p.dayRate),
+                    history: [],
+                    currentTeam: null
+                };
+            });
+
+            // 2. Index Teams
+            teams.forEach(t => {
+                // We'll normalize team name for robust matching if needed, but usually exact match is expected
+                const name = t.teamName;
+                if (!name) return;
+
+                tMap[name] = {
+                    ...t,
+                    members: [], // Current active members
+                    history: [], // All historical assignments
+                    metrics: {
+                        cost: 0,
+                        size: 0,
+                        accentureCount: 0,
+                        internalCount: 0,
+                        avgTenure: 0
+                    }
+                };
+            });
+
+            // 3. Process Assignments (Links)
+            assignments.forEach(a => {
+                // FIX: assignments 'Title' is commonly the email in these exports.
+                // Fallback to 'person' but that might be 'Name'.
+                // If 'Title' looks like an email (@), use it.
+                let pKey = (a.Title || '').toLowerCase().trim();
+                if (!pKey.includes('@')) {
+                    // fallback to person if title isn't email
+                    pKey = (a.person || '').toLowerCase().trim();
+                }
+
+                const tKey = a.team;
+
+                const personObj = pMap[pKey];
+                const teamObj = tMap[tKey];
+
+                const entry = {
+                    ...a,
+                    dateJoined: new Date(a.dateJoined),
+                    dateLeft: a.dateLeft ? new Date(a.dateLeft) : null,
+                    isActive: a.state === 'Active'
+                };
+
+                // Additional expiry check on assignment itself
+                if (entry.dateLeft && entry.dateLeft < today) {
+                    entry.isActive = false;
+                }
+
+                if (personObj) {
+                    personObj.history.push(entry);
+                    if (entry.isActive) personObj.currentTeam = tKey;
+                }
+
+                if (teamObj) {
+                    teamObj.history.push(entry);
+
+                    // Only count members if they are active in the team AND the person themselves is active
+                    if (entry.isActive && personObj) {
+                        teamObj.members.push(personObj);
+                    }
+                }
+            });
+
+            // 4. Calculate Derived Metrics for Teams
+            Object.values(tMap).forEach(team => {
+                team.members.forEach(member => {
+                    // Cost
+                    team.metrics.cost += (member.cost || 0);
+
+                    // Counts
+                    if (isAccenture(member)) {
+                        team.metrics.accentureCount++;
+                    } else {
+                        team.metrics.internalCount++;
+                    }
+                });
+
+                team.metrics.size = team.members.length;
+
+                // Allocation Area aggregation
+                // Only count active teams with > 0 members
+                if (team.metrics.size > 0) {
+                    const area = team.allocationArea || 'Unassigned';
+                    if (!areaMap[area]) areaMap[area] = 0;
+                    areaMap[area] += team.metrics.size;
+                }
+            });
+
+            APP_STATE.processed.people = pMap;
+            APP_STATE.processed.teams = tMap;
+            APP_STATE.processed.areas = areaMap;
+
+            // Init Planning List
+            renderTeamList();
+        }
+
+        // --- Helpers ---
+        function parseCurrency(str) {
+            if (!str) return 0;
+            return parseFloat(str.replace(/[£$,]/g, '')) || 0;
+        }
+
+        function isAccenture(person) {
+            return (person.supplierName && person.supplierName.toLowerCase().includes('accenture')) ||
+                (person.companyName && person.companyName.toLowerCase().includes('accenture'));
+        }
+
+        // --- Visualization ---
+        function renderDashboard() {
+            const teams = Object.values(APP_STATE.processed.teams);
+            const people = Object.values(APP_STATE.processed.people);
+            const areas = APP_STATE.processed.areas;
+
+            // 1. KPI Cards
+            document.getElementById('metric-people').innerText = people.length;
+            const activeTeams = teams.filter(t => t.metrics.size > 0).length;
+            document.getElementById('metric-teams').innerText = activeTeams;
+
+            // 2. Charts
+            const chartAlloc = Chart.getChart("chart-allocation");
+            if (chartAlloc) chartAlloc.destroy();
+            renderAllocationChart(areas);
+
+            const chartWork = Chart.getChart("chart-workforce");
+            if (chartWork) chartWork.destroy();
+            renderWorkforceSplit(people);
+
+            const chartMove = Chart.getChart("chart-movements");
+            if (chartMove) chartMove.destroy();
+            renderMovementsChart(APP_STATE.raw.assignments);
+        }
+
+        function renderAllocationChart(areaMap) {
+            const ctx = document.getElementById('chart-allocation');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(areaMap),
+                    datasets: [{
+                        label: 'People Count',
+                        data: Object.values(areaMap),
+                        backgroundColor: '#E60000',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#333' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderWorkforceSplit(people) {
+            let acc = 0, vf = 0, vois = 0, other = 0;
+            people.forEach(p => {
+                const s = (p.supplierName || '').toLowerCase();
+                const type = (p.type || '').toLowerCase();
+                if (s.includes('accenture')) acc++;
+                else if (type.includes('vois')) vois++;
+                else if (type.includes('employee')) vf++;
+                else other++;
+            });
+
+            const ctx = document.getElementById('chart-workforce');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Vodafone', 'VOIS', 'Accenture', 'Other'],
+                    datasets: [{
+                        data: [vf, vois, acc, other],
+                        backgroundColor: ['#E60000', '#990000', '#cccccc', '#444444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#fff' } }
+                    }
+                }
+            });
+        }
+
+        function renderMovementsChart(assignments) {
+            // Group 'dateJoined' by month
+            const months = {};
+            assignments.forEach(a => {
+                if (!a.dateJoined) return;
+                const d = new Date(a.dateJoined);
+                if (isNaN(d)) return;
+                const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                months[k] = (months[k] || 0) + 1;
+            });
+
+            const sortedKeys = Object.keys(months).sort();
+            const data = sortedKeys.map(k => months[k]);
+
+            const ctx = document.getElementById('chart-movements');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sortedKeys,
+                    datasets: [{
+                        label: 'New Assignments',
+                        data: data,
+                        borderColor: '#E60000',
+                        backgroundColor: 'rgba(230, 0, 0, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#333' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function setStatus(type, msg) {
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('status-text');
+
+            dot.className = 'status-dot'; // reset
+            if (type && type !== 'loading') {
+                dot.classList.add(type);
+            }
+            text.textContent = msg;
+        }
+
+        function showErrorUI() {
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('loading-text').style.display = 'none';
+            document.getElementById('error-container').style.display = 'block';
+        }
+
+        // --- Planning View Logic ---
+
+        let selectedTeamId = null;
+
+        function populateFilters() {
+            const areaSelect = document.getElementById('filter-area');
+            const subAreaSelect = document.getElementById('filter-subarea');
+            const autoAreaSelect = document.getElementById('auto-filter-area');
+            const autoSubAreaSelect = document.getElementById('auto-filter-subarea');
+
+            // Get unique values
+            const areas = new Set();
+            const subAreas = new Set();
+
+            Object.values(APP_STATE.processed.teams).forEach(t => {
+                if (t.allocationArea) areas.add(t.allocationArea);
+                if (t.allocationSubArea) subAreas.add(t.allocationSubArea);
+            });
+
+            // Populate Areas
+            Array.from(areas).sort().forEach(a => {
+                // Team Planning Filter
+                const opt1 = document.createElement('option');
+                opt1.value = a;
+                opt1.innerText = a;
+                areaSelect.appendChild(opt1);
+
+                // Auto-Modeler Filter
+                if (autoAreaSelect) {
+                    const opt2 = document.createElement('option');
+                    opt2.value = a;
+                    opt2.innerText = a;
+                    autoAreaSelect.appendChild(opt2);
+                }
+            });
+
+            // Populate SubAreas
+            Array.from(subAreas).sort().forEach(s => {
+                // Team Planning Filter
+                const opt1 = document.createElement('option');
+                opt1.value = s;
+                opt1.innerText = s;
+                subAreaSelect.appendChild(opt1);
+
+                // Auto-Modeler Filter
+                if (autoSubAreaSelect) {
+                    const opt2 = document.createElement('option');
+                    opt2.value = s;
+                    opt2.innerText = s;
+                    autoSubAreaSelect.appendChild(opt2);
+                }
+            });
+        }
+
+        function renderTeamList() {
+            const filterText = document.getElementById('team-search').value.toLowerCase();
+            const areaFilter = document.getElementById('filter-area').value;
+            const subAreaFilter = document.getElementById('filter-subarea').value;
+            const showChangesOnly = document.getElementById('filter-changes-only').checked;
+
+            const container = document.getElementById('team-list-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const teams = Object.values(APP_STATE.processed.teams)
+                .filter(t => {
+                    // Search
+                    if (!t.teamName.toLowerCase().includes(filterText)) return false;
+
+                    // Filter: Billable (Active state) AND active members (>0)
+                    const isBillable = (t.state === 'Active');
+                    const hasPeople = (t.metrics.size > 0);
+
+                    // Dropdown filters
+                    if (areaFilter && t.allocationArea !== areaFilter) return false;
+                    if (subAreaFilter && t.allocationSubArea !== subAreaFilter) return false;
+
+                    // Changes Only Filter
+                    const changesCount = APP_STATE.proposedChanges.filter(p => p.team === t.teamName || p.fromTeam === t.teamName).length;
+                    if (showChangesOnly && changesCount === 0) return false;
+
+                    return isBillable && hasPeople;
+                })
+                .sort((a, b) => a.teamName.localeCompare(b.teamName));
+
+            teams.forEach(t => {
+                const changesCount = APP_STATE.proposedChanges.filter(p => p.team === t.teamName || p.fromTeam === t.teamName).length;
+
+                const el = document.createElement('div');
+                el.className = `team-item ${selectedTeamId === t.teamName ? 'selected' : ''}`;
+                // Apply Flex layout for badge
+                el.style.display = 'flex';
+                el.style.justifyContent = 'space-between';
+                el.style.alignItems = 'center';
+
+                el.onclick = () => selectTeam(t.teamName);
+
+                const bsc = calculateBSC(t);
+                const isBSC = bsc.influence.passed && bsc.presence.passed && bsc.duration.passed;
+                const isColo = bsc.colocation.passed && bsc.colocation.msg !== 'No VF Staff';
+
+                let ticksHTML = '<div style="display:flex; gap:4px; margin-right:8px;">';
+                if (isColo) {
+                    ticksHTML += `<span class="material-icons" style="color:#d32f2f; font-size:1.1rem;" title="100% Co-located">check_circle</span>`;
+                }
+                if (isBSC) {
+                    ticksHTML += `<span class="material-icons" style="color:#1976d2; font-size:1.1rem;" title="BSC Compliant">check_circle</span>`;
+                }
+                ticksHTML += '</div>';
+
+                // Badge HTML
+                let badgeHTML = '';
+                if (changesCount > 0) {
+                    badgeHTML = `
+                        <div style="
+                            background: #e53935; 
+                            color: white; 
+                            border-radius: 50%; 
+                            width: 22px; 
+                            height: 22px; 
+                            display: flex; 
+                            align-items: center; 
+                            justify-content: center; 
+                            font-size: 0.75rem; 
+                            font-weight: 700;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        ">${changesCount}</div>
+                    `;
+                }
+
+                el.innerHTML = `
+                    <div style="flex:1">
+                        <div class="team-name">${t.teamName}</div>
+                        <div class="team-meta">${t.metrics.size} Members • ${t.allocationArea || 'Unassigned'}</div>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        ${ticksHTML}
+                        ${badgeHTML}
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function selectTeam(teamName) {
+            const team = APP_STATE.processed.teams[teamName];
+            if (team) {
+                showTeamDetail(team, teamName);
+            }
+        }
+
+        function showTeamDetail(team, teamId) {
+            selectedTeamId = teamId; // Store globally
+
+            // Highlight List Item
+            document.querySelectorAll('.team-item').forEach(el => {
+                el.classList.remove('selected');
+                if (el.innerText.includes(team.teamName)) {
+                    el.classList.add('selected');
+                }
+            });
+
+            // Show Panel
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('team-detail-view').style.display = 'block';
+
+            // Header
+            document.getElementById('detail-team-name').innerText = team.teamName;
+            document.getElementById('detail-area').innerText = team.allocationArea || 'No Area';
+            document.getElementById('detail-cost').innerText = `£${(team.metrics.cost || 0).toLocaleString()}/day`;
+
+
+
+            // BSC Check
+            const bsc = calculateBSC(team);
+            renderBSC(bsc);
+
+            // Render Members
+            renderMembers(team);
+        }
+
+        function selectTeam(teamName) {
+            selectedTeamId = teamName;
+            renderTeamList(document.getElementById('team-search').value); // Re-render to highlight
+
+            const team = APP_STATE.processed.teams[teamName];
+
+            // Show Detail View
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('team-detail-view').style.display = 'block';
+
+            // Header
+            document.getElementById('detail-team-name').innerText = team.teamName;
+            document.getElementById('detail-area').innerText = team.allocationArea || 'No Area';
+            document.getElementById('detail-cost').innerText = `£${team.metrics.cost.toLocaleString()}/day`;
+
+            // Update onclick
+            // BSC Check (Future State)
+            const futureTeam = getFutureTeamState(team);
+            const bsc = calculateBSC(futureTeam);
+            renderBSC(bsc);
+
+            // Render Members (Pass original team, visual logic handles difference)
+            renderMembers(team);
+        }
+
+        function getFutureTeamState(team) {
+            // Shallow clone
+            const newTeam = {
+                ...team,
+                members: [...team.members],
+                metrics: { ...team.metrics }
+            };
+
+            // 1. Remove Outgoing
+            const outgoing = APP_STATE.proposedChanges
+                .filter(p => p.fromTeam === team.teamName && p.personName)
+                .map(p => p.personName);
+
+            if (outgoing.length > 0) {
+                newTeam.members = newTeam.members.filter(m => !outgoing.includes(m.displayName || m.person));
+            }
+
+            // 2. Add Incoming
+            const incoming = APP_STATE.proposedChanges.filter(p => p.team === team.teamName);
+
+            incoming.forEach(inc => {
+                // Try finding person object
+                let personObj = null;
+                for (const t of Object.values(APP_STATE.processed.teams)) {
+                    const found = t.members.find(m => (m.displayName || m.person) === inc.personName);
+                    if (found) { personObj = found; break; }
+                }
+
+                if (personObj) {
+                    newTeam.members.push({ ...personObj });
+                } else {
+                    newTeam.members.push({
+                        person: inc.personName,
+                        displayName: inc.personName,
+                        supplierName: 'Unknown',
+                        jobTitle: 'Unknown'
+                    });
+                }
+            });
+
+            // Recalculate Metrics
+            let accCount = 0;
+            let vfCount = 0;
+            newTeam.members.forEach(m => {
+                if (isAccenture(m)) accCount++;
+                else vfCount++;
+            });
+            newTeam.metrics.accentureCount = accCount;
+            newTeam.metrics.internalCount = vfCount;
+            newTeam.metrics.size = newTeam.members.length;
+
+            return newTeam;
+        }
+
+        function renderMembers(team) {
+            const container = document.getElementById('members-list');
+            container.innerHTML = '';
+
+            // 1. Current Members
+            team.members.forEach(m => {
+                const card = document.createElement('div');
+                const isAcc = isAccenture(m);
+                const name = m.displayName || m.person;
+
+                // Determine display type
+                let typeDisplay = m.type || 'Unknown';
+                if (isAcc) typeDisplay = 'Accenture';
+                else if (m.supplierName) typeDisplay = m.supplierName;
+
+                // Check for Outgoing Move
+                const outgoingMove = APP_STATE.proposedChanges.find(p => p.personName === name && p.fromTeam === team.teamName);
+
+                card.className = `member-card ${isAcc ? 'accenture' : 'vodafone'}`;
+
+                if (outgoingMove) {
+                    card.style.opacity = '0.6';
+                    card.style.filter = 'grayscale(100%)';
+                    card.style.border = '1px dashed #999';
+                }
+
+                let outgoingBadge = '';
+                if (outgoingMove) {
+                    outgoingBadge = `<div style="background:#333; color:white; font-size:0.6rem; padding:2px 4px; border-radius:4px; margin-bottom:4px; width:fit-content;">MOVING TO: ${outgoingMove.team}</div>`;
+                }
+
+                // Tooltip Content Generation
+                const tooltipRows = Object.entries(m)
+                    .filter(([k, v]) => !['history', 'metrics', 'members'].includes(k) && typeof v !== 'object' && v !== null && v !== '')
+                    .map(([k, v]) => `
+                        <div class="tooltip-row">
+                            <span class="tooltip-label">${k}</span>
+                            <span class="tooltip-value">${v}</span>
+                        </div>
+                    `).join('');
+
+                // Action Button Logic
+                let actionBtn = `
+                    <button class="icon-btn" style="padding:2px; color:#555; background:none; border:none; cursor:pointer;" title="Propose Move" onclick="proposeManualMove('${name}', '${team.teamName}')">
+                        <span class="material-icons" style="font-size:1.1rem;">arrow_forward</span>
+                    </button>`;
+
+                if (outgoingMove) {
+                    actionBtn = `
+                        <button class="icon-btn" style="padding:2px; color:#d32f2f; background:none; border:none; cursor:pointer;" title="Cancel Move" onclick="cancelProposal(${outgoingMove.id})">
+                            <span class="material-icons" style="font-size:1.1rem;">close</span>
+                        </button>`;
+                }
+
+                const tooltipHTML = `
+                    <div style="font-weight:700; border-bottom:1px solid #666; padding-bottom:4px; margin-bottom:8px; font-size:0.85rem;">${name}</div>
+                    ${tooltipRows}
+                `;
+
+                // Escape for attribute safely
+                const safeTooltipHTML = tooltipHTML.replace(/"/g, '&quot;');
+
+                card.innerHTML = `
+                    ${outgoingBadge}
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <div class="member-name" style="${outgoingMove ? 'text-decoration:line-through' : ''}">${name}</div>
+                        ${actionBtn}
+                    </div>
+                    <div class="member-role">${m.jobTitle || 'No Title'}</div>
+                    <div style="font-size:0.75rem; color:#888; margin-top:0.3rem;">
+                        <span style="background:#333; padding:2px 6px; border-radius:4px;">${typeDisplay}</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#666; margin-top:0.5rem;">
+                        ${m.officeLocation || 'Remote/Unknown'}
+                    </div>
+                `;
+
+                // Add Event Listeners via JS to avoid inline HTML escaping hell
+                card.onmouseenter = (e) => showTooltip(e, tooltipHTML);
+                card.onmouseleave = () => hideTooltip();
+                card.onmousemove = (e) => moveTooltip(e);
+
+                container.appendChild(card);
+            });
+
+            // 2. Incoming Members (Ghost Cards)
+            const incoming = APP_STATE.proposedChanges.filter(p => p.team === team.teamName);
+
+            incoming.forEach(inc => {
+                const name = inc.personName || 'Unknown Person';
+                const from = inc.fromTeam || 'Unknown Source';
+
+                const card = document.createElement('div');
+                card.className = 'member-card';
+                card.style.border = '2px dashed #4CAF50';
+                card.style.background = '#f0fdf4';
+                card.style.opacity = '0.9';
+
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+                        <div style="background:#4CAF50; color:white; font-size:0.6rem; padding:3px 6px; border-radius:4px; width:fit-content; font-weight:600; letter-spacing:0.5px;">
+                            INCOMING FROM: ${from}
+                        </div>
+                        <button onclick="cancelProposal(${inc.id})" style="background:none; border:none; color:#d32f2f; cursor:pointer; padding:0;" title="Cancel Move">
+                            <span class="material-icons" style="font-size:1.1rem;">close</span>
+                        </button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="material-icons" style="color:#2e7d32;">login</span>
+                        <div>
+                            <div class="member-name" style="color:#15803d; font-weight:600;">${name}</div>
+                            <div style="font-size:0.75rem; color:#166534;">Pending Approval</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Global variables for the modal context
+        let currentMoveContext = { person: null, fromTeam: null };
+
+        function showToast(message) {
+            let x = document.getElementById("toast-notification");
+            if (!x) {
+                // Determine insertion point if missing
+                x = document.createElement("div");
+                x.id = "toast-notification";
+                document.body.appendChild(x);
+            }
+            x.textContent = message;
+            x.className = "show";
+            setTimeout(function () { x.className = x.className.replace("show", ""); }, 5000);
+        }
+
+        function proposeManualMove(personName, currentTeam) {
+            currentMoveContext = { person: personName, fromTeam: currentTeam };
+
+            const modal = document.getElementById('move-modal');
+            const select = document.getElementById('move-target-select');
+            const subtitle = document.getElementById('move-modal-subtitle');
+
+            // Reset
+            select.innerHTML = '<option value="" disabled selected>Select a team...</option>';
+            document.getElementById('move-notes').value = '';
+            document.getElementById('move-impact-container').innerHTML = ''; // Ensure clear
+            document.getElementById('move-impact-container').style.display = 'none';
+            document.getElementById('btn-confirm-move').disabled = true;
+            document.getElementById('btn-confirm-move').style.opacity = '0.5';
+
+            subtitle.innerHTML = `Moving <b>${personName}</b> from <b>${currentTeam}</b>`;
+
+            // Populate Teams: Match 'renderTeamList' logic (Active + Billable + Has People)
+            // But allowing moving to empty Active teams is sometimes desired? 
+            // User request: "match Active teams list displayed". The list hides empty teams.
+            // So we hide empty teams too.
+            Object.values(APP_STATE.processed.teams)
+                .filter(t => t.state === 'Active' && t.metrics.size > 0 && t.teamName !== currentTeam)
+                .sort((a, b) => a.teamName.localeCompare(b.teamName))
+                .forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.teamName;
+                    opt.innerText = t.teamName;
+                    select.appendChild(opt);
+                });
+
+            // Bind Change Event for Impact
+            select.onchange = () => calculateMoveImpact(select.value);
+
+            modal.showModal();
+        }
+
+        function closeMoveModal() {
+            document.getElementById('move-modal').close();
+        }
+
+        function calculateMoveImpact(targetTeamName) {
+            const container = document.getElementById('move-impact-container');
+            const btn = document.getElementById('btn-confirm-move');
+
+            // Find Person Object
+            let personObj = null;
+            // Look up in source team
+            const sourceTeam = APP_STATE.processed.teams[currentMoveContext.fromTeam];
+            if (sourceTeam) {
+                personObj = sourceTeam.members.find(m => (m.displayName || m.person) === currentMoveContext.person);
+            }
+            // If not found (shouldn't happen), assume generic
+            const isAcc = personObj ? isAccenture(personObj) : false;
+
+            // --- SOURCE IMPACT ---
+            let sourceHTML = '<div style="color:#666; font-style:italic;">Source team not active</div>';
+            if (sourceTeam) {
+                const sOldSize = sourceTeam.metrics.size;
+                const sOldAcc = sourceTeam.metrics.accentureCount;
+                const sNewSize = sOldSize - 1;
+                const sNewAcc = sNewSize > 0 ? (isAcc ? sOldAcc - 1 : sOldAcc) : 0;
+
+                const sOldRatio = sOldSize > 0 ? (sOldAcc / sOldSize) : 0;
+                const sNewRatio = sNewSize > 0 ? (sNewAcc / sNewSize) : 0;
+
+                const sPassNew = sNewRatio >= 0.5;
+
+                const sColor = sPassNew ? '#4CAF50' : '#e53935';
+                const sIcon = sPassNew ? 'check_circle' : 'warning';
+
+                sourceHTML = `
+                    <div style="font-size:0.75rem; color:var(--text-secondary); text-transform:uppercase; margin-bottom:0.5rem;">Source: ${sourceTeam.teamName}</div>
+                    <div style="margin-bottom:4px;">Size: ${sOldSize} &rarr; <b>${sNewSize}</b></div>
+                    <div style="color:${sColor}; font-weight:500; display:flex; align-items:center; gap:4px;">
+                        <span class="material-icons" style="font-size:1rem;">${sIcon}</span>
+                        Acc Ratio: ${(sOldRatio * 100).toFixed(0)}% &rarr; ${(sNewRatio * 100).toFixed(0)}%
+                    </div>
+                `;
+            }
+
+            // --- TARGET IMPACT ---
+            let targetHTML = '';
+            const targetTeam = APP_STATE.processed.teams[targetTeamName];
+            if (targetTeam) {
+                const tOldSize = targetTeam.metrics.size;
+                const tOldAcc = targetTeam.metrics.accentureCount;
+                const tNewSize = tOldSize + 1;
+                const tNewAcc = isAcc ? tOldAcc + 1 : tOldAcc;
+
+                const tOldRatio = tOldSize > 0 ? (tOldAcc / tOldSize) : 0;
+                const tNewRatio = tNewSize > 0 ? (tNewAcc / tNewSize) : 0;
+
+                const tPassNew = tNewRatio >= 0.5;
+
+                const tColor = tPassNew ? '#4CAF50' : (tNewRatio > tOldRatio ? '#fb8c00' : '#e53935');
+                const tIcon = tPassNew ? 'check_circle' : (tNewRatio > tOldRatio ? 'trending_up' : 'error');
+
+                targetHTML = `
+                    <div style="font-size:0.75rem; color:var(--text-secondary); text-transform:uppercase; margin-bottom:0.5rem;">Target: ${targetTeam.teamName}</div>
+                    <div style="margin-bottom:4px;">Size: ${tOldSize} &rarr; <b>${tNewSize}</b></div>
+                    <div style="color:${tColor}; font-weight:500; display:flex; align-items:center; gap:4px;">
+                        <span class="material-icons" style="font-size:1rem;">${tIcon}</span>
+                        Acc Ratio: ${(tOldRatio * 100).toFixed(0)}% &rarr; ${(tNewRatio * 100).toFixed(0)}%
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+                    <div>${sourceHTML}</div>
+                    <div style="border-left:1px solid rgba(255,255,255,0.1); padding-left:2rem;">${targetHTML}</div>
+                </div>
+            `;
+
+            container.style.display = 'block';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }
+
+        function confirmManualMove() {
+            const select = document.getElementById('move-target-select');
+            const targetTeam = select.value;
+            const notes = document.getElementById('move-notes').value;
+
+            if (!targetTeam) return;
+
+            APP_STATE.proposedChanges.push({
+                id: Date.now(),
+                team: targetTeam,
+                category: 'Manual Move',
+                problem: `User Initiated Move from ${currentMoveContext.fromTeam}`,
+                action: `Move <b>${currentMoveContext.person}</b> from <b>${currentMoveContext.fromTeam}</b> to <b>${targetTeam}</b>. ${notes ? 'Note: ' + notes : ''}`,
+                personName: currentMoveContext.person,
+                fromTeam: currentMoveContext.fromTeam,
+                deltaAcc: 0,
+                deltaVf: 0
+            });
+
+            closeMoveModal();
+
+            // Refresh Team View if open
+            if (selectedTeamId && (selectedTeamId === currentMoveContext.fromTeam || selectedTeamId === targetTeam)) {
+                // Determine which one to show? Stay on current.
+                const t = APP_STATE.processed.teams[selectedTeamId];
+                if (t) showTeamDetail(t, selectedTeamId);
+            }
+
+            // Update Proposals Tab count or indicator? 
+            // switchTab('proposals'); // Optional: auto-switch? Maybe stay in context.
+            // User requested "Show what proposed change would do", so staying in context is usually better, but let's notify.
+            renderTeamList(); // Refresh list to update badges/filtering
+            saveProposals(); // Save to LocalStorage
+            showToast("Move added to Proposed Changes tab.");
+        }
+
+        // --- BSC Logic ---
+        function calculateBSC(team) {
+            const results = {
+                influence: { passed: false, msg: 'No Influential Accenture Role' },
+                presence: { passed: false, msg: '< 50% Accenture' },
+                duration: { passed: false, msg: '< 2 PIs (6mo)' },
+                colocation: { passed: false, msg: 'Not Co-located' }
+            };
+
+            // 1. Influence: Accenture in PO, Scrum Master, BA
+            const keyRoles = ['product owner', 'scrum master', 'bus analyst', 'business analyst'];
+            const hasKeyRole = team.members.some(m => {
+                if (!isAccenture(m)) return false;
+                const title = (m.jobTitle || '').toLowerCase();
+                const role = (m.roleGroup || '').toLowerCase();
+                return keyRoles.some(k => title.includes(k) || role.includes(k));
+            });
+
+            if (hasKeyRole) {
+                results.influence.passed = true;
+                results.influence.msg = 'Accenture Influencer Present';
+            }
+
+            // 2. Presence: >= 50% Accenture
+            const ratio = team.metrics.size > 0 ? (team.metrics.accentureCount / team.metrics.size) : 0;
+            if (ratio >= 0.5) {
+                results.presence.passed = true;
+                results.presence.msg = `${Math.round(ratio * 100)}% Accenture`;
+            } else {
+                results.presence.msg = `${Math.round(ratio * 100)}% Accenture (Target 50%)`;
+            }
+
+            // 3. Duration: > 6 Months (2 PIs approx)
+            if (team.Created) {
+                const created = new Date(team.Created);
+                const ageMonths = (new Date() - created) / (1000 * 60 * 60 * 24 * 30);
+                if (ageMonths >= 6) {
+                    results.duration.passed = true;
+                    results.duration.msg = `${Math.round(ageMonths)} Months Active`;
+                } else {
+                    results.duration.msg = `${Math.round(ageMonths)} Months (Target 6)`;
+                }
+            } else {
+                results.duration.msg = "Unknown Creation Date";
+            }
+
+            // 4. Co-location (All Members)
+            // Goal: Everyone located at the same place.
+            if (team.members.length > 0) {
+                const locations = {};
+                let validMemberCount = 0;
+
+                team.members.forEach(m => {
+                    const city = (m.city || m.officeLocation || 'Unknown').trim();
+                    const country = (m.country || m.Country || '').trim();
+                    const key = `${city}|${country}`; // Composite key
+                    locations[key] = (locations[key] || 0) + 1;
+                    validMemberCount++;
+                });
+
+                // Find dominant location
+                let maxLoc = 0;
+                let dominantKey = '';
+
+                Object.entries(locations).forEach(([key, count]) => {
+                    if (count > maxLoc) {
+                        maxLoc = count;
+                        dominantKey = key;
+                    }
+                });
+
+                const [domCity, domCountry] = dominantKey.split('|');
+                const isUK = domCountry === 'United Kingdom';
+
+                // Check for Remote/Unknown exclusion
+                const isRemote = domCity.toLowerCase().includes('remote') || domCity.toLowerCase().includes('unknown');
+                const ratio = maxLoc / validMemberCount;
+
+                if (ratio === 1 && !isRemote && isUK) {
+                    results.colocation.passed = true;
+                    results.colocation.msg = `100% Co-located`;
+                } else if (ratio === 1 && !isUK) {
+                    results.colocation.msg = `Non-UK (${domCountry || 'Unspecified'})`;
+                } else if (ratio === 1 && isRemote) {
+                    results.colocation.msg = 'Remote (Not Co-located)';
+                } else {
+                    results.colocation.msg = `${Math.round(ratio * 100)}% at Main Hub`;
+                }
+            } else {
+                results.colocation.msg = 'Empty Team';
+            }
+
+            return results;
+        }
+
+        // --- Auto-Modeler Logic ---
+        function runAutoModeler() {
+            const listStrategic = document.getElementById('suggestions-strategic');
+            const listBSC = document.getElementById('suggestions-bsc');
+
+            listStrategic.innerHTML = '';
+            listBSC.innerHTML = '';
+
+            // Track used candidates to prevent duplicates
+            const reservedCandidates = new Set();
+
+            // Get Filters
+            const areaFilter = document.getElementById('auto-filter-area').value;
+            const subAreaFilter = document.getElementById('auto-filter-subarea').value;
+
+            const teams = Object.values(APP_STATE.processed.teams)
+                .filter(t => {
+                    const active = t.state === 'Active' && t.metrics.size > 0;
+                    if (!active) return false;
+
+                    if (areaFilter && t.allocationArea !== areaFilter) return false;
+                    if (subAreaFilter && t.allocationSubArea !== subAreaFilter) return false;
+
+                    return true;
+                })
+                .sort((a, b) => a.teamName.localeCompare(b.teamName));
+
+            // Helper to check if already approved
+            const isApproved = (teamName, type) => {
+                return APP_STATE.proposedChanges.some(p => p.team === teamName && p.category === type);
+            };
+
+            // --- Candidate Finder Helper ---
+            function findCandidate(criteria, reservedSet) {
+                // criteria: { role, supplier, excludeTeam }
+                const allTeams = Object.values(APP_STATE.processed.teams);
+
+                // Helper to check match
+                const isMatch = (m) => {
+                    const isAcc = isAccenture(m);
+                    const matchSupplier = criteria.supplier === 'Accenture' ? isAcc : !isAcc;
+                    if (!matchSupplier) return false;
+
+                    if (criteria.role) {
+                        const title = (m.jobTitle || '').toLowerCase();
+                        const role = (m.roleGroup || '').toLowerCase();
+                        if (!title.includes(criteria.role) && !role.includes(criteria.role)) return false;
+                    }
+                    return true;
+                };
+
+                // Helper to check availability
+                const isAvailable = (name) => {
+                    // Check if already proposed to move
+                    const moving = APP_STATE.proposedChanges.some(c => c.personName === name);
+                    // Check if reserved in this run
+                    const reserved = reservedSet ? reservedSet.has(name) : false;
+                    return !moving && !reserved;
+                };
+
+                // 1. Bench/Unassigned
+                const benchTeams = allTeams.filter(t => t.teamName.toLowerCase().includes('bench') || t.teamName.toLowerCase().includes('unassigned'));
+                for (let t of benchTeams) {
+                    if (t.teamName === criteria.excludeTeam) continue;
+                    const candidate = t.members.find(m => isMatch(m) && isAvailable(m.displayName || m.person));
+                    if (candidate) return { name: candidate.displayName || candidate.person, team: t.teamName, ...candidate };
+                }
+
+                // 2. Surplus Teams (Aggressive search)
+                const validSourceTeams = allTeams.filter(t => t.teamName !== criteria.excludeTeam && t.state === 'Active');
+                for (let t of validSourceTeams) {
+                    if (criteria.supplier === 'Accenture') {
+                        const ratio = t.metrics.size ? t.metrics.accentureCount / t.metrics.size : 0;
+                        if (ratio > 0.6) { // Surplus potential
+                            const match = t.members.find(m => isMatch(m) && isAvailable(m.displayName || m.person));
+                            if (match) return { name: match.displayName || match.person, team: t.teamName, ...match };
+                        }
+                    } else {
+                        // Surplus VF?
+                        const ratio = t.metrics.size ? t.metrics.internalCount / t.metrics.size : 0;
+                        if (ratio > 0.6) {
+                            const match = t.members.find(m => isMatch(m) && isAvailable(m.displayName || m.person));
+                            if (match) return { name: match.displayName || match.person, team: t.teamName, ...match };
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            teams.forEach(team => {
+                const bsc = calculateBSC(team);
+
+                // --- Strategic Aims (Co-location) ---
+                if (!bsc.colocation.passed && team.metrics.size > 1) {
+                    // Check if we can consolidate
+                    // 1. Identify Hub
+                    const vfMembers = team.members.filter(m => !isAccenture(m));
+                    if (vfMembers.length > 1) {
+                        const counts = {};
+                        vfMembers.forEach(m => {
+                            const city = (m.city || m.officeLocation || 'Unknown').trim();
+                            const country = (m.country || m.Country || '').trim();
+                            const key = `${city}|${country}`;
+                            counts[key] = (counts[key] || 0) + 1;
+                        });
+                        // Simple Mode
+                        const hubKey = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+                        const [hubCity, hubCountry] = hubKey.split('|');
+
+                        // 2. Find Outlier
+                        const outlier = vfMembers.find(m => {
+                            const c = (m.city || m.officeLocation || 'Unknown').trim();
+                            const k = (m.country || m.Country || '').trim();
+                            return `${c}|${k}` !== hubKey;
+                        });
+
+                        if (outlier && isApproved(team.teamName, 'Co-location') === false) {
+                            const name = outlier.displayName || outlier.person;
+                            const outlierCity = (outlier.city || outlier.officeLocation || 'Unknown').trim();
+                            const outlierCountry = (outlier.country || outlier.Country || '').trim();
+                            const outlierKey = `${outlierCity}|${outlierCountry}`;
+
+                            // Find a target team for them
+                            const targetTeam = Object.values(APP_STATE.processed.teams).find(t =>
+                                t.state === 'Active' &&
+                                t.teamName !== team.teamName &&
+                                t.members.some(m => {
+                                    const c = (m.city || m.officeLocation || 'Unknown').trim();
+                                    const k = (m.country || m.Country || '').trim();
+                                    return `${c}|${k}` === outlierKey;
+                                })
+                            );
+
+                            if (targetTeam) {
+                                // Check if available
+                                if (!reservedCandidates.has(name) && !APP_STATE.proposedChanges.some(c => c.personName === name)) {
+                                    reservedCandidates.add(name);
+                                    // NOTE: Moving OUT, so deltaVf for Target is +1.
+                                    // We pass targetTeam.teamName as override so proposal is "Move to Target".
+                                    addSuggestionCard(listStrategic, team, 'Co-location', 'high',
+                                        `Member Separated from Hub (${outlierCity} vs ${hubCity})`,
+                                        `Move <b>${name}</b> from <b>${team.teamName}</b> to <b>${targetTeam.teamName}</b> to consolidate.`,
+                                        0, 1,
+                                        { name: name, team: team.teamName },
+                                        targetTeam.teamName // Override
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // --- BSC (Column 2) ---
+
+                // Influence 
+                if (!bsc.influence.passed) {
+                    if (!isApproved(team.teamName, 'Influence')) {
+                        // Find ONE candidate
+                        let match = findCandidate({ role: 'scrum master', supplier: 'Accenture', excludeTeam: team.teamName }, reservedCandidates)
+                            || findCandidate({ role: 'product owner', supplier: 'Accenture', excludeTeam: team.teamName }, reservedCandidates);
+
+                        // ONLY show if match found
+                        if (match) {
+                            reservedCandidates.add(match.name);
+                            addSuggestionCard(listBSC, team, 'Influence', 'high',
+                                'Missing Key Role',
+                                `Move <b>${match.name}</b> (${match.jobTitle || 'Role'}) from <b>${match.team}</b> to <b>${team.teamName}</b>.`,
+                                1, -1, match
+                            );
+                        }
+                    }
+                }
+
+                // Presence (Strict Loop)
+                if (!bsc.presence.passed) {
+                    const currentAcc = team.metrics.accentureCount;
+                    const total = team.metrics.size;
+                    const targetAcc = Math.ceil(total / 2);
+                    let needed = targetAcc - currentAcc;
+
+                    if (needed > 0) {
+                        for (let i = 0; i < needed; i++) {
+                            // Find unique candidate
+                            const match = findCandidate({ supplier: 'Accenture', excludeTeam: team.teamName }, reservedCandidates);
+
+                            if (match) {
+                                // Check if this specific Move is already proposed
+                                const isProposed = APP_STATE.proposedChanges.some(p => p.personName === match.name && p.team === team.teamName);
+                                if (!isProposed) {
+                                    reservedCandidates.add(match.name);
+                                    addSuggestionCard(listBSC, team, 'Presence', 'medium',
+                                        `Accenture Ratio < 50%`,
+                                        `Move <b>${match.name}</b> from <b>${match.team}</b> to <b>${team.teamName}</b>.`,
+                                        1, -1, match
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Empty States
+            if (listStrategic.children.length === 0) listStrategic.innerHTML = '<div style="color:#999; text-align:center; padding:1rem;">No strategic issues found.</div>';
+            if (listBSC.children.length === 0) listBSC.innerHTML = '<div style="color:#999; text-align:center; padding:1rem;">All BSC checks passed.</div>';
+        }
+
+        function addSuggestionCard(container, team, category, priority, problem, solution, deltaAcc = 0, deltaVf = 0, personObj = null, targetTeamOverride = null) {
+            const card = document.createElement('div');
+            card.className = 'team-card';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.marginBottom = '1rem';
+
+            // Unique ID
+            const personIdRef = personObj ? personObj.name.replace(/\s+/g, '') : 'Generic';
+            const btnId = `btn-approve-${team.teamName.replace(/\s+/g, '')}-${category}-${personIdRef}`;
+
+            const priorityColor = priority === 'high' ? '#e53935' : '#fb8c00';
+
+            // Destination Team for Proposal: Override if present (e.g. Co-location move OUT), else Current Team (Move IN)
+            const destinationTeam = targetTeamOverride || team.teamName;
+
+            // Check state
+            const isApproved = APP_STATE.proposedChanges.some(p =>
+                p.team === destinationTeam &&
+                p.category === category &&
+                (personObj ? p.personName === personObj.name : true)
+            );
+
+            const btnText = isApproved ? 'Unapprove Change' : 'Approve Change';
+            const btnClass = isApproved ? 'secondary' : 'primary';
+            const btnStyle = isApproved
+                ? "width: 100%; font-size: 0.8rem; padding: 6px; color: #d32f2f; border-color: #d32f2f;"
+                : "width: 100%; font-size: 0.8rem; padding: 6px;";
+
+            if (isApproved) {
+                card.style.border = '1px solid #4CAF50';
+            }
+
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                    <div style="font-weight: 600; font-size: 1rem;">${team.teamName}</div>
+                    <span style="background: ${priorityColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; text-transform: uppercase;">${priority}</span>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <div style="font-size: 0.75rem; color: #888; text-transform: uppercase;">Problem</div>
+                    <div style="color: #d32f2f; font-size: 0.9rem;">${problem}</div>
+                </div>
+                <div style="margin-bottom: 0.8rem;">
+                    <div style="font-size: 0.75rem; color: #888; text-transform: uppercase;">Action</div>
+                    <div style="color: #000; font-weight: 500; font-size: 0.9rem;">${solution}</div> 
+                </div>
+                <button id="${btnId}" class="${btnClass}" style="${btnStyle}">
+                    ${btnText}
+                </button>
+            `;
+
+            container.appendChild(card);
+
+            // Bind Event
+            document.getElementById(btnId).onclick = () => {
+                toggleApproval(destinationTeam, category, problem, solution, deltaAcc, deltaVf, card, btnId, personObj);
+            };
+        }
+
+        function toggleApproval(teamName, category, problem, action, deltaAcc, deltaVf, cardEl, btnId, personObj) {
+            // Find index matching specific person if available
+            const index = APP_STATE.proposedChanges.findIndex(p =>
+                p.team === teamName &&
+                p.category === category &&
+                (personObj ? p.personName === personObj.name : true)
+            );
+
+            if (index >= 0) {
+                // Unapprove
+                APP_STATE.proposedChanges.splice(index, 1);
+                const btn = document.getElementById(btnId);
+                btn.className = 'primary';
+                btn.innerText = 'Approve Change';
+                btn.style.cssText = "width: 100%; font-size: 0.8rem; padding: 6px;";
+                cardEl.style.border = '1px solid #ddd';
+                console.log("Unapproved:", teamName);
+            } else {
+                // Approve
+                APP_STATE.proposedChanges.push({
+                    id: Date.now(),
+                    team: teamName,
+                    category: category,
+                    problem: problem,
+                    action: action,
+                    deltaAcc: deltaAcc,
+                    deltaVf: deltaVf,
+                    personName: personObj ? personObj.name : null,
+                    fromTeam: personObj ? personObj.team : null
+                });
+                const btn = document.getElementById(btnId);
+                btn.className = 'secondary';
+                btn.innerText = 'Unapprove Change';
+                btn.style.cssText = "width: 100%; font-size: 0.8rem; padding: 6px; color: #d32f2f; border-color: #d32f2f;";
+                cardEl.style.border = '1px solid #4CAF50';
+                console.log("Approved:", teamName);
+            }
+            renderTeamList(); // Refresh list (badges)
+            saveProposals(); // Save to LocalStorage
+        }
+
+        function renderBSC(results) {
+            updateBSCItem('influence', results.influence);
+            updateBSCItem('presence', results.presence);
+            updateBSCItem('duration', results.duration);
+            updateBSCItem('colocation', results.colocation);
+        }
+
+        function updateBSCItem(id, data) {
+            const el = document.getElementById(`bsc-${id}`);
+            if (!el) return;
+            const statusDiv = el.querySelector('.status');
+
+            el.className = `bsc-item ${data.passed ? 'success' : 'fail'}`;
+            statusDiv.innerText = data.msg;
+
+            // Icon update
+            const icon = el.querySelector('.icon');
+            icon.innerText = data.passed ? 'check_circle' : (id === 'colocation' ? 'location_off' : 'error');
+        }
+
+        // --- Proposed Changes Logic ---
+
+        function renderProposedChanges() {
+            const tbody = document.getElementById('proposals-table-body');
+            const msg = document.getElementById('no-proposals-msg');
+
+            tbody.innerHTML = '';
+
+            if (APP_STATE.proposedChanges.length === 0) {
+                msg.style.display = 'block';
+                return;
+            }
+            msg.style.display = 'none';
+
+            APP_STATE.proposedChanges.forEach((p, index) => {
+                const tr = document.createElement('tr');
+
+                // Helper to clean HTML from action text (legacy notes might have tags)
+                const cleanNote = p.action ? p.action.replace(/<[^>]*>?/gm, '') : '';
+
+                tr.innerHTML = `
+                    <td style="font-weight: 500; color: #fff;">
+                        ${p.personName || '<span style="opacity:0.5">Unknown</span>'}
+                    </td>
+                    <td style="color: var(--text-secondary);">
+                        ${p.fromTeam || '<span style="opacity:0.5">-</span>'}
+                    </td>
+                    <td style="color: #4CAF50; font-weight: 500;">
+                        ${p.team}
+                    </td>
+                    <td style="position: relative;">
+                         <div contenteditable="true" 
+                              onblur="updateProposalAction(${index}, this.innerText)"
+                              style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; border: 1px solid transparent; outline: none; transition: border 0.2s; min-height: 20px;">
+                            ${cleanNote}
+                         </div>
+                    </td>
+                    <td style="text-align: right;">
+                        <button onclick="removeProposal(${index})" 
+                                style="background: rgba(229, 57, 53, 0.1); color: #e53935; border: 1px solid rgba(229, 57, 53, 0.3); padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                            Remove
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateProposalAction(index, newText) {
+            APP_STATE.proposedChanges[index].action = newText;
+            saveProposals(); // Save to LocalStorage
+        }
+
+        function removeProposal(index) {
+            APP_STATE.proposedChanges.splice(index, 1);
+            renderProposedChanges();
+            renderImpactAnalysis(); // Re-calc graphs
+
+            renderTeamList(); // Refresh list badges
+
+            // If we are in Team View, we might need to refresh it to remove the grayscale/ghost effects
+            if (selectedTeamId) {
+                const t = APP_STATE.processed.teams[selectedTeamId];
+                if (t) showTeamDetail(t, selectedTeamId);
+            }
+            saveProposals(); // Save to LocalStorage
+        }
+
+        function cancelProposal(id) {
+            const index = APP_STATE.proposedChanges.findIndex(p => p.id === id);
+            if (index !== -1) {
+                removeProposal(index);
+                showToast("Change cancelled");
+            }
+        }
+
+        function exportProposals() {
+            if (APP_STATE.proposedChanges.length === 0) {
+                alert("No changes to export.");
+                return;
+            }
+
+            const header = ["Person", "Current Team", "New Team", "Notes", "Category"];
+            const rows = APP_STATE.proposedChanges.map(p => [
+                p.personName || 'Unknown',
+                p.fromTeam || 'Unknown',
+                p.team,
+                p.action.replace(/<[^>]*>?/gm, ''), // Clean HTML
+                p.category
+            ]);
+
+            const csvContent = "data:text/csv;charset=utf-8,"
+                + header.join(",") + "\n"
+                + rows.map(e => e.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "proposed_changes_log.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function renderImpactAnalysis() {
+            // 1. Calculate Baseline
+            const teams = Object.values(APP_STATE.processed.teams).filter(t => t.state === 'Active' && t.metrics.size > 0);
+
+            let current = { bsc: 0, colo: 0 };
+            let future = { bsc: 0, colo: 0 };
+
+            teams.forEach(t => {
+                const bsc = calculateBSC(t);
+
+                // Baseline Checks
+                const startBSC = bsc.influence.passed && bsc.presence.passed && bsc.duration.passed; // Strict BSC definition? usually influence & presence are key
+                const startColo = (bsc.colocation.passed && bsc.colocation.msg !== 'No VF Staff');
+
+                if (startBSC) current.bsc++;
+                if (startColo) current.colo++;
+
+                // Future Checks
+                const futureTeam = getFutureTeamState(t);
+                const bscFuture = calculateBSC(futureTeam);
+
+                let influenceFixed = bscFuture.influence.passed;
+                let presencePassed = bscFuture.presence.passed;
+                let durationPassed = bscFuture.duration.passed;
+
+                // Re-evaluate Co-location from BSC results directly
+                // Standardize with Current: Must Pass AND have VF Staff
+                let coLoPassed = (bscFuture.colocation.passed && bscFuture.colocation.msg !== 'No VF Staff');
+
+                const endBSC = influenceFixed && presencePassed && durationPassed;
+
+                if (endBSC) future.bsc++;
+                if (coLoPassed) future.colo++;
+            });
+
+            // 2. Render Charts
+            renderComparisonChart('chart-impact-bsc', 'Balanced Scorecard', current.bsc, future.bsc, '#007bff', 'bsc');
+            renderComparisonChart('chart-impact-colo', 'Co-location Target', current.colo, future.colo, '#E60000', 'colocation');
+        }
+
+        function renderComparisonChart(canvasId, label, valCurrent, valFuture, color, type) {
+            const ctx = document.getElementById(canvasId);
+            if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Current', 'Future'],
+                    datasets: [{
+                        label: 'Teams Compliant',
+                        data: [valCurrent, valFuture],
+                        backgroundColor: [color + '88', color], // Opacity for current
+                        borderColor: color,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.parsed.y} Teams`;
+                                }
+                            }
+                        }
+                    },
+                    onClick: (e) => {
+                        showImpactDetails(type, label);
+                    },
+                    onHover: (event, chartElement) => {
+                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    }
+                }
+            });
+        }
+
+        function showImpactDetails(type, title) {
+            const modal = document.getElementById('impact-details-modal');
+            const titleEl = document.getElementById('impact-modal-title');
+            // We'll replace the entire table content
+            const contentContainer = document.querySelector('#impact-details-modal div[style*="overflow-y: auto"]');
+
+            titleEl.innerText = `${title} - Details`;
+
+            const teams = Object.values(APP_STATE.processed.teams).filter(t => t.state === 'Active' && t.metrics.size > 0);
+
+            // Buckets
+            const buckets = {
+                current: [],    // 1. Teams that pass the check now (Current) - Maintained
+                improved: [],   // 2. Teams that now pass (Improved)
+                regressed: []   // 3. Teams that have regressed
+            };
+
+            teams.forEach(t => {
+                const bscCurrent = calculateBSC(t);
+                const futureTeam = getFutureTeamState(t);
+                const bscFuture = calculateBSC(futureTeam);
+
+                let passedCurrent = false;
+                let passedFuture = false;
+                let currentMsg = '';
+                let futureMsg = '';
+
+                if (type === 'bsc') {
+                    // Strict BSC: Influence + Presence + Duration
+                    passedCurrent = bscCurrent.influence.passed && bscCurrent.presence.passed && bscCurrent.duration.passed;
+                    passedFuture = bscFuture.influence.passed && bscFuture.presence.passed && bscFuture.duration.passed;
+
+                    const failReasons = (b) => {
+                        let r = [];
+                        if (!b.influence.passed) r.push('Influence');
+                        if (!b.presence.passed) r.push('Presence');
+                        if (!b.duration.passed) r.push('Duration');
+                        return r.length ? r.join(', ') : 'Passed';
+                    };
+                    currentMsg = passedCurrent ? 'Passing' : `Failing (${failReasons(bscCurrent)})`;
+                    futureMsg = passedFuture ? 'Passing' : `Failing (${failReasons(bscFuture)})`;
+
+                } else if (type === 'colocation') {
+                    // Start: >0 VF and Ratio=1. Must NOT be 'No VF Staff'.
+                    passedCurrent = bscCurrent.colocation.passed && bscCurrent.colocation.msg !== 'No VF Staff';
+                    passedFuture = bscFuture.colocation.passed && bscFuture.colocation.msg !== 'No VF Staff';
+
+                    currentMsg = bscCurrent.colocation.msg;
+                    futureMsg = bscFuture.colocation.msg;
+                }
+
+                const item = {
+                    name: t.teamName,
+                    currentMsg,
+                    futureMsg
+                };
+
+                // Categorize
+                if (passedCurrent && passedFuture) {
+                    buckets.current.push(item);
+                } else if (!passedCurrent && passedFuture) {
+                    buckets.improved.push(item);
+                } else if (passedCurrent && !passedFuture) {
+                    buckets.regressed.push(item);
+                }
+            });
+
+            // Helper to Render Section
+            const renderSection = (headerTitle, list, color, icon) => {
+                if (list.length === 0) return '';
+
+                const rows = list.map(item => `
+                    <tr style="background: rgba(255,255,255,0.02);">
+                        <td style="padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 500;">${item.name}</td>
+                        <td style="padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #aaa; font-size: 0.9rem;">${item.currentMsg}</td>
+                        <td style="padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; font-size: 0.9rem;">${item.futureMsg}</td>
+                    </tr>
+                `).join('');
+
+                return `
+                    <tr style="background: ${color}22; border-left: 4px solid ${color};">
+                        <td colspan="3" style="padding: 12px 16px; color: ${color}; font-weight: 700; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="font-size: 1.1rem;">${icon}</span>
+                                ${headerTitle} (${list.length})
+                            </div>
+                        </td>
+                    </tr>
+                    ${rows}
+                `;
+            };
+
+            let html = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead style="position: sticky; top: 0; background: #1e2226; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                        <tr>
+                            <th style="padding: 12px 16px; text-align: left; color: #888; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Team</th>
+                            <th style="padding: 12px 16px; text-align: left; color: #888; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Current State</th>
+                            <th style="padding: 12px 16px; text-align: left; color: #888; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Future State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            let hasContent = false;
+
+            // 1. Teams that pass the check now (current)
+            if (buckets.current.length > 0) {
+                html += renderSection('Teams that pass the check now (Maintained)', buckets.current, '#4CAF50', 'check_circle');
+                hasContent = true;
+            }
+
+            // 2. Teams that now pass the check as a result of people changes
+            if (buckets.improved.length > 0) {
+                html += renderSection('Teams that now pass (Improved)', buckets.improved, '#2196F3', 'trending_up');
+                hasContent = true;
+            }
+
+            // 3. Teams that have regressed and no longer pass
+            if (buckets.regressed.length > 0) {
+                html += renderSection('Teams that have regressed (Attention)', buckets.regressed, '#e53935', 'warning');
+                hasContent = true;
+            }
+
+            if (!hasContent) {
+                html += `<tr><td colspan="3" style="padding: 3rem; text-align: center; color: #666;">No teams match these categories.</td></tr>`;
+            }
+
+            html += `</tbody></table>`;
+
+            contentContainer.innerHTML = html;
+            modal.showModal();
+        }
+        function showTooltip(e, htmlContent) {
+            const el = document.getElementById('global-tooltip');
+            el.innerHTML = htmlContent;
+            el.style.display = 'block';
+            el.style.opacity = '1';
+            positionTooltip(e);
+        }
+
+        function hideTooltip() {
+            const el = document.getElementById('global-tooltip');
+            el.style.opacity = '0';
+            el.style.display = 'none';
+        }
+
+        function moveTooltip(e) {
+            positionTooltip(e);
+        }
+
+        function positionTooltip(e) {
+            const el = document.getElementById('global-tooltip');
+            if (el.style.display === 'none') return;
+
+            const offset = 15;
+            let top = e.clientY + offset;
+            let left = e.clientX + offset;
+
+            // Bounds check
+            const rect = el.getBoundingClientRect();
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
+
+            // Flip Y if going off bottom
+            if (top + rect.height > winH) {
+                top = e.clientY - rect.height - offset;
+            }
+
+            // Allow going above top edge if cursor is very high? 
+            // If top < 0, clamp it to 0 or push down? 
+            // Usually flipping to bottom is safer if top is clipped, but we only flip to top if bottom is clipped.
+            // If both clipped, align to top edge.
+            if (top < 0) top = 10;
+
+            // Flip X if going off right
+            if (left + rect.width > winW) {
+                left = e.clientX - rect.width - offset;
+            }
+
+            el.style.top = `${top}px`;
+            el.style.left = `${left}px`;
+        }
+    </script>
+</body>
+
+</html>
