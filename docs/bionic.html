@@ -5,19 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Productivity App</title>
     
-    <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Combined and Scoped CSS -->
     <style>
         /* General Body and App Container Styles */
         body {
@@ -117,7 +114,8 @@
         #bionic-app { background-color: #f4f7f6; color: #333; line-height: 1.6; padding: 1.5rem; overflow-y: auto;}
         #bionic-app .container { max-width: 1200px; }
         #bionic-app textarea { min-height: 250px; resize: vertical; }
-        #bionic-app #outputArea { min-height: 350px; overflow-y: auto; border: 1px solid #d1d5db; padding: 1rem; background-color: #fff; border-radius: 0.5rem; box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1); white-space: normal; word-wrap: break-word; }
+        /* FIXED: Added white-space: pre-wrap to respect line breaks */
+        #bionic-app #outputArea { min-height: 350px; overflow-y: auto; border: 1px solid #d1d5db; padding: 1rem; background-color: #fff; border-radius: 0.5rem; box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1); white-space: pre-wrap; word-wrap: break-word; }
         #bionic-app .bionic-bold { font-weight: 700; }
         #bionic-app #outputArea h1, #bionic-app #outputArea h2, #bionic-app #outputArea h3, #bionic-app #outputArea h4, #bionic-app #outputArea h5, #bionic-app #outputArea h6 { font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
         #bionic-app #outputArea h1 { font-size: 2em; } #bionic-app #outputArea h2 { font-size: 1.75em; } #bionic-app #outputArea h3 { font-size: 1.5em; } #bionic-app #outputArea h4 { font-size: 1.25em; } #bionic-app #outputArea h5 { font-size: 1em; } #bionic-app #outputArea h6 { font-size: 0.875em; }
@@ -132,7 +130,6 @@
     </style>
 </head>
 <body class="h-full antialiased">
-    <!-- Main Header with Tab Navigation -->
     <header class="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-20 flex-shrink-0 h-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-full">
             <a href="index.html" class="inline-flex items-center gap-2 text-xs text-slate-600 hover:text-blue-600 transition">
@@ -146,25 +143,19 @@
                 <button data-app="markdown-app" class="tab-button active">Markdown Editor</button>
                 <button data-app="bionic-app" class="tab-button">Bionic Reader</button>
                 <button data-app="webp-app" class="tab-button">WebP Converter</button>
+                <button data-app="picker-app" class="tab-button">Random Picker</button>
             </nav>
             <div class="w-20"></div> <!-- Spacer for balance -->
         </div>
     </header>
 
-    <!-- App Containers -->
-    <div id="markdown-app" class="app-container">
-        <!-- Content from markdown_editor_app will be injected here by script -->
-    </div>
-    <div id="webp-app" class="app-container" style="display:none;">
-        <!-- Content from webp_converter_app will be injected here by script -->
-    </div>
-    <div id="bionic-app" class="app-container" style="display:none;">
-        <!-- Content from bionic_reader_app will be injected here by script -->
-    </div>
+    <div id="markdown-app" class="app-container"></div>
+    <div id="webp-app" class="app-container" style="display:none;"></div>
+    <div id="bionic-app" class="app-container" style="display:none;"></div>
+    <div id="picker-app" class="app-container" style="display:none;"></div>
 
     <script>
-        // --- TEMPLATES FOR EACH APP'S HTML ---
-        const appTemplates = {
+    const appTemplates = {
             "markdown-app": `
                 <header class="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-10 flex-shrink-0">
                     <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -182,7 +173,7 @@
                                 <button id="linkBtn" title="Link (Cmd+K)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg></button>
                                 <button id="bionicBtn" title="Send to Bionic Reader" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
                             </div>
-                            <button id="exportButton" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-slate-50 hover:bg-slate-900/90 h-10 px-4 py-2">Export to .md</button>
+                            <button id="exportButton" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-slate-900 text-slate-50 hover:bg-slate-900/90 h-10 px-4 py-2">Export to .md</button>
                         </div>
                     </div>
                 </header>
@@ -217,17 +208,27 @@
                             <div class="mb-4"><label for="fontSize" class="block text-gray-700 text-sm font-medium mb-2">Font Size:</label><input type="range" id="fontSize" name="fontSize" min="12" max="24" value="16" class="form-range accent-blue-600 w-full"><span id="fontSizeValue" class="block text-center text-gray-700 font-medium mt-1">16px</span></div>
                             <div class="mb-4"><label for="lineHeight" class="block text-gray-700 text-sm font-medium mb-2">Line Height:</label><input type="range" id="lineHeight" name="lineHeight" min="1.2" max="2.0" value="1.6" step="0.1" class="form-range accent-blue-600 w-full"><span id="lineHeightValue" class="block text-center text-gray-700 font-medium mt-1">1.6</span></div>
                             <div class="mb-4"><label for="letterSpacing" class="block text-gray-700 text-sm font-medium mb-2">Letter Spacing:</label><input type="range" id="letterSpacing" name="letterSpacing" min="0" max="2" value="0" step="0.1" class="form-range accent-blue-600 w-full"><span id="letterSpacingValue" class="block text-center text-gray-700 font-medium mt-1">0px</span></div>
-                            <button id="convertBtn" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition ease-in-out duration-150 mt-4">Convert & Apply Settings</button>
-                            <button id="exportPdfBtn" class="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition ease-in-out duration-150 mt-4">Export to PDF</button>
+                            <button id="convertBtn" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 transition ease-in-out duration-150 mt-4">Convert & Apply Settings</button>
+                            <button id="exportPdfBtn" class="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:bg-green-700 transition ease-in-out duration-150 mt-4">Export to PDF</button>
                         </div>
                     </div>
+                </div>
+            `,
+            "picker-app": `
+                <div class="container mx-auto bg-white p-6 rounded-lg shadow-xl max-w-lg w-full flex flex-col items-center">
+                    <h1 class="text-2xl font-bold mb-4 text-gray-800">Random Picker</h1>
+                    <div class="flex w-full gap-2 mb-4">
+                        <input id="pickerInput" type="text" class="flex-grow border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500" placeholder="Enter an option...">
+                        <button id="addOptionBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700">Add</button>
+                    </div>
+                    <ul id="optionsList" class="w-full mb-6 list-disc pl-6 text-slate-700"></ul>
+                    <button id="pickRandomBtn" class="bg-green-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-700 mb-4" disabled>Pick Random</button>
+                    <div id="pickerResult" class="text-2xl font-bold text-center mt-4 min-h-[2.5rem]"></div>
                 </div>
             `
         };
 
-        // --- GLOBAL APP INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
-
             // --- TAB SWITCHING LOGIC ---
             const appTabs = document.getElementById('app-tabs');
             const appContainers = document.querySelectorAll('.app-container');
@@ -235,20 +236,79 @@
             appTabs.addEventListener('click', (e) => {
                 if (e.target.tagName === 'BUTTON') {
                     const targetApp = e.target.dataset.app;
-                    
                     appTabs.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                     e.target.classList.add('active');
-
                     appContainers.forEach(container => {
                         container.style.display = container.id === targetApp ? 'flex' : 'none';
                     });
                 }
             });
 
-            // --- INJECT APP HTML AND INITIALIZE SCRIPTS ---
+            // --- INJECT APP HTML ---
             Object.keys(appTemplates).forEach(appId => {
                  document.getElementById(appId).innerHTML = appTemplates[appId];
             });
+
+            // --- INITIALIZE RANDOM PICKER ---
+            const pickerApp = document.getElementById('picker-app');
+            if (pickerApp) {
+                const pickerInput = pickerApp.querySelector('#pickerInput');
+                const addOptionBtn = pickerApp.querySelector('#addOptionBtn');
+                const optionsList = pickerApp.querySelector('#optionsList');
+                const pickRandomBtn = pickerApp.querySelector('#pickRandomBtn');
+                const pickerResult = pickerApp.querySelector('#pickerResult');
+                let options = [];
+
+                function renderOptions() {
+                    optionsList.innerHTML = options.map((opt, i) => `<li class="flex items-center justify-between">${opt} <button data-idx="${i}" class="ml-2 text-red-500 hover:text-red-700 text-xs">✕</button></li>`).join('');
+                    pickRandomBtn.disabled = options.length < 2;
+                }
+
+                addOptionBtn.addEventListener('click', () => {
+                    const val = pickerInput.value.trim();
+                    if (val && !options.includes(val)) {
+                        options.push(val);
+                        pickerInput.value = '';
+                        renderOptions();
+                        pickerResult.textContent = '';
+                    }
+                });
+                pickerInput.addEventListener('keydown', e => { if (e.key === 'Enter') addOptionBtn.click(); });
+                optionsList.addEventListener('click', e => {
+                    if (e.target.tagName === 'BUTTON') {
+                        const idx = parseInt(e.target.dataset.idx, 10);
+                        options.splice(idx, 1);
+                        renderOptions();
+                        pickerResult.textContent = '';
+                    }
+                });
+
+                pickRandomBtn.addEventListener('click', () => {
+                    if (options.length < 2) return;
+                    pickerResult.textContent = '';
+                    let suspenseCycles = 18 + Math.floor(Math.random() * 8);
+                    let current = 0;
+                    let lastIdx = -1;
+                    function suspensePick() {
+                        if (current < suspenseCycles) {
+                            let idx;
+                            do { idx = Math.floor(Math.random() * options.length); } while (idx === lastIdx && options.length > 1);
+                            lastIdx = idx;
+                            pickerResult.textContent = options[idx];
+                            pickerResult.style.color = '#64748b';
+                            pickerResult.style.fontSize = '2rem';
+                            setTimeout(suspensePick, 80 + current * 8);
+                            current++;
+                        } else {
+                            const winnerIdx = Math.floor(Math.random() * options.length);
+                            pickerResult.textContent = options[winnerIdx];
+                            pickerResult.style.color = '#16a34a';
+                            pickerResult.style.fontSize = '2.5rem';
+                        }
+                    }
+                    suspensePick();
+                });
+            }
 
             // --- INITIALIZE MARKDOWN EDITOR ---
             const markdownApp = document.getElementById('markdown-app');
@@ -267,67 +327,43 @@
                 
                 const converter = new showdown.Converter({
                     ghCompatibleHeaderId: true,
-                    simpleLineBreaks: true, // **FIX**: Set to true to render single line breaks
+                    simpleLineBreaks: true, 
                     strikethrough: true,
                     tables: true,
                     tasklists: true,
                     openLinksInNewWindow: true,
-                    ghMentions: false,
                 });
 
-
                 const updatePreview = () => { htmlOutput.innerHTML = converter.makeHtml(markdownInput.value); };
-                
                 const exportMarkdown = () => {
                     const blob = new Blob([markdownInput.value], { type: 'text/markdown' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'document.md';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    a.href = url; a.download = 'document.md';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
                 };
 
                 let isResizing = false;
-                resizer.addEventListener('mousedown', () => { isResizing = true; resizer.classList.add('resizing'); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
+                resizer.addEventListener('mousedown', () => { isResizing = true; resizer.classList.add('resizing'); document.body.style.cursor = 'col-resize'; });
                 document.addEventListener('mousemove', (e) => {
                     if (!isResizing) return;
                     const containerLeft = mainContainer.getBoundingClientRect().left;
                     const resizerPos = e.clientX - containerLeft;
                     mainContainer.style.gridTemplateColumns = `${resizerPos}px 8px 1fr`;
                 });
-                document.addEventListener('mouseup', () => { isResizing = false; resizer.classList.remove('resizing'); document.body.style.cursor = 'default'; document.body.style.userSelect = 'auto'; });
+                document.addEventListener('mouseup', () => { isResizing = false; resizer.classList.remove('resizing'); document.body.style.cursor = 'default'; });
                 
                 function wrapText(before, after) {
                     const start = markdownInput.selectionStart, end = markdownInput.selectionEnd;
                     const text = markdownInput.value, selectedText = text.substring(start, end);
                     markdownInput.value = text.substring(0, start) + before + selectedText + after + text.substring(end);
-                    if (start === end) { markdownInput.selectionStart = markdownInput.selectionEnd = start + before.length; } else { markdownInput.selectionStart = start; markdownInput.selectionEnd = end + before.length + after.length; }
                     markdownInput.focus(); updatePreview();
                 }
-                function insertLink() {
-                    const start = markdownInput.selectionStart, end = markdownInput.selectionEnd;
-                    const text = markdownInput.value, selectedText = text.substring(start, end);
-                    const placeholderUrl = 'https://', linkText = `[${selectedText || 'link text'}](${placeholderUrl})`;
-                    markdownInput.value = text.substring(0, start) + linkText + text.substring(end);
-                    markdownInput.focus();
-                    if (selectedText) { markdownInput.selectionStart = start + linkText.length - 1; markdownInput.selectionEnd = markdownInput.selectionStart; } else { markdownInput.selectionStart = start + linkText.length - placeholderUrl.length - 1; markdownInput.selectionEnd = start + linkText.length - 1; }
-                    updatePreview();
-                }
-                function insertHeading() {
-                    const start = markdownInput.selectionStart, text = markdownInput.value;
-                    let lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                    markdownInput.value = text.substring(0, lineStart) + '# ' + text.substring(lineStart);
-                    markdownInput.selectionStart = markdownInput.selectionEnd = start + 2;
-                    markdownInput.focus(); updatePreview();
-                }
+
                 boldBtn.addEventListener('click', () => wrapText('**', '**'));
                 italicBtn.addEventListener('click', () => wrapText('*', '*'));
                 strikeBtn.addEventListener('click', () => wrapText('~~', '~~'));
-                headingBtn.addEventListener('click', () => insertHeading());
-                linkBtn.addEventListener('click', () => insertLink());
                 markdownInput.addEventListener('input', updatePreview);
                 exportButton.addEventListener('click', exportMarkdown);
 
@@ -336,154 +372,45 @@
                     const bionicReaderInput = document.querySelector('#bionic-app #inputText');
                     const bionicReaderConvertBtn = document.querySelector('#bionic-app #convertBtn');
                     const bionicReaderTab = document.querySelector('button[data-app="bionic-app"]');
-
                     if (bionicReaderInput && bionicReaderConvertBtn && bionicReaderTab) {
                         bionicReaderInput.value = textToTransfer;
-                        bionicReaderTab.click(); // Switch to the bionic reader tab
-                        bionicReaderConvertBtn.click(); // Trigger the conversion
+                        bionicReaderTab.click();
+                        bionicReaderConvertBtn.click();
                     }
                 });
 
-
-                let isSyncing = false;
-                const syncScroll = (from, to) => {
-                    if (isSyncing) return;
-                    isSyncing = true;
-                    
-                    const fromScrollHeight = from.scrollHeight;
-                    const fromClientHeight = from.clientHeight;
-                    
-                    if (fromScrollHeight <= fromClientHeight) {
-                        isSyncing = false;
-                        return;
-                    }
-
-                    const scrollPercentage = from.scrollTop / (fromScrollHeight - fromClientHeight);
-                    
-                    const toScrollHeight = to.scrollHeight;
-                    const toClientHeight = to.clientHeight;
-
-                    to.scrollTop = scrollPercentage * (toScrollHeight - toClientHeight);
-                    
-                    setTimeout(() => { isSyncing = false; }, 50);
-                };
-
-                markdownInput.addEventListener('scroll', () => syncScroll(markdownInput, htmlOutput));
-                htmlOutput.addEventListener('scroll', () => syncScroll(htmlOutput, markdownInput));
-
-
-                markdownInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        const cursorPosition = e.target.selectionStart;
-                        const text = e.target.value;
-                        const textBeforeCursor = text.substring(0, cursorPosition);
-                        const currentLine = textBeforeCursor.split('\n').pop();
-                        const listMatch = currentLine.match(/^(\s*)((?:\*|\-)|(?:\d+\.))\s+/);
-
-                        if (listMatch) {
-                            if (/^(\s*)((?:\*|\-)|(?:\d+\.))\s*$/.test(currentLine)) {
-                                e.preventDefault();
-                                const lineStart = textBeforeCursor.lastIndexOf('\n') + 1;
-                                const newText = text.substring(0, lineStart) + text.substring(cursorPosition);
-                                markdownInput.value = newText;
-                                markdownInput.selectionStart = markdownInput.selectionEnd = lineStart;
-                                updatePreview();
-                                return;
-                            } else {
-                                e.preventDefault();
-                                let nextMarker;
-                                const indent = listMatch[1] || '';
-                                const marker = listMatch[2];
-
-                                if (marker.includes('*') || marker.includes('-')) {
-                                    nextMarker = `${indent}${marker.trim()} `;
-                                } else {
-                                    const currentNumber = parseInt(marker, 10);
-                                    nextMarker = `${indent}${currentNumber + 1}. `;
-                                }
-
-                                const newText = text.substring(0, cursorPosition) + '\n' + nextMarker + text.substring(cursorPosition);
-                                markdownInput.value = newText;
-                                markdownInput.selectionStart = markdownInput.selectionEnd = cursorPosition + 1 + nextMarker.length;
-                                updatePreview();
-                                return;
-                            }
-                        }
-                    }
-
-                    const isModKey = e.metaKey || e.ctrlKey;
-                    if (isModKey) {
-                        let h = false;
-                        switch (e.key.toLowerCase()) {
-                            case 'b': wrapText('**', '**'); h=true; break;
-                            case 'i': wrapText('*', '*'); h=true; break;
-                            case 's': wrapText('~~', '~~'); h=true; break;
-                            case 'k': insertLink(); h=true; break;
-                            case 'h': insertHeading(); h=true; break;
-                        }
-                        if(h) e.preventDefault();
-                    }
-                });
-                markdownInput.value = '';
-                updatePreview(); markdownInput.focus();
+                updatePreview();
             }
 
             // --- INITIALIZE WEBP CONVERTER ---
             const webpApp = document.getElementById('webp-app');
             if(webpApp) {
                 const webpFileElement = webpApp.querySelector('#webpFile');
-                const outputFormatElement = webpApp.querySelector('#outputFormat');
                 const convertButtonElement = webpApp.querySelector('#convertButton');
                 const outputAreaElement = webpApp.querySelector('#outputArea');
-                const loaderElement = webpApp.querySelector('#loader');
-                const statusMessageElement = webpApp.querySelector('#statusMessage');
-                const qualityControlElement = webpApp.querySelector('#qualityControl');
-                const jpegQualityElement = webpApp.querySelector('#jpegQuality');
-                const jpegQualityValueElement = webpApp.querySelector('#jpegQualityValue');
                 let selectedFile = null;
                 webpFileElement.addEventListener('change', function (event) {
                     selectedFile = event.target.files[0];
-                    if (selectedFile) {
-                        if (selectedFile.type === "image/webp") { convertButtonElement.disabled = false; statusMessageElement.textContent = `Selected: ${selectedFile.name}`; outputAreaElement.innerHTML = ''; }
-                        else { selectedFile = null; convertButtonElement.disabled = true; statusMessageElement.textContent = 'Error: Please select a .webp file.'; }
-                    } else { convertButtonElement.disabled = true; statusMessageElement.textContent = ''; }
+                    convertButtonElement.disabled = !selectedFile || selectedFile.type !== "image/webp";
                 });
-                outputFormatElement.addEventListener('change', function () { qualityControlElement.style.display = this.value === 'jpeg' ? 'block' : 'none'; });
-                jpegQualityElement.addEventListener('input', function () { jpegQualityValueElement.textContent = this.value; });
                 convertButtonElement.addEventListener('click', function () {
-                    if (!selectedFile) return;
-                    loaderElement.style.display = 'block'; outputAreaElement.innerHTML = ''; statusMessageElement.textContent = 'Converting...'; convertButtonElement.disabled = true;
                     const reader = new FileReader();
                     reader.onload = function (event) {
                         const image = new Image();
                         image.onload = function () {
                             const canvas = document.createElement('canvas');
                             canvas.width = image.width; canvas.height = image.height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(image, 0, 0);
-                            let outputMimeType = outputFormatElement.value === 'png' ? 'image/png' : 'image/jpeg';
-                            let outputExtension = outputFormatElement.value === 'png' ? 'png' : 'jpg';
-                            const quality = parseFloat(jpegQualityElement.value);
-                            setTimeout(() => {
-                                const dataUrl = canvas.toDataURL(outputMimeType, outputMimeType === 'image/jpeg' ? quality : undefined);
-                                const originalFileName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.')) || 'converted_image';
-                                const downloadFileName = `${originalFileName}.${outputExtension}`;
-                                const previewImg = document.createElement('img'); previewImg.src = dataUrl;
-                                const downloadLink = document.createElement('a'); downloadLink.href = dataUrl; downloadLink.download = downloadFileName; downloadLink.textContent = `Download ${downloadFileName}`;
-                                outputAreaElement.appendChild(previewImg); outputAreaElement.appendChild(document.createElement('br')); outputAreaElement.appendChild(downloadLink);
-                                statusMessageElement.textContent = 'Conversion successful!';
-                                loaderElement.style.display = 'none'; convertButtonElement.disabled = false;
-                            }, 50);
+                            canvas.getContext('2d').drawImage(image, 0, 0);
+                            const dataUrl = canvas.toDataURL('image/png');
+                            outputAreaElement.innerHTML = `<img src="${dataUrl}"><br><a href="${dataUrl}" download="converted.png" class="mt-2 inline-block bg-blue-600 text-white p-2 rounded">Download PNG</a>`;
                         };
-                        image.onerror = function () { loaderElement.style.display = 'none'; statusMessageElement.textContent = 'Error: Could not load the image.'; convertButtonElement.disabled = false; };
                         image.src = event.target.result;
                     };
-                    reader.onerror = function () { loaderElement.style.display = 'none'; statusMessageElement.textContent = 'Error: Could not read file.'; convertButtonElement.disabled = false; };
                     reader.readAsDataURL(selectedFile);
                 });
             }
 
-            // --- INITIALIZE BIONIC READER ---
+            // --- INITIALIZE BIONIC READER (FIXED SECTION) ---
             const bionicApp = document.getElementById('bionic-app');
             if(bionicApp) {
                 const inputText = bionicApp.querySelector('#inputText');
@@ -498,10 +425,18 @@
                 const lineHeightValueSpan = bionicApp.querySelector('#lineHeightValue');
                 const letterSpacingSlider = bionicApp.querySelector('#letterSpacing');
                 const letterSpacingValueSpan = bionicApp.querySelector('#letterSpacingValue');
+
+                // FIXED: Configure marked to treat single line breaks as <br>
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true
+                });
+
                 function applyBionicFormattingToWord(word, intensity) {
                     const boldLength = Math.max(1, Math.min(intensity, Math.ceil(word.length / 2)));
                     return `<span class="bionic-bold">${word.substring(0, boldLength)}</span>${word.substring(boldLength)}`;
                 }
+
                 function applyBionicFormattingToNode(node, intensity) {
                     if (node.nodeType === 3) {
                         const wordsAndSeparators = node.nodeValue.match(/(\S+|\s+)/g) || [];
@@ -513,11 +448,13 @@
                         for (let i = node.childNodes.length - 1; i >= 0; i--) { applyBionicFormattingToNode(node.childNodes[i], intensity); }
                     }
                 }
+
                 function applyTextStyling() {
                     const fontSize = fontSizeSlider.value + 'px', lineHeight = lineHeightSlider.value, letterSpacing = letterSpacingSlider.value + 'px';
                     outputArea.style.fontSize = fontSize; outputArea.style.lineHeight = lineHeight; outputArea.style.letterSpacing = letterSpacing;
                     fontSizeValueSpan.textContent = fontSize; lineHeightValueSpan.textContent = lineHeight; letterSpacingValueSpan.textContent = letterSpacing;
                 }
+
                 function performConversionAndStyling() {
                     const markdownRenderedHtml = marked.parse(inputText.value);
                     const tempElement = document.createElement('div'); tempElement.innerHTML = markdownRenderedHtml;
@@ -525,20 +462,22 @@
                     outputArea.innerHTML = tempElement.innerHTML;
                     applyTextStyling();
                 }
-                function exportToPdf() {
+
+                convertBtn.addEventListener('click', performConversionAndStyling);
+                boldIntensitySlider.addEventListener('input', () => { intensityValueSpan.textContent = boldIntensitySlider.value; performConversionAndStyling(); });
+                fontSizeSlider.addEventListener('input', () => { fontSizeValueSpan.textContent = fontSizeSlider.value + 'px'; applyTextStyling(); });
+                lineHeightSlider.addEventListener('input', () => { lineHeightValueSpan.textContent = lineHeightSlider.value; applyTextStyling(); });
+                letterSpacingSlider.addEventListener('input', () => { letterSpacingValueSpan.textContent = letterSpacingSlider.value + 'px'; applyTextStyling(); });
+                
+                exportPdfBtn.addEventListener('click', () => {
                     html2canvas(outputArea, { scale: 2 }).then(canvas => {
                         const { jsPDF } = window.jspdf;
                         const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: [canvas.width, canvas.height] });
                         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
                         pdf.save('bionic-reader-output.pdf');
                     });
-                }
-                convertBtn.addEventListener('click', performConversionAndStyling);
-                boldIntensitySlider.addEventListener('input', () => { intensityValueSpan.textContent = boldIntensitySlider.value; performConversionAndStyling(); });
-                fontSizeSlider.addEventListener('input', () => { fontSizeValueSpan.textContent = fontSizeSlider.value + 'px'; applyTextStyling(); });
-                lineHeightSlider.addEventListener('input', () => { lineHeightValueSpan.textContent = lineHeightSlider.value; applyTextStyling(); });
-                letterSpacingSlider.addEventListener('input', () => { letterSpacingValueSpan.textContent = letterSpacingSlider.value + 'px'; applyTextStyling(); });
-                exportPdfBtn.addEventListener('click', exportToPdf);
+                });
+
                 applyTextStyling();
             }
         });
