@@ -333,6 +333,28 @@
             `;
         }
 
+        const PROXIES = [
+            { name: 'allorigins', url: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) },
+            { name: 'corsproxy',  url: u => 'https://corsproxy.io/?' + encodeURIComponent(u) },
+            { name: 'corssh',     url: u => 'https://cors.sh/' + u },
+        ];
+
+        async function fetchViaProxy(feedUrl) {
+            let lastError;
+            for (const proxy of PROXIES) {
+                try {
+                    const res = await fetch(proxy.url(feedUrl));
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const text = await res.text();
+                    if (!text || text.trim().length === 0) throw new Error('Empty response');
+                    return text;
+                } catch (e) {
+                    lastError = e;
+                }
+            }
+            throw new Error('All CORS proxies failed. Last error: ' + (lastError ? lastError.message : 'unknown'));
+        }
+
         async function loadFeed() {
             const url = document.getElementById('feedUrl').value.trim();
             if (!url) {
@@ -346,14 +368,7 @@
             showLoading(true);
 
             try {
-                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-                const response = await fetch(proxyUrl);
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch feed (HTTP ' + response.status + ')');
-                }
-
-                const xmlText = await response.text();
+                const xmlText = await fetchViaProxy(url);
 
                 if (!xmlText) {
                     throw new Error('Empty response from feed.');
