@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS Feed Reader</title>
+    <title>road.cc News</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="favicon.png" type="image/png">
@@ -11,16 +11,16 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        .feed-card {
+        .article-card {
             transition: all 0.3s ease;
         }
-        .feed-card:hover {
+        .article-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.3);
         }
         .spinner {
             border: 3px solid #374151;
-            border-top: 3px solid #f59e0b;
+            border-top: 3px solid #ef4444;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -30,20 +30,20 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .chip {
+        .tab-btn {
             transition: all 0.2s ease;
         }
-        .chip:hover {
-            background-color: #f59e0b;
-            color: #111827;
+        .tab-btn.active {
+            border-bottom: 3px solid #ef4444;
+            color: #fff;
+        }
+        .gradient-placeholder {
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 50%, #eab308 100%);
         }
         .card-thumbnail {
             object-fit: cover;
             width: 100%;
             height: 100%;
-        }
-        .gradient-placeholder {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
         }
     </style>
 </head>
@@ -51,7 +51,7 @@
 
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
         <!-- Back to Dashboard -->
-        <a href="index.html" class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-amber-500 transition mb-6">
+        <a href="index.html" class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-red-400 transition mb-6">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -62,214 +62,291 @@
         <!-- Header -->
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">
-                <span class="bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">RSS Feed Reader</span>
+                <span class="bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent">road.cc News</span>
             </h1>
-            <p class="mt-2 text-lg text-gray-400">Paste any RSS or Atom feed URL to browse the latest articles</p>
+            <p class="mt-2 text-lg text-gray-400">Latest cycling news, reviews &amp; live blog from road.cc</p>
         </header>
 
-        <!-- Input Section -->
-        <div class="bg-gray-800 rounded-2xl p-6 border border-gray-700 mb-6">
-            <div class="flex flex-col sm:flex-row gap-3">
-                <input
-                    type="url"
-                    id="feedUrl"
-                    placeholder="Enter RSS feed URL..."
-                    class="flex-1 bg-gray-700 border border-gray-600 text-gray-100 px-4 py-3 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/50 placeholder-gray-400"
-                >
-                <button
-                    id="loadBtn"
-                    onclick="loadFeed()"
-                    class="bg-gradient-to-r from-amber-500 to-yellow-600 text-gray-900 font-semibold px-6 py-3 rounded-lg hover:from-amber-400 hover:to-yellow-500 transition-all whitespace-nowrap"
-                >
-                    Load Feed
-                </button>
+        <!-- Tab Bar -->
+        <div class="flex justify-center gap-1 mb-4 border-b border-gray-700">
+            <button class="tab-btn active px-6 py-3 text-sm font-semibold text-gray-400 hover:text-white" data-tab="news" onclick="switchTab('news')">News</button>
+            <button class="tab-btn px-6 py-3 text-sm font-semibold text-gray-400 hover:text-white" data-tab="reviews" onclick="switchTab('reviews')">Reviews</button>
+            <button class="tab-btn px-6 py-3 text-sm font-semibold text-gray-400 hover:text-white" data-tab="liveblog" onclick="switchTab('liveblog')">Live Blog</button>
+        </div>
+
+        <!-- Last Refreshed + Refresh Button -->
+        <div class="flex items-center justify-between mb-6">
+            <span id="lastRefreshed" class="text-xs text-gray-500"></span>
+            <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-300 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 hover:text-white transition">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Refresh
+            </button>
+        </div>
+
+        <!-- Content Sections (one per tab, toggled) -->
+        <div id="section-news" class="tab-section">
+            <div id="loading-news" class="flex flex-col items-center justify-center py-16">
+                <div class="spinner"></div>
+                <p class="mt-4 text-gray-400 text-sm">Loading news...</p>
             </div>
-
-            <!-- Quick-pick chips -->
-            <div class="mt-4 flex flex-wrap gap-2">
-                <span class="text-xs text-gray-500 self-center mr-1">Try:</span>
-                <button onclick="quickPick('https://feeds.bbci.co.uk/news/rss.xml')" class="chip px-3 py-1 text-xs rounded-full border border-gray-600 text-gray-300 cursor-pointer bg-gray-700">BBC News</button>
-                <button onclick="quickPick('https://hnrss.org/frontpage')" class="chip px-3 py-1 text-xs rounded-full border border-gray-600 text-gray-300 cursor-pointer bg-gray-700">Hacker News</button>
-                <button onclick="quickPick('https://www.reddit.com/r/technology/.rss')" class="chip px-3 py-1 text-xs rounded-full border border-gray-600 text-gray-300 cursor-pointer bg-gray-700">r/technology</button>
-                <button onclick="quickPick('https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml')" class="chip px-3 py-1 text-xs rounded-full border border-gray-600 text-gray-300 cursor-pointer bg-gray-700">NY Times</button>
+            <div id="error-news" class="hidden bg-red-900/30 border border-red-700 rounded-2xl p-6 text-center mb-6">
+                <p class="text-red-300 font-medium"></p>
             </div>
+            <div id="grid-news" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
 
-        <!-- Feed Metadata -->
-        <div id="feedMeta" class="hidden bg-gray-800 rounded-2xl p-5 border border-gray-700 mb-6">
-            <h2 id="feedTitle" class="text-xl font-bold text-white"></h2>
-            <p id="feedDescription" class="text-sm text-gray-400 mt-1"></p>
-            <p id="feedLastBuild" class="text-xs text-gray-500 mt-2"></p>
+        <div id="section-reviews" class="tab-section hidden">
+            <div id="loading-reviews" class="flex flex-col items-center justify-center py-16">
+                <div class="spinner"></div>
+                <p class="mt-4 text-gray-400 text-sm">Loading reviews...</p>
+            </div>
+            <div id="error-reviews" class="hidden bg-red-900/30 border border-red-700 rounded-2xl p-6 text-center mb-6">
+                <p class="text-red-300 font-medium"></p>
+            </div>
+            <div id="grid-reviews" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
 
-        <!-- Loading Spinner -->
-        <div id="loading" class="hidden flex flex-col items-center justify-center py-16">
-            <div class="spinner"></div>
-            <p class="mt-4 text-gray-400 text-sm">Fetching feed...</p>
+        <div id="section-liveblog" class="tab-section hidden">
+            <div id="loading-liveblog" class="flex flex-col items-center justify-center py-16">
+                <div class="spinner"></div>
+                <p class="mt-4 text-gray-400 text-sm">Loading live blog...</p>
+            </div>
+            <div id="error-liveblog" class="hidden bg-red-900/30 border border-red-700 rounded-2xl p-6 text-center mb-6">
+                <p class="text-red-300 font-medium"></p>
+            </div>
+            <div id="grid-liveblog" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </div>
-
-        <!-- Error State -->
-        <div id="errorState" class="hidden bg-red-900/30 border border-red-700 rounded-2xl p-6 text-center mb-6">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mx-auto mb-3 text-red-400">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            <p id="errorMessage" class="text-red-300 font-medium"></p>
-            <p class="text-red-400/70 text-sm mt-1">Check the URL and try again. Make sure it points to a valid RSS or Atom feed.</p>
-        </div>
-
-        <!-- Feed Items Grid -->
-        <div id="feedGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
     <script>
-        function quickPick(url) {
-            document.getElementById('feedUrl').value = url;
-            loadFeed();
+        // --- State ---
+        const state = {
+            news: { articles: [], loaded: false },
+            reviews: { articles: [], loaded: false },
+            liveblog: { articles: [], loaded: false },
+        };
+        let activeTab = 'news';
+
+        // --- CORS proxy fetch ---
+        async function fetchPage(url) {
+            const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+            const res = await fetch(proxyUrl);
+            if (!res.ok) throw new Error('Proxy HTTP ' + res.status);
+            const data = await res.json();
+            if (!data.contents) throw new Error('Empty response from proxy');
+            return data.contents;
         }
 
-        function showLoading(show) {
-            document.getElementById('loading').classList.toggle('hidden', !show);
-        }
-
-        function showError(message) {
-            const el = document.getElementById('errorState');
-            document.getElementById('errorMessage').textContent = message;
-            el.classList.remove('hidden');
-        }
-
-        function hideError() {
-            document.getElementById('errorState').classList.add('hidden');
-        }
-
-        function relativeTime(dateStr) {
-            if (!dateStr) return '';
-            const date = new Date(dateStr);
-            if (isNaN(date.getTime())) return dateStr;
+        // --- Build today's live blog URL ---
+        function getLiveBlogUrl() {
             const now = new Date();
-            const diffMs = now - date;
-            const diffSec = Math.floor(diffMs / 1000);
-            const diffMin = Math.floor(diffSec / 60);
-            const diffHr = Math.floor(diffMin / 60);
-            const diffDay = Math.floor(diffHr / 24);
-
-            if (diffSec < 60) return 'just now';
-            if (diffMin < 60) return diffMin + (diffMin === 1 ? ' minute ago' : ' minutes ago');
-            if (diffHr < 24) return diffHr + (diffHr === 1 ? ' hour ago' : ' hours ago');
-            if (diffDay < 7) return diffDay + (diffDay === 1 ? ' day ago' : ' days ago');
-            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+            const day = now.getDate();
+            const month = now.toLocaleString('en-GB', { month: 'long' }).toLowerCase();
+            const year = now.getFullYear();
+            return `https://road.cc/cycling-live-blog-${day}-${month}-${year}`;
         }
 
-        function stripHtml(html) {
-            if (!html) return '';
-            const tmp = document.createElement('div');
-            tmp.innerHTML = html;
-            return tmp.textContent || tmp.innerText || '';
+        // --- Parse articles from HTML ---
+        function parseArticles(html, type) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const seen = new Set();
+            const articles = [];
+
+            // Determine which href patterns to match
+            let patterns;
+            if (type === 'news') {
+                patterns = ['/news/'];
+            } else if (type === 'reviews') {
+                patterns = ['/review/', '/content/review/', '/review_v2/'];
+            } else {
+                // Live blog — grab all internal links with content
+                patterns = ['/content/', '/news/', '/review/'];
+            }
+
+            const links = doc.querySelectorAll('a[href]');
+            for (const a of links) {
+                const href = a.getAttribute('href');
+                if (!href) continue;
+
+                const matchesPattern = patterns.some(p => href.includes(p));
+                if (!matchesPattern) continue;
+
+                // Skip nav/footer/utility links
+                if (href.includes('/user/') || href.includes('/login') || href.includes('/register')) continue;
+
+                // Build full URL
+                let fullUrl = href;
+                if (href.startsWith('/')) {
+                    fullUrl = 'https://road.cc' + href;
+                } else if (!href.startsWith('http')) {
+                    fullUrl = 'https://road.cc/' + href;
+                }
+
+                // Deduplicate by URL path
+                const urlPath = fullUrl.replace(/https?:\/\/[^/]+/, '');
+                if (seen.has(urlPath)) continue;
+
+                // Extract title — prefer heading or meaningful text
+                let title = '';
+                const heading = a.querySelector('h1, h2, h3, h4, h5, h6');
+                if (heading) {
+                    title = heading.textContent.trim();
+                } else {
+                    title = a.textContent.trim();
+                }
+                // Skip links with very short or empty text (icons, "read more", etc.)
+                if (!title || title.length < 10) continue;
+                // Skip if title is just a URL
+                if (title.startsWith('http')) continue;
+
+                seen.add(urlPath);
+
+                // Extract thumbnail — look for img inside or near the link
+                let thumbnail = null;
+                const img = a.querySelector('img');
+                if (img) {
+                    thumbnail = img.getAttribute('src') || img.getAttribute('data-src');
+                }
+                // Try parent/sibling if no image in link
+                if (!thumbnail && a.parentElement) {
+                    const parentImg = a.parentElement.querySelector('img');
+                    if (parentImg) {
+                        thumbnail = parentImg.getAttribute('src') || parentImg.getAttribute('data-src');
+                    }
+                }
+                // Prefix relative image URLs
+                if (thumbnail && thumbnail.startsWith('/')) {
+                    thumbnail = 'https://road.cc' + thumbnail;
+                }
+
+                articles.push({ title, url: fullUrl, thumbnail, type });
+            }
+
+            return articles;
         }
 
-        function truncate(str, len) {
-            if (!str) return '';
-            str = str.trim();
-            if (str.length <= len) return str;
-            return str.substring(0, len).trimEnd() + '...';
-        }
+        // --- Render a single article card ---
+        function renderCard(article) {
+            const badgeColors = {
+                news: 'bg-red-500/20 text-red-400',
+                reviews: 'bg-orange-500/20 text-orange-400',
+                liveblog: 'bg-yellow-500/20 text-yellow-400',
+            };
+            const badgeLabels = {
+                news: 'News',
+                reviews: 'Review',
+                liveblog: 'Live Blog',
+            };
 
-        function extractImageFromHtml(html) {
-            if (!html) return null;
-            const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-            return match ? match[1] : null;
-        }
-
-        function renderCard(item) {
-            const excerpt = truncate(stripHtml(item.description || ''), 150);
-            const time = relativeTime(item.pubDate);
-            const image = item.thumbnail || item.enclosure?.link || extractImageFromHtml(item.content || item.description);
-            const imgHtml = image
-                ? `<img src="${image}" alt="" class="card-thumbnail" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'gradient-placeholder w-full h-full\\'></div>'">`
+            const imgHtml = article.thumbnail
+                ? `<img src="${article.thumbnail}" alt="" class="card-thumbnail" loading="lazy" onerror="this.parentElement.innerHTML=this.parentElement.innerHTML.replace(/<img[^>]*>/,'');this.parentElement.classList.add('gradient-placeholder','flex','items-center','justify-center');this.parentElement.innerHTML='<svg width=32 height=32 viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;rgba(255,255,255,0.4)&quot; stroke-width=&quot;1.5&quot;><circle cx=&quot;12&quot; cy=&quot;5&quot; r=&quot;3&quot;/><path d=&quot;M5 21v-2a4 4 0 0 1 4-4h0&quot;/><path d=&quot;M12 12l3 8h-6l3-8&quot;/></svg>'">
                 : `<div class="gradient-placeholder w-full h-full flex items-center justify-center">
                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5">
-                           <path d="M4 11a9 9 0 0 1 9 9"></path>
-                           <path d="M4 4a16 16 0 0 1 16 16"></path>
-                           <circle cx="5" cy="19" r="1"></circle>
+                           <circle cx="12" cy="5" r="3"/>
+                           <path d="M5 21v-2a4 4 0 0 1 4-4h0"/>
+                           <path d="M12 12l3 8h-6l3-8"/>
                        </svg>
                    </div>`;
 
-            const authorHtml = item.author ? `<span class="text-xs text-gray-500">${item.author}</span>` : '';
-
             return `
-                <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="feed-card bg-gray-800 rounded-xl border border-gray-700 overflow-hidden block">
+                <a href="${article.url}" target="_blank" rel="noopener noreferrer" class="article-card bg-gray-800 rounded-xl border border-gray-700 overflow-hidden block">
                     <div class="h-44 overflow-hidden bg-gray-700">
                         ${imgHtml}
                     </div>
                     <div class="p-5">
-                        <h3 class="text-base font-semibold text-white mb-2 line-clamp-2 leading-snug">${item.title || 'Untitled'}</h3>
-                        <p class="text-sm text-gray-400 mb-3 line-clamp-3">${excerpt}</p>
-                        <div class="flex items-center justify-between">
-                            ${time ? `<span class="text-xs text-amber-500">${time}</span>` : '<span></span>'}
-                            ${authorHtml}
+                        <div class="mb-2">
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full ${badgeColors[article.type]}">${badgeLabels[article.type]}</span>
                         </div>
+                        <h3 class="text-base font-semibold text-white mb-2 line-clamp-2 leading-snug">${article.title}</h3>
                     </div>
                 </a>
             `;
         }
 
-        async function loadFeed() {
-            const url = document.getElementById('feedUrl').value.trim();
-            if (!url) {
-                showError('Please enter a feed URL.');
-                return;
-            }
+        // --- Tab switching ---
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
+            });
+            document.querySelectorAll('.tab-section').forEach(sec => {
+                sec.classList.add('hidden');
+            });
+            document.getElementById('section-' + tab).classList.remove('hidden');
+        }
 
-            hideError();
-            document.getElementById('feedGrid').innerHTML = '';
-            document.getElementById('feedMeta').classList.add('hidden');
-            showLoading(true);
+        // --- Show/hide loading & error per section ---
+        function showLoading(section, show) {
+            document.getElementById('loading-' + section).classList.toggle('hidden', !show);
+        }
+
+        function showError(section, message) {
+            const el = document.getElementById('error-' + section);
+            el.querySelector('p').textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        function hideError(section) {
+            document.getElementById('error-' + section).classList.add('hidden');
+        }
+
+        // --- Load a single section ---
+        async function loadSection(section, url) {
+            hideError(section);
+            showLoading(section, true);
+            document.getElementById('grid-' + section).innerHTML = '';
 
             try {
-                const apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(url);
-                const response = await fetch(apiUrl);
+                const html = await fetchPage(url);
+                const articles = parseArticles(html, section);
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch feed (HTTP ' + response.status + ')');
+                if (articles.length === 0) {
+                    if (section === 'liveblog') {
+                        showError(section, "Today's live blog is not yet available. Check back later.");
+                    } else {
+                        showError(section, 'No articles found. Try refreshing.');
+                    }
+                } else {
+                    state[section].articles = articles;
+                    document.getElementById('grid-' + section).innerHTML = articles.map(renderCard).join('');
                 }
-
-                const data = await response.json();
-
-                if (data.status !== 'ok') {
-                    throw new Error(data.message || 'Could not parse the feed. Make sure the URL points to a valid RSS or Atom feed.');
-                }
-
-                // Feed metadata
-                if (data.feed && data.feed.title) {
-                    document.getElementById('feedTitle').textContent = data.feed.title;
-                    document.getElementById('feedDescription').textContent = data.feed.description || '';
-                    document.getElementById('feedLastBuild').textContent = data.feed.lastBuildDate
-                        ? 'Last updated: ' + relativeTime(data.feed.lastBuildDate)
-                        : '';
-                    document.getElementById('feedMeta').classList.remove('hidden');
-                }
-
-                // Items
-                const items = data.items;
-                if (!items || items.length === 0) {
-                    throw new Error('No feed items found. The URL may not be a valid RSS or Atom feed.');
-                }
-
-                const grid = document.getElementById('feedGrid');
-                grid.innerHTML = items.map(renderCard).join('');
-
+                state[section].loaded = true;
             } catch (err) {
-                showError(err.message || 'An unexpected error occurred.');
+                if (section === 'liveblog') {
+                    showError(section, "Today's live blog is not yet available. Check back later.");
+                } else {
+                    showError(section, 'Failed to load: ' + (err.message || 'Unknown error'));
+                }
             } finally {
-                showLoading(false);
+                showLoading(section, false);
             }
         }
 
-        // Allow pressing Enter in the input to load
-        document.getElementById('feedUrl').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') loadFeed();
-        });
+        // --- Load all sections in parallel ---
+        async function refreshAll() {
+            const newsUrl = 'https://road.cc/news';
+            const reviewsUrl = 'https://road.cc/reviews';
+            const liveBlogUrl = getLiveBlogUrl();
+
+            await Promise.allSettled([
+                loadSection('news', newsUrl),
+                loadSection('reviews', reviewsUrl),
+                loadSection('liveblog', liveBlogUrl),
+            ]);
+
+            // Update last refreshed timestamp
+            const now = new Date();
+            document.getElementById('lastRefreshed').textContent =
+                'Last refreshed: ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // --- Init ---
+        refreshAll();
     </script>
 </body>
 </html>
