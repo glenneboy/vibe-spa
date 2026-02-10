@@ -123,6 +123,13 @@
     </div>
 
     <script>
+        // --- Image error fallback ---
+        function handleImgError(img) {
+            const parent = img.parentElement;
+            parent.classList.add('gradient-placeholder', 'flex', 'items-center', 'justify-center');
+            parent.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><circle cx="12" cy="5" r="3"/><path d="M5 21v-2a4 4 0 0 1 4-4h0"/><path d="M12 12l3 8h-6l3-8"/></svg>';
+        }
+
         // --- State ---
         const state = {
             news: { articles: [], loaded: false },
@@ -244,7 +251,7 @@
             };
 
             const imgHtml = article.thumbnail
-                ? `<img src="${article.thumbnail}" alt="" class="card-thumbnail" loading="lazy" onerror="this.parentElement.innerHTML=this.parentElement.innerHTML.replace(/<img[^>]*>/,'');this.parentElement.classList.add('gradient-placeholder','flex','items-center','justify-center');this.parentElement.innerHTML='<svg width=32 height=32 viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;rgba(255,255,255,0.4)&quot; stroke-width=&quot;1.5&quot;><circle cx=&quot;12&quot; cy=&quot;5&quot; r=&quot;3&quot;/><path d=&quot;M5 21v-2a4 4 0 0 1 4-4h0&quot;/><path d=&quot;M12 12l3 8h-6l3-8&quot;/></svg>'">
+                ? `<img src="${article.thumbnail}" alt="" class="card-thumbnail" loading="lazy" onerror="handleImgError(this)">`
                 : `<div class="gradient-placeholder w-full h-full flex items-center justify-center">
                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5">
                            <circle cx="12" cy="5" r="3"/>
