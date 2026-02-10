@@ -175,137 +175,18 @@
             return str.substring(0, len).trimEnd() + '...';
         }
 
-        function extractImage(item, ns) {
-            // Try media:content
-            const mediaContent = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'content');
-            if (mediaContent.length > 0) {
-                const url = mediaContent[0].getAttribute('url');
-                if (url) return url;
-            }
-
-            // Try media:thumbnail
-            const mediaThumbnail = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail');
-            if (mediaThumbnail.length > 0) {
-                const url = mediaThumbnail[0].getAttribute('url');
-                if (url) return url;
-            }
-
-            // Try enclosure
-            const enclosure = item.querySelector('enclosure');
-            if (enclosure) {
-                const type = enclosure.getAttribute('type') || '';
-                if (type.startsWith('image/')) {
-                    return enclosure.getAttribute('url');
-                }
-            }
-
-            // Try to extract first image from description/content
-            const descEl = item.querySelector('description') || item.querySelector('summary') || item.querySelector('content');
-            if (descEl) {
-                const desc = descEl.textContent || '';
-                const imgMatch = desc.match(/<img[^>]+src=["']([^"']+)["']/i);
-                if (imgMatch) return imgMatch[1];
-            }
-
-            return null;
-        }
-
-        function getTextContent(item, selectors) {
-            for (const sel of selectors) {
-                const el = item.querySelector(sel);
-                if (el && el.textContent.trim()) return el.textContent.trim();
-            }
-            return '';
-        }
-
-        function getLink(item) {
-            // RSS: <link> text content
-            const linkEl = item.querySelector('link');
-            if (linkEl) {
-                // Atom feeds use href attribute
-                const href = linkEl.getAttribute('href');
-                if (href) return href;
-                // RSS feeds use text content
-                if (linkEl.textContent.trim()) return linkEl.textContent.trim();
-            }
-            // Atom alternate link
-            const links = item.querySelectorAll('link');
-            for (const l of links) {
-                if (l.getAttribute('rel') === 'alternate' || !l.getAttribute('rel')) {
-                    const href = l.getAttribute('href');
-                    if (href) return href;
-                }
-            }
-            return '#';
-        }
-
-        function getAuthor(item) {
-            // dc:creator
-            const dcCreator = item.getElementsByTagNameNS('http://purl.org/dc/elements/1.1/', 'creator');
-            if (dcCreator.length > 0 && dcCreator[0].textContent.trim()) return dcCreator[0].textContent.trim();
-
-            // author > name (Atom)
-            const authorName = item.querySelector('author > name');
-            if (authorName && authorName.textContent.trim()) return authorName.textContent.trim();
-
-            // author (RSS)
-            const author = item.querySelector('author');
-            if (author && author.textContent.trim()) return author.textContent.trim();
-
-            return '';
-        }
-
-        function parseItems(doc) {
-            const items = [];
-
-            // RSS 2.0
-            let entries = doc.querySelectorAll('item');
-            if (entries.length === 0) {
-                // Atom
-                entries = doc.querySelectorAll('entry');
-            }
-
-            for (const entry of entries) {
-                const title = getTextContent(entry, ['title']);
-                const link = getLink(entry);
-                const description = stripHtml(getTextContent(entry, ['description', 'summary', 'content']));
-                const pubDate = getTextContent(entry, ['pubDate', 'published', 'updated', 'date']);
-                const image = extractImage(entry);
-                const author = getAuthor(entry);
-
-                items.push({ title, link, description, pubDate, image, author });
-            }
-
-            return items;
-        }
-
-        function parseFeedMeta(doc) {
-            // RSS 2.0: channel > title
-            const channel = doc.querySelector('channel');
-            if (channel) {
-                return {
-                    title: getTextContent(channel, ['title']),
-                    description: getTextContent(channel, ['description']),
-                    lastBuild: getTextContent(channel, ['lastBuildDate', 'pubDate']),
-                };
-            }
-            // Atom: feed > title
-            const feed = doc.querySelector('feed');
-            if (feed) {
-                return {
-                    title: getTextContent(feed, ['title']),
-                    description: getTextContent(feed, ['subtitle']),
-                    lastBuild: getTextContent(feed, ['updated']),
-                };
-            }
-            return { title: '', description: '', lastBuild: '' };
+        function extractImageFromHtml(html) {
+            if (!html) return null;
+            const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+            return match ? match[1] : null;
         }
 
         function renderCard(item) {
-            const excerpt = truncate(item.description, 150);
+            const excerpt = truncate(stripHtml(item.description || ''), 150);
             const time = relativeTime(item.pubDate);
-            const imgHtml = item.image
-                ? `<img src="${item.image}" alt="" class="card-thumbnail" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'gradient-placeholder w-full h-full\\'></div>'">`
+            const image = item.thumbnail || item.enclosure?.link || extractImageFromHtml(item.content || item.description);
+            const imgHtml = image
+                ? `<img src="${image}" alt="" class="card-thumbnail" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'gradient-placeholder w-full h-full\\'></div>'">`
                 : `<div class="gradient-placeholder w-full h-full flex items-center justify-center">
                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5">
                            <path d="M4 11a9 9 0 0 1 9 9"></path>
@@ -333,28 +214,6 @@
             `;
         }
 
-        const PROXIES = [
-            { name: 'allorigins', url: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) },
-            { name: 'corsproxy',  url: u => 'https://corsproxy.io/?' + encodeURIComponent(u) },
-            { name: 'corssh',     url: u => 'https://cors.sh/' + u },
-        ];
-
-        async function fetchViaProxy(feedUrl) {
-            let lastError;
-            for (const proxy of PROXIES) {
-                try {
-                    const res = await fetch(proxy.url(feedUrl));
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const text = await res.text();
-                    if (!text || text.trim().length === 0) throw new Error('Empty response');
-                    return text;
-                } catch (e) {
-                    lastError = e;
-                }
-            }
-            throw new Error('All CORS proxies failed. Last error: ' + (lastError ? lastError.message : 'unknown'));
-        }
-
         async function loadFeed() {
             const url = document.getElementById('feedUrl').value.trim();
             if (!url) {
@@ -368,39 +227,35 @@
             showLoading(true);
 
             try {
-                const xmlText = await fetchViaProxy(url);
+                const apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(url);
+                const response = await fetch(apiUrl);
 
-                if (!xmlText) {
-                    throw new Error('Empty response from feed.');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch feed (HTTP ' + response.status + ')');
                 }
 
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(xmlText, 'application/xml');
+                const data = await response.json();
 
-                // Check for parse errors
-                const parseError = doc.querySelector('parsererror');
-                if (parseError) {
-                    throw new Error('Could not parse the feed. Make sure the URL points to valid RSS or Atom XML.');
+                if (data.status !== 'ok') {
+                    throw new Error(data.message || 'Could not parse the feed. Make sure the URL points to a valid RSS or Atom feed.');
                 }
 
                 // Feed metadata
-                const meta = parseFeedMeta(doc);
-                if (meta.title) {
-                    document.getElementById('feedTitle').textContent = meta.title;
-                    document.getElementById('feedDescription').textContent = meta.description || '';
-                    document.getElementById('feedLastBuild').textContent = meta.lastBuild
-                        ? 'Last updated: ' + relativeTime(meta.lastBuild)
+                if (data.feed && data.feed.title) {
+                    document.getElementById('feedTitle').textContent = data.feed.title;
+                    document.getElementById('feedDescription').textContent = data.feed.description || '';
+                    document.getElementById('feedLastBuild').textContent = data.feed.lastBuildDate
+                        ? 'Last updated: ' + relativeTime(data.feed.lastBuildDate)
                         : '';
                     document.getElementById('feedMeta').classList.remove('hidden');
                 }
 
-                // Parse items
-                const items = parseItems(doc);
-                if (items.length === 0) {
+                // Items
+                const items = data.items;
+                if (!items || items.length === 0) {
                     throw new Error('No feed items found. The URL may not be a valid RSS or Atom feed.');
                 }
 
-                // Render
                 const grid = document.getElementById('feedGrid');
                 grid.innerHTML = items.map(renderCard).join('');
 
