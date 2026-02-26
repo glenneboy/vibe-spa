@@ -325,16 +325,9 @@
                 const linkBtn = markdownApp.querySelector('#linkBtn');
                 const bionicBtn = markdownApp.querySelector('#bionicBtn');
                 
-                const converter = new showdown.Converter({
-                    ghCompatibleHeaderId: true,
-                    simpleLineBreaks: true, 
-                    strikethrough: true,
-                    tables: true,
-                    tasklists: true,
-                    openLinksInNewWindow: true,
-                });
+                marked.setOptions({ breaks: false, gfm: true });
 
-                const updatePreview = () => { htmlOutput.innerHTML = converter.makeHtml(markdownInput.value); };
+                const updatePreview = () => { htmlOutput.innerHTML = marked.parse(markdownInput.value); };
                 const exportMarkdown = () => {
                     const blob = new Blob([markdownInput.value], { type: 'text/markdown' });
                     const url = URL.createObjectURL(blob);
