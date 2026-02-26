@@ -167,7 +167,7 @@
                             <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg">
                                 <button id="boldBtn" title="Bold (Cmd+B)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg></button>
                                 <button id="italicBtn" title="Italic (Cmd+I)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg></button>
-                                <button id="strikeBtn" title="Strikethrough (Cmd+S)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="18" y2="12"></line></svg></button>
+                                <button id="strikeBtn" title="Strikethrough (Cmd+Shift+S)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="18" y2="12"></line></svg></button>
                                 <div class="w-px h-5 bg-slate-300 mx-1"></div>
                                 <button id="headingBtn" title="Heading (Cmd+H)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h8"></path><path d="M4 18V6"></path><path d="M12 18V6"></path><path d="m17 13 3-3-3-3"></path></svg></button>
                                 <button id="linkBtn" title="Link (Cmd+K)" class="p-2 rounded-md hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg></button>
@@ -353,19 +353,142 @@
                     mainContainer.style.gridTemplateColumns = `${resizerPos}px 8px 1fr`;
                 });
                 document.addEventListener('mouseup', () => { isResizing = false; resizer.classList.remove('resizing'); document.body.style.cursor = 'default'; });
-                
+
                 function wrapText(before, after) {
                     const start = markdownInput.selectionStart, end = markdownInput.selectionEnd;
                     const text = markdownInput.value, selectedText = text.substring(start, end);
                     markdownInput.value = text.substring(0, start) + before + selectedText + after + text.substring(end);
-                    markdownInput.focus(); updatePreview();
+                    markdownInput.focus();
+                    if (start === end) {
+                        markdownInput.selectionStart = markdownInput.selectionEnd = start + before.length;
+                    } else {
+                        markdownInput.selectionStart = start + before.length;
+                        markdownInput.selectionEnd = end + before.length;
+                    }
+                    updatePreview();
+                }
+
+                function indentLine(increase) {
+                    const pos = markdownInput.selectionStart;
+                    const selEnd = markdownInput.selectionEnd;
+                    const text = markdownInput.value;
+                    const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
+                    const lineEnd = text.indexOf('\n', pos);
+                    const endPos = lineEnd === -1 ? text.length : lineEnd;
+                    const line = text.substring(lineStart, endPos);
+                    const newLine = increase ? '  ' + line : line.replace(/^  /, '').replace(/^ /, '');
+                    const diff = newLine.length - line.length;
+                    markdownInput.value = text.substring(0, lineStart) + newLine + text.substring(endPos);
+                    markdownInput.selectionStart = Math.max(lineStart, pos + diff);
+                    markdownInput.selectionEnd = Math.max(lineStart, selEnd + diff);
+                    updatePreview();
                 }
 
                 boldBtn.addEventListener('click', () => wrapText('**', '**'));
                 italicBtn.addEventListener('click', () => wrapText('*', '*'));
                 strikeBtn.addEventListener('click', () => wrapText('~~', '~~'));
+
+                headingBtn.addEventListener('click', () => {
+                    const pos = markdownInput.selectionStart;
+                    const text = markdownInput.value;
+                    const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
+                    const lineEnd = text.indexOf('\n', pos);
+                    const endPos = lineEnd === -1 ? text.length : lineEnd;
+                    const line = text.substring(lineStart, endPos);
+                    const m = line.match(/^(#{1,6}) /);
+                    let newLine;
+                    if (m && m[1].length < 6) {
+                        newLine = '#'.repeat(m[1].length + 1) + ' ' + line.substring(m[1].length + 1);
+                    } else if (m) {
+                        newLine = line.substring(m[1].length + 1);
+                    } else {
+                        newLine = '## ' + line;
+                    }
+                    markdownInput.value = text.substring(0, lineStart) + newLine + text.substring(endPos);
+                    markdownInput.focus();
+                    updatePreview();
+                });
+
+                linkBtn.addEventListener('click', () => {
+                    const start = markdownInput.selectionStart, end = markdownInput.selectionEnd;
+                    const text = markdownInput.value;
+                    const selected = text.substring(start, end) || 'link text';
+                    const inserted = '[' + selected + '](url)';
+                    markdownInput.value = text.substring(0, start) + inserted + text.substring(end);
+                    markdownInput.focus();
+                    markdownInput.selectionStart = start + 1 + selected.length + 2;
+                    markdownInput.selectionEnd = start + 1 + selected.length + 5;
+                    updatePreview();
+                });
+
                 markdownInput.addEventListener('input', updatePreview);
                 exportButton.addEventListener('click', exportMarkdown);
+
+                // Keyboard shortcuts
+                markdownInput.addEventListener('keydown', (e) => {
+                    const cmdKey = e.metaKey || e.ctrlKey;
+
+                    if (cmdKey && e.key === 'b') { e.preventDefault(); wrapText('**', '**'); return; }
+                    if (cmdKey && e.key === 'i') { e.preventDefault(); wrapText('*', '*'); return; }
+                    if (cmdKey && e.shiftKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); wrapText('~~', '~~'); return; }
+                    if (cmdKey && e.key === 'k') { e.preventDefault(); linkBtn.click(); return; }
+                    if (cmdKey && e.key === ']') { e.preventDefault(); indentLine(true); return; }
+                    if (cmdKey && e.key === '[') { e.preventDefault(); indentLine(false); return; }
+
+                    if (e.key === 'Enter') {
+                        const pos = markdownInput.selectionStart;
+                        const text = markdownInput.value;
+                        const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
+                        const lineBeforeCursor = text.substring(lineStart, pos);
+
+                        const bulletMatch = lineBeforeCursor.match(/^(\s*)([-*+]) (.*)$/);
+                        if (bulletMatch) {
+                            e.preventDefault();
+                            if (!bulletMatch[3].trim()) {
+                                markdownInput.value = text.substring(0, lineStart) + text.substring(pos);
+                                markdownInput.selectionStart = markdownInput.selectionEnd = lineStart;
+                            } else {
+                                const insert = '\n' + bulletMatch[1] + bulletMatch[2] + ' ';
+                                markdownInput.value = text.substring(0, pos) + insert + text.substring(pos);
+                                markdownInput.selectionStart = markdownInput.selectionEnd = pos + insert.length;
+                            }
+                            updatePreview();
+                            return;
+                        }
+
+                        const numberedMatch = lineBeforeCursor.match(/^(\s*)(\d+)\. (.*)$/);
+                        if (numberedMatch) {
+                            e.preventDefault();
+                            if (!numberedMatch[3].trim()) {
+                                markdownInput.value = text.substring(0, lineStart) + text.substring(pos);
+                                markdownInput.selectionStart = markdownInput.selectionEnd = lineStart;
+                            } else {
+                                const insert = '\n' + numberedMatch[1] + (parseInt(numberedMatch[2], 10) + 1) + '. ';
+                                markdownInput.value = text.substring(0, pos) + insert + text.substring(pos);
+                                markdownInput.selectionStart = markdownInput.selectionEnd = pos + insert.length;
+                            }
+                            updatePreview();
+                            return;
+                        }
+                    }
+                });
+
+                // Synchronized scrolling
+                let isSyncing = false;
+                markdownInput.addEventListener('scroll', () => {
+                    if (isSyncing) return;
+                    isSyncing = true;
+                    const pct = markdownInput.scrollTop / (markdownInput.scrollHeight - markdownInput.clientHeight);
+                    htmlOutput.scrollTop = pct * (htmlOutput.scrollHeight - htmlOutput.clientHeight);
+                    isSyncing = false;
+                });
+                htmlOutput.addEventListener('scroll', () => {
+                    if (isSyncing) return;
+                    isSyncing = true;
+                    const pct = htmlOutput.scrollTop / (htmlOutput.scrollHeight - htmlOutput.clientHeight);
+                    markdownInput.scrollTop = pct * (markdownInput.scrollHeight - markdownInput.clientHeight);
+                    isSyncing = false;
+                });
 
                 bionicBtn.addEventListener('click', () => {
                     const textToTransfer = markdownInput.value;
