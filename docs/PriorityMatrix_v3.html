@@ -128,6 +128,9 @@
             // Clear Data Modal State
             const [showClearModal, setShowClearModal] = useState(false);
 
+            // Help Modal State
+            const [showHelp, setShowHelp] = useState(false);
+
             const matrixRef = useRef(null);
             const dragHasMoved = useRef(false);
 
@@ -460,6 +463,55 @@
             return (
                 <div className="flex h-screen overflow-hidden text-slate-800">
 
+                    {/* --- HELP MODAL --- */}
+                    {showHelp && (
+                        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowHelp(false)}>
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-bold text-lg text-slate-800">Excel Format Guide</h3>
+                                    <button onClick={() => setShowHelp(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+                                </div>
+                                <p className="text-sm text-slate-500 mb-4">Your spreadsheet needs a header row with the following columns. Column names are flexible — the app will detect them automatically.</p>
+                                <div className="space-y-3 mb-5">
+                                    <div className="flex gap-3 items-start">
+                                        <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">1</span>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-700">Name <span className="text-red-500">*</span></p>
+                                            <p className="text-xs text-slate-400">The initiative, task, or feature title. Detected from: <span className="font-mono">Name, Initiative, Task, Title, Feature</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 items-start">
+                                        <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">2</span>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-700">Value <span className="text-red-500">*</span></p>
+                                            <p className="text-xs text-slate-400">Business value or impact score (numeric). Detected from: <span className="font-mono">Value, Impact, Benefit, Importance</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 items-start">
+                                        <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">3</span>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-700">Effort <span className="text-red-500">*</span></p>
+                                            <p className="text-xs text-slate-400">Implementation effort or complexity (numeric). Detected from: <span className="font-mono">Effort, Cost, Difficulty, Complexity</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 items-start">
+                                        <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-xs flex items-center justify-center font-bold">4</span>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-700">Description <span className="text-slate-400 font-normal">(optional)</span></p>
+                                            <p className="text-xs text-slate-400">Extra context or notes. Detected from: <span className="font-mono">Description, Detail, Summary, Note</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 space-y-1">
+                                    <p className="font-semibold text-slate-600">Tips</p>
+                                    <p>• Value and Effort can be any numeric scale (e.g. 1–5, 1–10, 1–100) — the matrix normalises them automatically.</p>
+                                    <p>• Add a <span className="font-mono">Theme</span> column to group related initiatives by colour.</p>
+                                    <p>• Not sure? Use <span className="font-semibold text-blue-600 cursor-pointer underline" onClick={() => { setShowHelp(false); generateSampleFile(); }}>Download Sample</span> to see a ready-made template.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* --- CONFIRM CLEAR MODAL --- */}
                     {showClearModal && (
                         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
@@ -627,10 +679,13 @@
                         </div>
 
                         <div className="p-4 space-y-3">
-                            <label className="flex items-center justify-center gap-2 w-full p-3 bg-blue-50 text-blue-700 font-medium rounded-lg cursor-pointer hover:bg-blue-100 transition border border-blue-200">
-                                <UploadIcon /> Upload Excel
-                                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
-                            </label>
+                            <div className="flex gap-2 items-stretch">
+                                <label className="flex-1 flex items-center justify-center gap-2 p-3 bg-blue-50 text-blue-700 font-medium rounded-lg cursor-pointer hover:bg-blue-100 transition border border-blue-200">
+                                    <UploadIcon /> Upload Excel
+                                    <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+                                </label>
+                                <button onClick={() => setShowHelp(true)} title="Excel format guide" className="w-9 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition text-sm font-bold">?</button>
+                            </div>
                             
                             {data.length === 0 ? (
                                 <button onClick={generateSampleFile} className="text-xs text-center text-slate-500 hover:text-blue-600 hover:underline w-full block">Download Sample</button>
