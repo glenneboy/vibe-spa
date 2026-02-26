@@ -114,8 +114,7 @@
         #bionic-app { background-color: #f4f7f6; color: #333; line-height: 1.6; padding: 1.5rem; overflow-y: auto;}
         #bionic-app .container { max-width: 1200px; }
         #bionic-app textarea { min-height: 250px; resize: vertical; }
-        /* FIXED: Added white-space: pre-wrap to respect line breaks */
-        #bionic-app #outputArea { min-height: 350px; overflow-y: auto; border: 1px solid #d1d5db; padding: 1rem; background-color: #fff; border-radius: 0.5rem; box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1); white-space: pre-wrap; word-wrap: break-word; }
+        #bionic-app #outputArea { min-height: 350px; overflow-y: auto; border: 1px solid #d1d5db; padding: 1rem; background-color: #fff; border-radius: 0.5rem; box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow-wrap: break-word; }
         #bionic-app .bionic-bold { font-weight: 700; }
         #bionic-app #outputArea h1, #bionic-app #outputArea h2, #bionic-app #outputArea h3, #bionic-app #outputArea h4, #bionic-app #outputArea h5, #bionic-app #outputArea h6 { font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
         #bionic-app #outputArea h1 { font-size: 2em; } #bionic-app #outputArea h2 { font-size: 1.75em; } #bionic-app #outputArea h3 { font-size: 1.5em; } #bionic-app #outputArea h4 { font-size: 1.25em; } #bionic-app #outputArea h5 { font-size: 1em; } #bionic-app #outputArea h6 { font-size: 0.875em; }
@@ -572,7 +571,14 @@
                 }
 
                 function performConversionAndStyling() {
-                    const markdownRenderedHtml = marked.parse(inputText.value);
+                    // Convert sequences of multiple blank lines into explicit <br> spacers
+                    const processed = inputText.value.replace(/\n(\n)+/g, (match) => {
+                        const blankCount = match.length - 1;
+                        let result = '\n\n';
+                        for (let i = 1; i < blankCount; i++) result += '<br>\n\n';
+                        return result;
+                    });
+                    const markdownRenderedHtml = marked.parse(processed);
                     const tempElement = document.createElement('div'); tempElement.innerHTML = markdownRenderedHtml;
                     applyBionicFormattingToNode(tempElement, parseInt(boldIntensitySlider.value, 10));
                     outputArea.innerHTML = tempElement.innerHTML;
