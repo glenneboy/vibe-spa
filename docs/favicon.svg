@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark tile background -->
+  <rect width="32" height="32" rx="7" fill="#08090f"/>
+
+  <!-- Eye upper arc — electric cyan -->
+  <path d="M5 16 C9 7 23 7 27 16" stroke="#00dcff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Eye lower arc — hot pink -->
+  <path d="M5 16 C9 25 23 25 27 16" stroke="#ff00aa" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Iris ring — cyan-to-pink gradient -->
+  <circle cx="16" cy="16" r="5" fill="none" stroke="url(#iris)" stroke-width="1.8"/>
+
+  <!-- Pupil -->
+  <circle cx="16" cy="16" r="2" fill="white"/>
+
+  <defs>
+    <linearGradient id="iris" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00dcff"/>
+      <stop offset="100%" stop-color="#ff00aa"/>
+    </linearGradient>
+  </defs>
+</svg>
