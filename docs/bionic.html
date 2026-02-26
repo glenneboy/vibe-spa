@@ -326,7 +326,15 @@
                 
                 marked.setOptions({ breaks: false, gfm: true });
 
-                const updatePreview = () => { htmlOutput.innerHTML = marked.parse(markdownInput.value); };
+                const updatePreview = () => {
+                    const processed = markdownInput.value.replace(/\n(\n)+/g, (match) => {
+                        const blankCount = match.length - 1;
+                        let result = '\n\n';
+                        for (let i = 1; i < blankCount; i++) result += '<br>\n\n';
+                        return result;
+                    });
+                    htmlOutput.innerHTML = marked.parse(processed);
+                };
                 const exportMarkdown = () => {
                     const blob = new Blob([markdownInput.value], { type: 'text/markdown' });
                     const url = URL.createObjectURL(blob);
