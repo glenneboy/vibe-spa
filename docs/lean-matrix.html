@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LEAN Matrix</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #F4F4F4;
+      --surface: #FFFFFF;
+      --surface-2: #F4F4F4;
+      --border: #E0E0E0;
+      --border-2: #C8C8C8;
+      --text: #111111;
+      --muted: #767676;
+      --accent: #E60000;
+      --accent-2: #6B2D8B;
+      --q1: #00B140;
+      --q2: #6B2D8B;
+      --q3: #767676;
+      --q4: #E60000;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Figtree', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── HEADER ─────────────────────────────────────── */
+    header {
+      height: 56px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #FFFFFF;
+      border-bottom: 3px solid #E60000;
+      flex-shrink: 0;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 14px; }
+
+    .back-link {
+      display: flex; align-items: center; gap: 5px;
+      color: var(--muted); text-decoration: none;
+      font-size: 12px; font-family: 'JetBrains Mono', monospace;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: var(--text); }
+
+    .divider { width: 1px; height: 16px; background: var(--border-2); }
+
+    .app-title {
+      font-family: 'Arial', sans-serif;
+      font-size: 16px; font-weight: 700;
+      letter-spacing: 0;
+    }
+    .app-title span { color: #E60000; }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 6px;
+      font-size: 12px; font-weight: 500;
+      font-family: 'Figtree', sans-serif;
+      cursor: pointer; transition: all 0.15s; border: none;
+      text-decoration: none; white-space: nowrap;
+    }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border-2); color: var(--muted);
+    }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+    .btn-primary { background: var(--accent); color: #0c0c0e; font-weight: 600; }
+    .btn-primary:hover {
+      background: #d4ff6a;
+      box-shadow: 0 4px 16px rgba(200,255,87,0.25);
+    }
+
+    /* ─── DROPDOWN ───────────────────────────────────── */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+      position: absolute; top: calc(100% + 6px); right: 0;
+      background: var(--surface-2); border: 1px solid var(--border-2);
+      border-radius: 8px; padding: 4px; min-width: 160px;
+      z-index: 200; display: none;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    }
+    .dropdown-menu.open { display: block; }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 12px; border-radius: 5px;
+      font-size: 12px; color: var(--muted);
+      cursor: pointer; transition: all 0.12s;
+    }
+    .dropdown-item:hover { background: var(--border); color: var(--text); }
+    .dropdown-sep {
+      height: 1px; background: var(--border); margin: 4px 0;
+    }
+
+    /* ─── MAIN LAYOUT ────────────────────────────────── */
+    .app-body {
+      display: flex;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+    }
+
+    /* ─── SECTION 1: ITEM LIST ───────────────────────── */
+    .panel-list {
+      width: 320px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      height: 46px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+      border-left: 3px solid #E60000;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .item-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--muted);
+      background: var(--border); padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    .list-scroll {
+      flex: 1; overflow-y: auto; padding: 6px;
+    }
+    .list-scroll::-webkit-scrollbar { width: 3px; }
+    .list-scroll::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+    .list-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 10px; border-radius: 7px;
+      margin-bottom: 2px;
+      cursor: grab; user-select: none;
+      border: 1px solid transparent;
+      transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+    }
+    .list-item:active { cursor: grabbing; }
+    .list-item:hover { background: var(--surface-2); border-color: var(--border-2); }
+    .list-item.is-placed { opacity: 0.55; }
+    .list-item.is-dragging { opacity: 0.3; }
+
+    .drag-grip {
+      color: var(--border-2); flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    .item-name {
+      flex: 1; font-size: 12px; font-weight: 500; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .q-badge {
+      flex-shrink: 0; font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+    }
+    .q-badge.unplaced { background: var(--border); color: var(--muted); }
+    .q-badge.q1 { background: rgba(0,177,64,.12); color: #007a2c; }
+    .q-badge.q2 { background: rgba(107,45,139,.12); color: #6B2D8B; }
+    .q-badge.q3 { background: rgba(118,118,118,.12); color: #555; }
+    .q-badge.q4 { background: rgba(230,0,0,.1); color: #c00; }
+
+    /* quick-place buttons shown on list-item hover */
+    .qp-btns {
+      display: flex; gap: 3px; flex-shrink: 0;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .list-item:hover .qp-btns { opacity: 1; }
+
+    .qp-btn {
+      width: 22px; height: 22px; border-radius: 5px;
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: transform 0.12s, background 0.12s, border-color 0.12s;
+      padding: 0;
+    }
+    .qp-btn:hover { transform: scale(1.18); }
+    .qp-btn.q1 { color: #00B140; }
+    .qp-btn.q1:hover { background: rgba(0,177,64,0.12); border-color: rgba(0,177,64,0.4); }
+    .qp-btn.q2 { color: #6B2D8B; }
+    .qp-btn.q2:hover { background: rgba(107,45,139,0.12); border-color: rgba(107,45,139,0.4); }
+    .qp-btn.q3 { color: #767676; }
+    .qp-btn.q3:hover { background: rgba(118,118,118,0.12); border-color: rgba(118,118,118,0.4); }
+    .qp-btn.q4 { color: #E60000; }
+    .qp-btn.q4:hover { background: rgba(230,0,0,0.1); border-color: rgba(230,0,0,0.4); }
+
+    /* empty state */
+    .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 20px; text-align: center; gap: 10px;
+    }
+    .empty-icon {
+      width: 44px; height: 44px;
+      border: 1.5px dashed var(--border-2); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+    }
+    .empty-text { font-size: 12px; color: var(--muted); line-height: 1.7; }
+    .empty-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--border-2);
+    }
+
+    /* ─── SECTION 2: MATRIX ──────────────────────────── */
+    .panel-matrix {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .matrix-header {
+      height: 46px; padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      border-left: 3px solid #6B2D8B;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .matrix-hint {
+      font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+    }
+
+    .matrix-scene {
+      flex: 1; min-height: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px 80px 60px 72px;
+    }
+
+    /* the relative container that holds axis labels + canvas */
+    .matrix-frame {
+      position: relative;
+      width: 100%;
+      max-width: 840px;
+      /* constrain so canvas never exceeds available height */
+      max-height: calc(100vh - 220px);
+    }
+
+    /* Axis labels */
+    .axis-y {
+      position: absolute;
+      left: -52px; top: 50%;
+      transform: translateY(-50%) rotate(-90deg);
+      display: flex; align-items: center; gap: 8px;
+      white-space: nowrap;
+    }
+    .axis-x {
+      position: absolute;
+      bottom: -42px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .axis-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .axis-name-edit {
+      font-family: 'Syne', sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); outline: none;
+      padding: 2px 5px; border-radius: 3px;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+      min-width: 20px;
+    }
+    .axis-name-edit:hover { border-color: var(--border-2); }
+    .axis-name-edit:focus { border-color: var(--muted); color: var(--text); }
+
+    .axis-end {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px; color: var(--muted); opacity: 0.6;
+    }
+
+    .y-high { position: absolute; left: -52px; top: -2px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted); opacity: 0.6; }
+    .y-low  { position: absolute; left: -52px; bottom: -2px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted); opacity: 0.6; }
+    .x-low  { position: absolute; bottom: -42px; left: 0; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted); opacity: 0.6; }
+    .x-high { position: absolute; bottom: -42px; right: 0; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted); opacity: 0.6; }
+
+    /* ─── QUADRANT CANVAS ────────────────────────────── */
+    .q-canvas {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      /* also bounded by max-height of frame */
+      max-height: calc(100vh - 220px);
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: 3px;
+      overflow: hidden;
+      background-image:
+        linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
+      background-size: 10% 10%;
+    }
+
+    /* crosshairs */
+    .cross-h, .cross-v {
+      position: absolute; background: var(--border-2); pointer-events: none; z-index: 2; opacity: 0.7;
+    }
+    .cross-h { left: 0; right: 0; top: 50%; height: 1px; transform: translateY(-50%); }
+    .cross-v { top: 0; bottom: 0; left: 50%; width: 1px; transform: translateX(-50%); }
+
+    /* quadrant zones */
+    .q-zone {
+      position: absolute; width: 50%; height: 50%; z-index: 1;
+    }
+    .q-zone::before {
+      content: ''; position: absolute; inset: 0; opacity: 0.12;
+    }
+    .q-zone.q1 { top: 0; left: 0; }
+    .q-zone.q1::before { background: #00B140; }
+    .q-zone.q2 { top: 0; right: 0; }
+    .q-zone.q2::before { background: #6B2D8B; }
+    .q-zone.q3 { bottom: 0; left: 0; }
+    .q-zone.q3::before { background: #767676; }
+    .q-zone.q4 { bottom: 0; right: 0; }
+    .q-zone.q4::before { background: #E60000; }
+
+    /* quadrant name labels (editable) */
+    .q-name {
+      position: absolute; z-index: 3;
+      font-family: 'Arial', sans-serif; font-size: 11px;
+      font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+      outline: none; cursor: pointer;
+      padding: 4px 10px; border-radius: 4px;
+      border: 1.5px solid currentColor;
+      transition: all 0.15s;
+    }
+    .q-name:focus { outline: 2px solid currentColor; outline-offset: 2px; }
+    .q-zone.q1 .q-name { color: #007a2c; background: rgba(0,177,64,0.1); top: 10px; left: 12px; }
+    .q-zone.q2 .q-name { color: #6B2D8B; background: rgba(107,45,139,0.1); top: 10px; right: 12px; }
+    .q-zone.q3 .q-name { color: #444; background: rgba(118,118,118,0.1); bottom: 10px; left: 12px; }
+    .q-zone.q4 .q-name { color: #c00; background: rgba(230,0,0,0.08); bottom: 10px; right: 12px; }
+
+    /* drag-over highlight */
+    .q-canvas.drag-active::after {
+      content: '';
+      position: absolute; inset: 0; z-index: 50;
+      border: 2px dashed rgba(230,0,0,0.5);
+      border-radius: 3px;
+      background: rgba(230,0,0,0.02);
+      pointer-events: none;
+    }
+
+    /* ─── CHIPS ──────────────────────────────────────── */
+    .chip {
+      position: absolute; z-index: 10;
+      transform: translate(-50%, -50%);
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: Arial, sans-serif;
+      font-size: 11px; font-weight: 600; color: #111111;
+      white-space: nowrap; max-width: 150px;
+      overflow: hidden; text-overflow: ellipsis;
+      cursor: grab; user-select: none;
+      touch-action: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .chip:hover {
+      border-color: var(--text);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+      z-index: 20;
+    }
+    .chip.grabbing { cursor: grabbing; z-index: 30; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .chip.q1 { border-color: rgba(0,177,64,0.6); background: rgba(0,177,64,0.08); }
+    .chip.q2 { border-color: rgba(107,45,139,0.6); background: rgba(107,45,139,0.08); }
+    .chip.q3 { border-color: rgba(118,118,118,0.5); background: rgba(118,118,118,0.06); }
+    .chip.q4 { border-color: rgba(230,0,0,0.6); background: rgba(230,0,0,0.06); }
+
+    .chip-label { overflow: hidden; text-overflow: ellipsis; }
+
+    .chip-rm {
+      flex-shrink: 0; color: var(--muted);
+      font-size: 13px; line-height: 1;
+      opacity: 0; cursor: pointer;
+      transition: opacity 0.12s, color 0.12s;
+      margin-left: 1px;
+    }
+    .chip:hover .chip-rm { opacity: 1; }
+    .chip-rm:hover { color: var(--q4); }
+
+    /* ─── UPLOAD OVERLAY ─────────────────────────────── */
+    .upload-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(17,17,17,0.88);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    .upload-overlay.hidden { display: none; }
+
+    .upload-card {
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: 16px;
+      padding: 44px 40px;
+      width: 460px;
+      text-align: center;
+    }
+
+    .upload-card-title {
+      font-family: 'Arial', sans-serif;
+      font-size: 28px; font-weight: 700;
+      letter-spacing: -0.02em; margin-bottom: 8px;
+    }
+    .upload-card-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; }
+
+    .upload-zone {
+      border: 1.5px dashed var(--border-2);
+      border-radius: 10px; padding: 32px 20px;
+      cursor: pointer; transition: all 0.2s; margin-bottom: 16px;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #E60000; background: rgba(230,0,0,0.03);
+    }
+    .upload-zone-icon {
+      width: 40px; height: 40px; margin: 0 auto 12px; color: var(--muted);
+    }
+    .upload-zone-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .upload-zone-hint { font-size: 11px; color: var(--muted); }
+
+    .col-select-row {
+      margin-bottom: 16px; text-align: left;
+    }
+    .col-label {
+      font-size: 10px; font-family: 'JetBrains Mono', monospace;
+      color: var(--muted); display: block; margin-bottom: 5px;
+    }
+    .col-select {
+      width: 100%; padding: 8px 12px;
+      background: var(--surface-2); border: 1px solid var(--border-2);
+      border-radius: 6px; color: var(--text);
+      font-size: 12px; font-family: 'Figtree', sans-serif;
+      cursor: pointer; outline: none;
+    }
+    .col-select:focus { border-color: var(--accent); }
+
+    .btn-load {
+      width: 100%; justify-content: center;
+      padding: 12px; font-size: 14px;
+    }
+
+    .upload-footer {
+      margin-top: 14px;
+    }
+
+    /* ─── TOAST ──────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; z-index: 999;
+      background: var(--surface-2); border: 1px solid var(--border-2);
+      border-radius: 8px; padding: 9px 16px;
+      font-size: 12px; color: var(--text);
+      transform: translateY(60px); opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      pointer-events: none;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ─── UPLOAD OVERLAY ──────────────────────────────────────── -->
+<div class="upload-overlay" id="uploadOverlay">
+  <div class="upload-card" style="position:relative">
+    <a href="index.html" style="position:absolute;top:14px;left:16px;display:flex;align-items:center;gap:5px;color:var(--muted);text-decoration:none;font-size:11px;font-family:'JetBrains Mono',monospace;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Dashboard
+    </a>
+    <div class="upload-card-title">LEAN <span style="color:var(--accent)">Matrix</span></div>
+    <p class="upload-card-sub">Upload a CSV or XLSX spreadsheet to map your items onto the Value / Effort matrix.</p>
+
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-zone-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <p class="upload-zone-title">Drop your file here</p>
+      <p class="upload-zone-hint">CSV or XLSX · first row treated as header</p>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+
+    <div class="col-select-row" id="colSelectRow" style="display:none">
+      <label class="col-label">WHICH COLUMN CONTAINS ITEM NAMES?</label>
+      <select class="col-select" id="colSelect"></select>
+    </div>
+
+    <button class="btn btn-primary btn-load" id="loadBtn" onclick="loadItems()" disabled
+            style="opacity:0.4;cursor:not-allowed">
+      Load Items &rarr;
+    </button>
+
+    <div class="upload-footer">
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px" onclick="loadSample()">
+        Use sample data
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── HEADER ──────────────────────────────────────────────── -->
+<header>
+  <div class="header-left">
+    <a href="index.html" class="back-link">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Dashboard
+    </a>
+    <div class="divider"></div>
+    <span class="app-title">LEAN <span>Matrix</span></span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="clearPlacements()" title="Clear all placements">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+      Reset
+    </button>
+    <button class="btn btn-ghost" onclick="showUpload()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload
+    </button>
+    <div class="dropdown">
+      <button class="btn btn-primary" onclick="toggleExportMenu(event)">
+        Export
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="dropdown-menu" id="exportMenu">
+        <div class="dropdown-item" onclick="doExportCSV()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Export as CSV
+        </div>
+        <div class="dropdown-item" onclick="doExportXLSX()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Export as XLSX
+        </div>
+        <div class="dropdown-sep"></div>
+        <div class="dropdown-item" onclick="doExportPDF()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          Export Matrix PDF
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ─── APP BODY ────────────────────────────────────────────── -->
+<div class="app-body">
+
+  <!-- SECTION 1: ITEM LIST -->
+  <aside class="panel-list">
+    <div class="panel-header">
+      <span class="panel-label">Item List</span>
+      <span class="item-badge" id="itemCount">0 items</span>
+    </div>
+    <div class="list-scroll" id="itemList">
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <p class="empty-text">Upload a spreadsheet to<br>populate your item list</p>
+        <p class="empty-hint">drag items onto the matrix &rarr;</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- SECTION 2: MATRIX -->
+  <section class="panel-matrix">
+    <div class="matrix-header">
+      <span class="panel-label">Quadrant Matrix</span>
+      <span class="matrix-hint">click labels to edit &nbsp;·&nbsp; drag items to place &nbsp;·&nbsp; × to remove</span>
+    </div>
+
+    <div class="matrix-scene">
+      <div class="matrix-frame" id="matrixFrame">
+
+        <!-- Y-axis -->
+        <div class="y-high">High</div>
+        <div class="y-low">Low</div>
+        <div class="axis-y">
+          <span class="axis-name">↑</span>
+          <span class="axis-name-edit" contenteditable="true" id="yAxisLabel" onblur="onAxisBlur('y', this)">Value</span>
+        </div>
+
+        <!-- X-axis -->
+        <div class="x-low">Low</div>
+        <div class="x-high">High</div>
+        <div class="axis-x">
+          <span class="axis-name-edit" contenteditable="true" id="xAxisLabel" onblur="onAxisBlur('x', this)">Effort</span>
+          <span class="axis-name">→</span>
+        </div>
+
+        <!-- THE QUADRANT CANVAS -->
+        <div class="q-canvas" id="qCanvas"
+             ondragover="onCanvasDragOver(event)"
+             ondragleave="onCanvasDragLeave(event)"
+             ondrop="onCanvasDrop(event)">
+
+          <!-- Grid dividers -->
+          <div class="cross-h"></div>
+          <div class="cross-v"></div>
+
+          <!-- Q1: top-left — High Value, Low Effort -->
+          <div class="q-zone q1">
+            <div class="q-name" contenteditable="true" id="labelQ1"
+                 onblur="onQLabelBlur('q1', this)">Quick Wins</div>
+          </div>
+          <!-- Q2: top-right — High Value, High Effort -->
+          <div class="q-zone q2">
+            <div class="q-name" contenteditable="true" id="labelQ2"
+                 onblur="onQLabelBlur('q2', this)">Major Projects</div>
+          </div>
+          <!-- Q3: bottom-left — Low Value, Low Effort -->
+          <div class="q-zone q3">
+            <div class="q-name" contenteditable="true" id="labelQ3"
+                 onblur="onQLabelBlur('q3', this)">Fill-ins</div>
+          </div>
+          <!-- Q4: bottom-right — Low Value, High Effort -->
+          <div class="q-zone q4">
+            <div class="q-name" contenteditable="true" id="labelQ4"
+                 onblur="onQLabelBlur('q4', this)">Thankless Tasks</div>
+          </div>
+
+          <!-- chips injected here by JS -->
+        </div><!-- /q-canvas -->
+
+      </div><!-- /matrix-frame -->
+    </div><!-- /matrix-scene -->
+  </section>
+
+</div><!-- /app-body -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ──────────────────────────────────────────────────────
+let items = [];      // { id, name, pctX, pctY, quadrant, raw }
+let parsedRows = []; // raw rows from file
+let fileColumns = [];
+
+const labels = {
+  q1: 'Quick Wins', q2: 'Major Projects',
+  q3: 'Fill-ins',   q4: 'Thankless Tasks',
+  xAxis: 'Effort',  yAxis: 'Value'
+};
+
+// ─── UPLOAD FLOW ─────────────────────────────────────────────────
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) readFile(f);
+  fileInput.value = '';
+});
+
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) readFile(f);
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = e.target.result;
+    let wb;
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      wb = XLSX.read(data, { type: 'string' });
+    } else {
+      wb = XLSX.read(data, { type: 'array' });
+    }
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (!rows.length) { toast('File appears to be empty'); return; }
+
+    fileColumns = rows[0].map(String);
+    parsedRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+    // Update upload zone feedback
+    uploadZone.innerHTML = `
+      <div class="upload-zone-icon" style="color:var(--accent)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <p class="upload-zone-title">${file.name}</p>
+      <p class="upload-zone-hint">${parsedRows.length} rows detected</p>`;
+
+    // Show column selector if >1 column
+    const colRow = document.getElementById('colSelectRow');
+    const colSel = document.getElementById('colSelect');
+    if (fileColumns.length > 1) {
+      colSel.innerHTML = fileColumns.map((c, i) => `<option value="${i}">${c}</option>`).join('');
+      colRow.style.display = 'block';
+    } else {
+      colSel.innerHTML = '';
+      colRow.style.display = 'none';
+    }
+
+    // Enable / disable Load button based on whether we got rows
+    const btn = document.getElementById('loadBtn');
+    if (parsedRows.length > 0) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    } else {
+      uploadZone.querySelector('.upload-zone-hint').textContent = 'No data rows found — check your file';
+    }
+  };
+  if (file.name.toLowerCase().endsWith('.csv')) {
+    reader.readAsText(file);
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function loadItems() {
+  if (!parsedRows.length) { toast('Upload a file first'); return; }
+  const colIdx = parseInt(document.getElementById('colSelect').value || '0');
+  items = parsedRows.map((row, i) => ({
+    id: 'i' + i,
+    name: String(row[colIdx] || '').trim(),
+    pctX: null, pctY: null, quadrant: null,
+    raw: row
+  })).filter(it => it.name);
+  hideUpload();
+  renderAll();
+}
+
+function loadSample() {
+  const names = [
+    'Automate weekly reports', 'Redesign onboarding', 'Fix checkout bug',
+    'Add dark mode', 'Migrate database', 'Build mobile app',
+    'Optimise search', 'Launch referral program', 'Improve email templates',
+    'Set up analytics', 'API rate limiting', 'Write help centre docs'
+  ];
+  items = names.map((name, i) => ({ id: 'i' + i, name, pctX: null, pctY: null, quadrant: null, raw: [name] }));
+  hideUpload();
+  renderAll();
+}
+
+function showUpload() { document.getElementById('uploadOverlay').classList.remove('hidden'); }
+function hideUpload() { document.getElementById('uploadOverlay').classList.add('hidden'); }
+
+// ─── RENDER ──────────────────────────────────────────────────────
+function renderAll() {
+  renderList();
+  renderChips();
+}
+
+function renderList() {
+  const cnt = document.getElementById('itemCount');
+  const list = document.getElementById('itemList');
+  cnt.textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
+
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+      <p class="empty-text">Upload a spreadsheet to<br>populate your item list</p>
+      <p class="empty-hint">drag items onto the matrix &rarr;</p>
+    </div>`;
+    return;
+  }
+
+  // SVG mini-quadrant icons: one quadrant highlighted, others dim
+  function qIcon(highlight) {
+    const cells = ['q1','q2','q3','q4'];
+    const rects = {
+      q1: '1 1 4.5 4.5', q2: '6.5 1 4.5 4.5',
+      q3: '1 6.5 4.5 4.5', q4: '6.5 6.5 4.5 4.5'
+    };
+    return `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      ${cells.map(c => `<rect x="${rects[c].split(' ')[0]}" y="${rects[c].split(' ')[1]}" width="${rects[c].split(' ')[2]}" height="${rects[c].split(' ')[3]}" rx="1" opacity="${c === highlight ? '1' : '0.2'}"/>`).join('')}
+    </svg>`;
+  }
+
+  list.innerHTML = items.map(it => {
+    const q = it.quadrant;
+    const bClass = q || 'unplaced';
+    const bText  = q ? labels[q] : 'Unplaced';
+    const pClass = q ? 'is-placed' : '';
+    return `<div class="list-item ${pClass}" id="li-${it.id}"
+                 draggable="true"
+                 ondragstart="onListDragStart(event,'${it.id}')"
+                 ondragend="onListDragEnd(event,'${it.id}')">
+      <svg class="drag-grip" width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+        <circle cx="2.5" cy="2" r="1.3"/><circle cx="7.5" cy="2" r="1.3"/>
+        <circle cx="2.5" cy="7" r="1.3"/><circle cx="7.5" cy="7" r="1.3"/>
+        <circle cx="2.5" cy="12" r="1.3"/><circle cx="7.5" cy="12" r="1.3"/>
+      </svg>
+      <span class="item-name" title="${it.name}">${it.name}</span>
+      <div class="qp-btns">
+        <button class="qp-btn q1" title="${labels.q1}" onclick="quickPlaceItem(event,'${it.id}','q1')">${qIcon('q1')}</button>
+        <button class="qp-btn q2" title="${labels.q2}" onclick="quickPlaceItem(event,'${it.id}','q2')">${qIcon('q2')}</button>
+        <button class="qp-btn q3" title="${labels.q3}" onclick="quickPlaceItem(event,'${it.id}','q3')">${qIcon('q3')}</button>
+        <button class="qp-btn q4" title="${labels.q4}" onclick="quickPlaceItem(event,'${it.id}','q4')">${qIcon('q4')}</button>
+      </div>
+      <span class="q-badge ${bClass}">${bText}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderChips() {
+  const canvas = document.getElementById('qCanvas');
+  canvas.querySelectorAll('.chip').forEach(c => c.remove());
+  items.filter(it => it.quadrant).forEach(it => {
+    canvas.appendChild(buildChip(it));
+  });
+}
+
+function buildChip(it) {
+  const chip = document.createElement('div');
+  chip.className = `chip ${it.quadrant}`;
+  chip.id = `chip-${it.id}`;
+  chip.dataset.id = it.id;
+  chip.style.left = it.pctX + '%';
+  chip.style.top  = it.pctY + '%';
+  chip.innerHTML = `<span class="chip-label" title="${it.name}">${it.name}</span><span class="chip-rm" onclick="removeChip(event,'${it.id}')">×</span>`;
+  chip.addEventListener('pointerdown', chipPointerDown);
+  return chip;
+}
+
+// ─── DRAG FROM LIST ───────────────────────────────────────────────
+function onListDragStart(e, id) {
+  e.dataTransfer.setData('itemId', id);
+  e.dataTransfer.setData('src', 'list');
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => document.getElementById(`li-${id}`)?.classList.add('is-dragging'), 0);
+}
+function onListDragEnd(e, id) {
+  document.getElementById(`li-${id}`)?.classList.remove('is-dragging');
+}
+
+// ─── CANVAS DRAG EVENTS (from list) ──────────────────────────────
+function onCanvasDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.getElementById('qCanvas').classList.add('drag-active');
+}
+function onCanvasDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    document.getElementById('qCanvas').classList.remove('drag-active');
+  }
+}
+function onCanvasDrop(e) {
+  e.preventDefault();
+  const canvas = document.getElementById('qCanvas');
+  canvas.classList.remove('drag-active');
+
+  const id = e.dataTransfer.getData('itemId');
+  if (!id) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const px = clamp((e.clientX - rect.left) / rect.width * 100, 3, 97);
+  const py = clamp((e.clientY - rect.top) / rect.height * 100, 3, 97);
+  placeItem(id, px, py);
+}
+
+// ─── CHIP POINTER DRAG (repositioning on canvas) ──────────────────
+let _drag = null; // { id, offX, offY }
+
+function chipPointerDown(e) {
+  if (e.target.classList.contains('chip-rm')) return;
+  e.preventDefault();
+
+  const chip = e.currentTarget;
+  const id = chip.dataset.id;
+  const canvas = document.getElementById('qCanvas');
+  const cRect = canvas.getBoundingClientRect();
+  const chRect = chip.getBoundingClientRect();
+
+  // Offset from chip center (chip is transformed by -50%,-50%)
+  const offX = e.clientX - (chRect.left + chRect.width / 2);
+  const offY = e.clientY - (chRect.top  + chRect.height / 2);
+
+  _drag = { id, offX, offY };
+  chip.classList.add('grabbing');
+  chip.setPointerCapture(e.pointerId);
+
+  chip.addEventListener('pointermove', chipPointerMove);
+  chip.addEventListener('pointerup',   chipPointerUp);
+  chip.addEventListener('pointercancel', chipPointerUp);
+}
+
+function chipPointerMove(e) {
+  if (!_drag) return;
+  const chip = e.currentTarget;
+  const canvas = document.getElementById('qCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const px = clamp((e.clientX - _drag.offX - rect.left) / rect.width  * 100, 3, 97);
+  const py = clamp((e.clientY - _drag.offY - rect.top)  / rect.height * 100, 3, 97);
+  chip.style.left = px + '%';
+  chip.style.top  = py + '%';
+}
+
+function chipPointerUp(e) {
+  if (!_drag) return;
+  const chip = e.currentTarget;
+  const canvas = document.getElementById('qCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const px = clamp((e.clientX - _drag.offX - rect.left) / rect.width  * 100, 3, 97);
+  const py = clamp((e.clientY - _drag.offY - rect.top)  / rect.height * 100, 3, 97);
+
+  chip.classList.remove('grabbing');
+  chip.removeEventListener('pointermove', chipPointerMove);
+  chip.removeEventListener('pointerup',   chipPointerUp);
+  chip.removeEventListener('pointercancel', chipPointerUp);
+
+  placeItem(_drag.id, px, py);
+  _drag = null;
+}
+
+// ─── QUICK PLACE ──────────────────────────────────────────────────
+const QUAD_BOUNDS = {
+  q1: { x0: 5, x1: 45, y0: 5, y1: 45 },
+  q2: { x0: 55, x1: 95, y0: 5, y1: 45 },
+  q3: { x0: 5, x1: 45, y0: 55, y1: 95 },
+  q4: { x0: 55, x1: 95, y0: 55, y1: 95 },
+};
+
+function findFreeSpot(targetQ, excludeId) {
+  const b = QUAD_BOUNDS[targetQ];
+  const COLS = 4, ROWS = 3;
+  const placed = items.filter(it => it.id !== excludeId && it.quadrant);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const px = b.x0 + (b.x1 - b.x0) * (c + 0.5) / COLS;
+      const py = b.y0 + (b.y1 - b.y0) * (r + 0.5) / ROWS;
+      const blocked = placed.some(it =>
+        Math.abs(it.pctX - px) < 11 && Math.abs(it.pctY - py) < 14
+      );
+      if (!blocked) return { px, py };
+    }
+  }
+  // All slots taken — place near centre with small random jitter
+  return {
+    px: (b.x0 + b.x1) / 2 + (Math.random() - 0.5) * 8,
+    py: (b.y0 + b.y1) / 2 + (Math.random() - 0.5) * 8,
+  };
+}
+
+function quickPlaceItem(e, id, targetQ) {
+  e.stopPropagation();
+  const spot = findFreeSpot(targetQ, id);
+  placeItem(id, spot.px, spot.py);
+}
+
+// ─── PLACEMENT ────────────────────────────────────────────────────
+function placeItem(id, pctX, pctY) {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it.pctX = pctX;
+  it.pctY = pctY;
+  it.quadrant = quadrantFor(pctX, pctY);
+  renderAll();
+}
+
+function removeChip(e, id) {
+  e.stopPropagation(); e.preventDefault();
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it.pctX = it.pctY = it.quadrant = null;
+  renderAll();
+}
+
+function clearPlacements() {
+  items.forEach(it => { it.pctX = it.pctY = it.quadrant = null; });
+  renderAll();
+  toast('All placements cleared');
+}
+
+function quadrantFor(px, py) {
+  // px: 0=left=low effort, 100=right=high effort
+  // py: 0=top=high value, 100=bottom=low value
+  if (px < 50 && py < 50) return 'q1'; // High value, Low effort  → Quick Wins
+  if (px >= 50 && py < 50) return 'q2'; // High value, High effort → Major Projects
+  if (px < 50 && py >= 50) return 'q3'; // Low value,  Low effort  → Fill-ins
+  return 'q4';                           // Low value,  High effort → Thankless Tasks
+}
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+// ─── LABEL EDITING ────────────────────────────────────────────────
+function onQLabelBlur(q, el) {
+  const txt = el.innerText.trim();
+  if (txt) labels[q] = txt;
+  else el.innerText = labels[q];
+  renderList();
+}
+function onAxisBlur(axis, el) {
+  const txt = el.innerText.trim();
+  if (axis === 'x') labels.xAxis = txt || 'Effort';
+  else               labels.yAxis = txt || 'Value';
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────
+document.addEventListener('click', () => document.getElementById('exportMenu').classList.remove('open'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('exportMenu').classList.remove('open'); });
+
+function toggleExportMenu(e) {
+  e.stopPropagation();
+  document.getElementById('exportMenu').classList.toggle('open');
+}
+
+function exportRows() {
+  return items.map(it => ({
+    'Item': it.name,
+    'Quadrant': it.quadrant ? labels[it.quadrant] : 'Unplaced',
+    [`${labels.xAxis} (%)` ]: it.pctX !== null ? Math.round(it.pctX) : '',
+    [`${labels.yAxis} (%)`]: it.pctY !== null ? Math.round(100 - it.pctY) : '', // invert Y so high = high value
+  }));
+}
+
+function doExportCSV() {
+  document.getElementById('exportMenu').classList.remove('open');
+  if (!items.length) { toast('No items to export'); return; }
+  const ws = XLSX.utils.json_to_sheet(exportRows());
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  download(new Blob([csv], { type: 'text/csv' }), 'lean-matrix.csv');
+  toast('CSV exported');
+}
+
+function doExportXLSX() {
+  document.getElementById('exportMenu').classList.remove('open');
+  if (!items.length) { toast('No items to export'); return; }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(exportRows());
+  ws['!cols'] = [{ wch: 32 }, { wch: 20 }, { wch: 14 }, { wch: 14 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'LEAN Matrix');
+  XLSX.writeFile(wb, 'lean-matrix.xlsx');
+  toast('XLSX exported');
+}
+
+async function doExportPDF() {
+  document.getElementById('exportMenu').classList.remove('open');
+  toast('Generating PDF…');
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W = pdf.internal.pageSize.getWidth();  // 297
+    const H = pdf.internal.pageSize.getHeight(); // 210
+
+    const m = 18;
+    const titleH = 16;
+    const axisGap = 8;
+    const mx = m + axisGap; // left edge of matrix
+    const my = m + titleH;  // top edge of matrix
+    const mw = W - mx - m;
+    const mh = H - my - m - axisGap;
+    const hw = mw / 2;
+    const hh = mh / 2;
+
+    // ── Page & brand stripe
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, W, H, 'F');
+    pdf.setFillColor(230, 0, 0);
+    pdf.rect(0, 0, W, 2.5, 'F');
+
+    // ── Title
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(14);
+    pdf.setTextColor(17, 17, 17);
+    pdf.text('LEAN Matrix', mx, m + 7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7);
+    pdf.setTextColor(118, 118, 118);
+    pdf.text(`${labels.yAxis} (vertical)  ·  ${labels.xAxis} (horizontal)`, mx, m + 13);
+
+    // ── Quadrant fills (colours blended to ~12% opacity on white)
+    pdf.setFillColor(224, 246, 232); pdf.rect(mx,      my,      hw, hh, 'F'); // Q1 green
+    pdf.setFillColor(236, 226, 242); pdf.rect(mx + hw, my,      hw, hh, 'F'); // Q2 purple
+    pdf.setFillColor(245, 245, 245); pdf.rect(mx,      my + hh, hw, hh, 'F'); // Q3 grey
+    pdf.setFillColor(254, 224, 224); pdf.rect(mx + hw, my + hh, hw, hh, 'F'); // Q4 red
+
+    // ── Matrix border & crosshair
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.4);
+    pdf.rect(mx, my, mw, mh, 'S');
+    pdf.setLineWidth(0.25);
+    pdf.line(mx + hw, my, mx + hw, my + mh);
+    pdf.line(mx, my + hh, mx + mw, my + hh);
+
+    // ── Quadrant name labels
+    const qdefs = [
+      { text: labels.q1, x: mx + 3,      y: my + 5,      color: [0,100,30],   align: 'left' },
+      { text: labels.q2, x: mx + mw - 3, y: my + 5,      color: [90,20,115],  align: 'right' },
+      { text: labels.q3, x: mx + 3,      y: my + mh - 3, color: [60,60,60],   align: 'left' },
+      { text: labels.q4, x: mx + mw - 3, y: my + mh - 3, color: [180,0,0],    align: 'right' },
+    ];
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(7);
+    qdefs.forEach(q => {
+      pdf.setTextColor(...q.color);
+      pdf.text(q.text.toUpperCase(), q.x, q.y, { align: q.align });
+    });
+
+    // ── Axis labels & low/high markers
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(7);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`\u2191 ${labels.yAxis.toUpperCase()}`, mx - axisGap, my + hh, { angle: 90, align: 'center' });
+    pdf.text(`${labels.xAxis.toUpperCase()} \u2192`, mx + hw, my + mh + axisGap - 1, { align: 'center' });
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(6);
+    pdf.setTextColor(160, 160, 160);
+    pdf.text('High', mx - 1, my + 2.5, { align: 'right' });
+    pdf.text('Low',  mx - 1, my + mh,  { align: 'right' });
+    pdf.text('Low',  mx,     my + mh + axisGap - 1);
+    pdf.text('High', mx + mw, my + mh + axisGap - 1, { align: 'right' });
+
+    // ── Chips (placed items)
+    const placed = items.filter(it => it.quadrant);
+    if (placed.length) {
+      const chipH    = 5.5;
+      const chipPad  = 3;
+      const maxW     = hw - 6;
+      const chipStroke = { q1:[0,150,57],  q2:[107,45,139], q3:[150,150,150], q4:[200,0,0]  };
+      const chipFill   = { q1:[218,242,226],q2:[230,220,240],q3:[236,236,236], q4:[252,218,218] };
+      const chipColor  = { q1:[0,80,25],   q2:[70,20,90],   q3:[50,50,50],    q4:[150,0,0]  };
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(6.5);
+
+      placed.forEach(it => {
+        const cx = mx + (it.pctX / 100) * mw;
+        const cy = my + (it.pctY / 100) * mh;
+
+        // Truncate name to fit within chip width
+        let text = it.name;
+        let tw   = pdf.getTextWidth(text);
+        while (tw + chipPad * 2 > maxW && text.length > 2) {
+          text = text.slice(0, -1);
+          tw   = pdf.getTextWidth(text + '\u2026');
+        }
+        if (text !== it.name) text += '\u2026';
+        tw = pdf.getTextWidth(text);
+
+        const chipW = tw + chipPad * 2;
+        const rx    = cx - chipW / 2;
+        const ry    = cy - chipH / 2;
+
+        pdf.setFillColor(...chipFill[it.quadrant]);
+        pdf.roundedRect(rx, ry, chipW, chipH, 1.2, 1.2, 'F');
+        pdf.setDrawColor(...chipStroke[it.quadrant]);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(rx, ry, chipW, chipH, 1.2, 1.2, 'S');
+        pdf.setTextColor(...chipColor[it.quadrant]);
+        pdf.text(text, cx, cy + 1.8, { align: 'center' });
+      });
+    }
+
+    // ── Footer
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(6);
+    pdf.setTextColor(180, 180, 180);
+    pdf.text(
+      `${placed ? items.filter(it=>it.quadrant).length : 0} of ${items.length} items placed  ·  LEAN Matrix`,
+      W - m, H - 4, { align: 'right' }
+    );
+
+    pdf.save('lean-matrix.pdf');
+    toast('PDF exported');
+  } catch (err) {
+    toast('PDF failed: ' + err.message);
+    console.error(err);
+  }
+}
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
