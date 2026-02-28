@@ -42,7 +42,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-600 mb-1">Total Apps</p>
-                    <p class="text-3xl font-bold text-gray-900" id="appCount">8</p>
+                    <p class="text-3xl font-bold text-gray-900" id="appCount">9</p>
                 </div>
                 <div class="text-right">
                     <p class="text-sm text-gray-600 mb-1">Last Updated</p>
@@ -195,6 +195,25 @@
                         <span class="px-2 py-1 bg-lime-100 text-lime-700 text-xs font-semibold rounded-full">Active</span>
                     </div>
                     <p class="text-gray-600 text-sm mb-4">Map items onto a Value vs Effort quadrant matrix. Upload CSV or XLSX, drag items to position them, edit labels, and export results or a PDF snapshot.</p>
+                </div>
+            </a>
+
+            <!-- Pomodoro Timer -->
+            <a href="pomodoro.html" class="app-card bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                <div class="h-32 flex items-center justify-center" style="background: linear-gradient(135deg, #1a0e09 0%, #2d1506 50%, #0d0907 100%);">
+                    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                      <circle cx="32" cy="32" r="26" stroke="#FF6B35" stroke-width="3" stroke-opacity="0.3"/>
+                      <circle cx="32" cy="32" r="26" stroke="#FF6B35" stroke-width="3" stroke-dasharray="163" stroke-dashoffset="40" stroke-linecap="round" transform="rotate(-90 32 32)" filter="url(#glow)"/>
+                      <text x="32" y="38" text-anchor="middle" font-family="monospace" font-size="14" font-weight="300" fill="#F5F0E8">25:00</text>
+                      <defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                    </svg>
+                </div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xl font-bold text-gray-900">Pomodoro Timer</h3>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full" style="background:#fff3ee;color:#c94e1a;">Focus</span>
+                    </div>
+                    <p class="text-gray-600 text-sm mb-4">Deep work timer with focus, short break, and long break modes. Tracks daily sessions, auto-advance, keyboard shortcuts, and a completion chime.</p>
                 </div>
             </a>
 
