@@ -510,19 +510,21 @@
       return angle ? { w: th, h: tw } : { w: tw, h: th };
     }
 
-    function findSpot(ctx, word, fontObj) {
+    function findSpot(ctx, word, fontObj, localPlaced) {
+      const pl = localPlaced || placed;
       const angles = getAngles(word.text);
       const cx = CW / 2, cy = CH / 2;
       const maxR = Math.sqrt(CW * CW + CH * CH) / 2 + 20;
-      const bias = hash01(word.text) * Math.PI * 2; // per-word start angle
+      const bias = hash01(word.text) * Math.PI * 2;
 
       for (const angle of angles) {
         const { w, h } = measureBox(ctx, word.text, word.fontSize, fontObj, angle);
         let θ = 0;
 
-        for (let i = 0; i < 6000; i++) {
-          θ += 0.12;
-          const r = 4 * θ;
+        // Denser spiral: A=2 (was 4) gives 2× more search points per radius unit
+        for (let i = 0; i < 12000; i++) {
+          θ += 0.08;
+          const r = 2 * θ;
           if (r > maxR) break;
 
           const px = cx + r * Math.cos(θ + bias);
@@ -530,7 +532,7 @@
           const rect = { x: px - w / 2, y: py - h / 2, w, h };
 
           if (rect.x < 4 || rect.y < 4 || rect.x + w > CW - 4 || rect.y + h > CH - 4) continue;
-          if (!placed.some(p => overlaps(rect, p))) {
+          if (!pl.some(p => overlaps(rect, p))) {
             return { x: px, y: py, rect, angle };
           }
         }
@@ -593,39 +595,72 @@
       const canvas = document.getElementById('cloud');
       const ctx = canvas.getContext('2d');
       placed = [];
-
-      // Background
-      ctx.clearRect(0, 0, CW, CH);
       const bgCfg = BGS.find(b => b.id === cBg);
+
+      // Base sizes at scale 1.0, sorted largest first
+      const baseSized = toFontSizes(parsed).sort((a, b) => b.fontSize - a.fontSize);
+
+      // Auto-scale retry: shrink fonts until every word fits
+      let scaleFactor = 1.0;
+      let finalWords = null;
+      let finalSpots = null;
+
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const scaledWords = baseSized.map(w => ({
+          ...w,
+          fontSize: Math.max(8, Math.round(w.fontSize * scaleFactor)),
+        }));
+        const colored = assignColors(scaledWords);
+
+        const localPlaced = [];
+        const spots = [];
+        let failed = false;
+
+        for (const word of colored) {
+          const spot = findSpot(ctx, word, fontObj, localPlaced);
+          if (spot) {
+            localPlaced.push(spot.rect);
+            spots.push({ word, spot });
+          } else {
+            failed = true;
+            break;
+          }
+        }
+
+        if (!failed) {
+          finalWords = colored;
+          finalSpots = spots;
+          placed = localPlaced;
+          break;
+        }
+
+        scaleFactor *= 0.85;
+        await new Promise(r => setTimeout(r, 0)); // keep UI responsive
+      }
+
+      // Draw background then all words
+      ctx.clearRect(0, 0, CW, CH);
       if (bgCfg.fill) {
         ctx.fillStyle = bgCfg.fill;
         ctx.fillRect(0, 0, CW, CH);
       }
 
-      // Prepare words: sort largest first (they go in center)
-      const sized   = toFontSizes(parsed).sort((a, b) => b.fontSize - a.fontSize);
-      const colored = assignColors(sized);
-
-      // Place and draw
-      let nPlaced = 0, nSkipped = 0;
-      for (const word of colored) {
-        const spot = findSpot(ctx, word, fontObj);
-        if (spot) {
-          placed.push(spot.rect);
+      if (finalSpots) {
+        for (const { word, spot } of finalSpots) {
           drawWord(ctx, word, spot, fontObj);
-          nPlaced++;
-        } else {
-          nSkipped++;
         }
       }
 
       hasCloud = true;
       shell.classList.remove('busy');
       document.getElementById('btnDl').disabled = false;
-      infoEl.textContent = nSkipped > 0
-        ? `${nPlaced} words placed · ${nSkipped} couldn't fit`
-        : `${nPlaced} words placed`;
-      infoEl.className = nSkipped > 0 ? 'gen-info warn' : 'gen-info';
+
+      const n = finalSpots ? finalSpots.length : 0;
+      const scaled = scaleFactor < 0.98;
+      infoEl.textContent = scaled
+        ? `${n} words placed · fonts scaled to ${Math.round(scaleFactor * 100)}% to fit`
+        : `${n} words placed`;
+      infoEl.className = 'gen-info';
 
       btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate Cloud`;
       btn.disabled = false;
