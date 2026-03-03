@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Cloud Studio</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@400;600;700;800&family=Playfair+Display:wght@700;900&family=Unbounded:wght@400;700;900&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #EDEAE4;
+      --sb:       #FFFFFF;
+      --border:   #DDD9D2;
+      --text:     #1A1816;
+      --muted:    #8A8480;
+      --muted-2:  #C4BFB8;
+      --accent:   #BD3920;
+      --accent-h: #A03118;
+      --surface:  #F5F2EE;
+      --surface-h:#ECE8E1;
+      --r: 6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* ── SIDEBAR ───────────────────────────────────────────────── */
+    .sidebar {
+      width: 282px;
+      flex-shrink: 0;
+      background: var(--sb);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .sb-head {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sb-back {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      display: inline-block;
+      margin-bottom: 10px;
+      transition: color 0.15s;
+    }
+    .sb-back:hover { color: var(--text); }
+
+    .sb-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .sb-title span { color: var(--accent); }
+    .sb-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .sb-section {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sb-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 9px;
+    }
+    .sb-sublabel {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted-2);
+      margin-bottom: 7px;
+      margin-top: 13px;
+    }
+    .sb-sublabel:first-of-type { margin-top: 0; }
+
+    textarea {
+      width: 100%;
+      height: 148px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 10px 12px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text);
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted-2); font-size: 12px; }
+
+    .hint {
+      margin-top: 7px;
+      font-size: 10.5px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* Swatches */
+    .swatches {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2.5px solid transparent;
+      outline: 2px solid transparent;
+      outline-offset: 2px;
+      transition: transform 0.15s, outline-color 0.15s;
+    }
+    .swatch:hover { transform: scale(1.15); }
+    .swatch.active { outline-color: var(--text); transform: scale(1.1); }
+
+    /* Pills */
+    .pills { display: flex; flex-wrap: wrap; gap: 5px; }
+    .pill {
+      padding: 4px 10px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .pill:hover { color: var(--text); border-color: var(--muted-2); }
+    .pill.active { color: var(--accent); background: #FDF0ED; border-color: var(--accent); }
+
+    /* Footer */
+    .sb-foot {
+      margin-top: auto;
+      padding: 16px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .btn-gen {
+      width: 100%;
+      padding: 11px 16px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: none;
+      border-radius: var(--r);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-gen:hover { background: var(--accent-h); }
+    .btn-gen:active { transform: scale(0.98); }
+    .btn-gen:disabled { opacity: 0.6; cursor: wait; }
+
+    .btn-dl {
+      width: 100%;
+      padding: 10px 16px;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-dl:not(:disabled):hover { color: var(--text); border-color: var(--muted-2); }
+    .btn-dl:disabled { opacity: 0.38; cursor: not-allowed; }
+
+    .gen-info {
+      font-size: 10.5px;
+      color: var(--muted);
+      text-align: center;
+      min-height: 16px;
+      line-height: 1.4;
+    }
+    .gen-info.warn { color: #C2410C; }
+    .kbd-hint {
+      font-size: 10px;
+      color: var(--muted-2);
+      text-align: center;
+    }
+
+    /* ── CANVAS AREA ───────────────────────────────────────────── */
+    .canvas-outer {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .canvas-shell {
+      width: 100%;
+      max-width: min(calc(100vw - 282px - 48px), calc((100vh - 48px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #F8F5F0;
+      box-shadow:
+        0 1px 3px rgba(0,0,0,0.06),
+        0 4px 16px rgba(0,0,0,0.09),
+        0 16px 48px rgba(0,0,0,0.06);
+      transition: opacity 0.25s;
+    }
+    .canvas-shell.busy { opacity: 0.55; }
+    .canvas-shell.transp {
+      background: repeating-conic-gradient(#CBD5DA 0% 25%, #F0EDE8 0% 50%) 0 0 / 16px 16px;
+    }
+
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="sb-head">
+      <a href="index.html" class="sb-back">← Dashboard</a>
+      <div class="sb-title">Word<span>Cloud</span> Studio</div>
+      <div class="sb-sub">Paste · Style · Export PNG for PowerPoint</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Words</div>
+      <textarea id="input" placeholder="One word or phrase per line&#10;&#10;Without weights:&#10;Strategy&#10;Innovation&#10;Growth&#10;&#10;With weights (higher = bigger):&#10;Leadership 8&#10;Vision 5&#10;Impact 3"></textarea>
+      <div class="hint">With trailing numbers, size follows the value. Without numbers, first entry is largest.</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Colour Theme</div>
+      <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Font</div>
+      <div class="pills" id="fontPills"></div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-sublabel">Background</div>
+      <div class="pills" id="bgPills"></div>
+      <div class="sb-sublabel">Word Orientation</div>
+      <div class="pills" id="orientPills"></div>
+    </div>
+
+    <div class="sb-foot">
+      <button class="btn-gen" id="btnGen" onclick="generate()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Generate Cloud
+      </button>
+      <button class="btn-dl" id="btnDl" onclick="dlCloud()" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PNG
+      </button>
+      <div class="gen-info" id="genInfo"></div>
+      <div class="kbd-hint">⌘↵ · Ctrl↵ to generate</div>
+    </div>
+  </aside>
+
+  <main class="canvas-outer">
+    <div class="canvas-shell" id="canvasShell">
+      <canvas id="cloud" width="1200" height="675"></canvas>
+    </div>
+  </main>
+
+  <script>
+    // ── Constants ────────────────────────────────────────────────
+    const CW = 1200, CH = 675;
+    const MIN_FS = 14, MAX_FS = 96;
+
+    const THEMES = {
+      ocean:  { label:'Ocean',   sw:['#023E8A','#0096C7','#48CAE4'],
+                light:['#023E8A','#0077B6','#0096C7','#00B4D8','#3B9EAF','#48CAE4'],
+                dark: ['#90E0EF','#72CFED','#48CAE4','#ADE8F4','#9DD8E9','#CAF0F8'] },
+      sunset: { label:'Sunset',  sw:['#AE2012','#F77F00','#FCBF49'],
+                light:['#6A040F','#AE2012','#D62828','#F77F00','#F4A261','#FCBF49'],
+                dark: ['#FFF1CC','#FFD166','#FF9F1C','#FF6B35','#FF4D6D','#FFB3C1'] },
+      forest: { label:'Forest',  sw:['#1B4332','#40916C','#95D5B2'],
+                light:['#1B4332','#2D6A4F','#40916C','#52B788','#74C69D','#95D5B2'],
+                dark: ['#D8F3DC','#B7E4C7','#95D5B2','#74C69D','#A8DFC0','#C1EDD1'] },
+      berry:  { label:'Berry',   sw:['#560BAD','#B5179E','#F72585'],
+                light:['#10002B','#3A0CA3','#560BAD','#7209B7','#B5179E','#F72585'],
+                dark: ['#EED9FF','#E0AAFF','#C77DFF','#E879F9','#F4A7D0','#FFC8DD'] },
+      ember:  { label:'Ember',   sw:['#DC2626','#F97316','#FCD34D'],
+                light:['#7F1D1D','#B91C1C','#DC2626','#F97316','#FB923C','#FCD34D'],
+                dark: ['#FFFFFF','#FFF3E0','#FFD166','#FFB347','#FF8C42','#FF6B35'] },
+      slate:  { label:'Slate',   sw:['#1E293B','#475569','#94A3B8'],
+                light:['#0F172A','#1E293B','#334155','#475569','#64748B','#94A3B8'],
+                dark: ['#F1F5F9','#E2E8F0','#CBD5E1','#94A3B8','#B8C5D4','#D0DAE7'] },
+      rose:   { label:'Rose',    sw:['#881337','#F43F5E','#FDA4AF'],
+                light:['#4C0519','#881337','#9F1239','#E11D48','#F43F5E','#FB7185'],
+                dark: ['#FFE4E8','#FECDD3','#FDA4AF','#FF8FAA','#FF6B8A','#FF4D77'] },
+      gold:   { label:'Gold',    sw:['#92400E','#D97706','#FDE68A'],
+                light:['#451A03','#713F12','#92400E','#B45309','#D97706','#FDE68A'],
+                dark: ['#FFFBEB','#FEF3C7','#FDE68A','#FCD34D','#F59E0B','#FBBF24'] },
+    };
+
+    const FONTS = [
+      { id:'Syne',             label:'Syne',    wsm:'600', wlg:'800' },
+      { id:'Playfair Display', label:'Serif',   wsm:'700', wlg:'900' },
+      { id:'Unbounded',        label:'Block',   wsm:'400', wlg:'700' },
+      { id:'Figtree',          label:'Round',   wsm:'500', wlg:'700' },
+    ];
+
+    const BGS = [
+      { id:'white',  label:'White',        fill:'#FFFFFF' },
+      { id:'cream',  label:'Cream',        fill:'#FBF8F4' },
+      { id:'dark',   label:'Dark',         fill:'#111111' },
+      { id:'navy',   label:'Navy',         fill:'#0A1628' },
+      { id:'transp', label:'Transparent',  fill:null      },
+    ];
+
+    const ORIENTS = [
+      { id:'horiz', label:'Horizontal' },
+      { id:'mixed', label:'Mixed'      },
+      { id:'vert',  label:'Vertical'   },
+    ];
+
+    // ── State ─────────────────────────────────────────────────────
+    let cTheme  = 'ocean';
+    let cFont   = 'Syne';
+    let cBg     = 'white';
+    let cOrient = 'horiz';
+    let placed  = [];
+    let hasCloud = false;
+
+    // ── Build sidebar controls ────────────────────────────────────
+    const swatchEl = document.getElementById('swatches');
+    const fontEl   = document.getElementById('fontPills');
+    const bgEl     = document.getElementById('bgPills');
+    const orientEl = document.getElementById('orientPills');
+
+    Object.entries(THEMES).forEach(([id, t]) => {
+      const el = document.createElement('div');
+      el.className = 'swatch' + (id === cTheme ? ' active' : '');
+      el.title = t.label;
+      el.style.background = `conic-gradient(${t.sw[0]} 0deg 120deg, ${t.sw[1]} 120deg 240deg, ${t.sw[2]} 240deg 360deg)`;
+      el.onclick = () => {
+        cTheme = id;
+        swatchEl.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+        el.classList.add('active');
+      };
+      swatchEl.appendChild(el);
+    });
+
+    FONTS.forEach(f => {
+      const el = document.createElement('button');
+      el.className = 'pill' + (f.id === cFont ? ' active' : '');
+      el.textContent = f.label;
+      el.style.fontFamily = `'${f.id}', sans-serif`;
+      el.onclick = () => {
+        cFont = f.id;
+        fontEl.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        el.classList.add('active');
+      };
+      fontEl.appendChild(el);
+    });
+
+    BGS.forEach(b => {
+      const el = document.createElement('button');
+      el.className = 'pill' + (b.id === cBg ? ' active' : '');
+      el.textContent = b.label;
+      el.onclick = () => {
+        cBg = b.id;
+        bgEl.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('canvasShell').classList.toggle('transp', b.id === 'transp');
+      };
+      bgEl.appendChild(el);
+    });
+
+    ORIENTS.forEach(o => {
+      const el = document.createElement('button');
+      el.className = 'pill' + (o.id === cOrient ? ' active' : '');
+      el.textContent = o.label;
+      el.onclick = () => {
+        cOrient = o.id;
+        orientEl.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        el.classList.add('active');
+      };
+      orientEl.appendChild(el);
+    });
+
+    // ── Parse input ───────────────────────────────────────────────
+    function parseInput(raw) {
+      const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+      if (!lines.length) return [];
+
+      // Detect if ALL non-empty lines end with a number
+      const re = /^(.*\S)\s+(\d+(?:\.\d+)?)\s*$/;
+      const allNum = lines.every(l => re.test(l));
+
+      if (allNum) {
+        return lines.map(l => {
+          const [, text, num] = l.match(re);
+          return { text: text.trim(), weight: parseFloat(num) };
+        });
+      }
+
+      // No weights: descending by position with deterministic jitter
+      return lines.map((l, i, arr) => ({
+        text: l,
+        weight: Math.max(0.5, ((arr.length - i) / arr.length) * 9 + 1 + hash01(l) * 0.8),
+      }));
+    }
+
+    // Deterministic 0–1 float from string
+    function hash01(str) {
+      let h = 5381;
+      for (let i = 0; i < str.length; i++) h = (h * 33 + str.charCodeAt(i)) & 0xFFFFFF;
+      return (h & 0xFF) / 255;
+    }
+
+    // ── Font size mapping ─────────────────────────────────────────
+    function toFontSizes(words) {
+      const weights = words.map(w => w.weight);
+      const wMin = Math.min(...weights);
+      const wMax = Math.max(...weights);
+      const range = wMax - wMin || 1;
+      return words.map(w => ({
+        ...w,
+        fontSize: Math.round(MIN_FS + ((w.weight - wMin) / range) * (MAX_FS - MIN_FS)),
+      }));
+    }
+
+    // ── Colour assignment ─────────────────────────────────────────
+    function isDarkBg() { return cBg === 'dark' || cBg === 'navy'; }
+
+    function assignColors(words) {
+      const t = THEMES[cTheme];
+      const palette = isDarkBg() ? t.dark : t.light;
+      const maxFs = Math.max(...words.map(w => w.fontSize));
+      const minFs = Math.min(...words.map(w => w.fontSize));
+      const fsRange = maxFs - minFs || 1;
+      return words.map(w => {
+        // Largest = index 0 (most prominent/dark on light, most bright on dark)
+        const ratio = (w.fontSize - minFs) / fsRange;
+        const idx = Math.floor((1 - ratio) * (palette.length - 1));
+        return { ...w, color: palette[Math.min(idx, palette.length - 1)] };
+      });
+    }
+
+    // ── Spiral placement ──────────────────────────────────────────
+    function overlaps(a, b) {
+      return !(a.x + a.w <= b.x || b.x + b.w <= a.x ||
+               a.y + a.h <= b.y || b.y + b.h <= a.y);
+    }
+
+    function getAngles(text) {
+      if (cOrient === 'horiz') return [0];
+      if (cOrient === 'vert')  return [Math.PI / 2];
+      // mixed: 30% chance of starting vertical; always try both
+      return hash01(text) < 0.30
+        ? [Math.PI / 2, 0]
+        : [0, Math.PI / 2];
+    }
+
+    function measureBox(ctx, text, fontSize, fontObj, angle) {
+      ctx.font = `${fontSize >= 44 ? fontObj.wlg : fontObj.wsm} ${fontSize}px '${fontObj.id}'`;
+      const tw = ctx.measureText(text).width + 10; // 5px pad each side
+      const th = fontSize * 1.22 + 4;
+      // 90° rotation swaps visual width/height for bounding box
+      return angle ? { w: th, h: tw } : { w: tw, h: th };
+    }
+
+    function findSpot(ctx, word, fontObj) {
+      const angles = getAngles(word.text);
+      const cx = CW / 2, cy = CH / 2;
+      const maxR = Math.sqrt(CW * CW + CH * CH) / 2 + 20;
+      const bias = hash01(word.text) * Math.PI * 2; // per-word start angle
+
+      for (const angle of angles) {
+        const { w, h } = measureBox(ctx, word.text, word.fontSize, fontObj, angle);
+        let θ = 0;
+
+        for (let i = 0; i < 6000; i++) {
+          θ += 0.12;
+          const r = 4 * θ;
+          if (r > maxR) break;
+
+          const px = cx + r * Math.cos(θ + bias);
+          const py = cy + r * Math.sin(θ + bias);
+          const rect = { x: px - w / 2, y: py - h / 2, w, h };
+
+          if (rect.x < 4 || rect.y < 4 || rect.x + w > CW - 4 || rect.y + h > CH - 4) continue;
+          if (!placed.some(p => overlaps(rect, p))) {
+            return { x: px, y: py, rect, angle };
+          }
+        }
+      }
+      return null;
+    }
+
+    // ── Draw word ─────────────────────────────────────────────────
+    function drawWord(ctx, word, spot, fontObj) {
+      const { fontSize, color, text } = word;
+      const weight = fontSize >= 44 ? fontObj.wlg : fontObj.wsm;
+      ctx.save();
+      ctx.translate(spot.x, spot.y);
+      ctx.rotate(spot.angle);
+      ctx.font = `${weight} ${fontSize}px '${fontObj.id}'`;
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (isDarkBg() && fontSize >= 28) {
+        ctx.shadowColor = color + '55';
+        ctx.shadowBlur = 14;
+      }
+      ctx.fillText(text, 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    // ── Generate ──────────────────────────────────────────────────
+    async function generate() {
+      const raw = document.getElementById('input').value;
+      const parsed = parseInput(raw);
+      const infoEl = document.getElementById('genInfo');
+
+      if (!parsed.length) {
+        infoEl.textContent = 'Please enter at least one word.';
+        infoEl.className = 'gen-info warn';
+        return;
+      }
+
+      const btn = document.getElementById('btnGen');
+      const shell = document.getElementById('canvasShell');
+      btn.disabled = true;
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Generating…`;
+      shell.classList.add('busy');
+      infoEl.textContent = '';
+      infoEl.className = 'gen-info';
+
+      const fontObj = FONTS.find(f => f.id === cFont) || FONTS[0];
+
+      // Ensure fonts are loaded before canvas render
+      try {
+        await Promise.all([
+          document.fonts.load(`${fontObj.wsm} 24px '${fontObj.id}'`),
+          document.fonts.load(`${fontObj.wlg} 72px '${fontObj.id}'`),
+        ]);
+      } catch (_) {}
+
+      await new Promise(r => setTimeout(r, 20)); // yield to browser
+
+      const canvas = document.getElementById('cloud');
+      const ctx = canvas.getContext('2d');
+      placed = [];
+
+      // Background
+      ctx.clearRect(0, 0, CW, CH);
+      const bgCfg = BGS.find(b => b.id === cBg);
+      if (bgCfg.fill) {
+        ctx.fillStyle = bgCfg.fill;
+        ctx.fillRect(0, 0, CW, CH);
+      }
+
+      // Prepare words: sort largest first (they go in center)
+      const sized   = toFontSizes(parsed).sort((a, b) => b.fontSize - a.fontSize);
+      const colored = assignColors(sized);
+
+      // Place and draw
+      let nPlaced = 0, nSkipped = 0;
+      for (const word of colored) {
+        const spot = findSpot(ctx, word, fontObj);
+        if (spot) {
+          placed.push(spot.rect);
+          drawWord(ctx, word, spot, fontObj);
+          nPlaced++;
+        } else {
+          nSkipped++;
+        }
+      }
+
+      hasCloud = true;
+      shell.classList.remove('busy');
+      document.getElementById('btnDl').disabled = false;
+      infoEl.textContent = nSkipped > 0
+        ? `${nPlaced} words placed · ${nSkipped} couldn't fit`
+        : `${nPlaced} words placed`;
+      infoEl.className = nSkipped > 0 ? 'gen-info warn' : 'gen-info';
+
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate Cloud`;
+      btn.disabled = false;
+    }
+
+    // ── Download ──────────────────────────────────────────────────
+    function dlCloud() {
+      if (!hasCloud) return;
+      const canvas = document.getElementById('cloud');
+      const url = canvas.toDataURL('image/png');
+      const a = Object.assign(document.createElement('a'), { href: url, download: 'word-cloud.png' });
+      a.click();
+    }
+
+    // ── Keyboard ──────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); generate(); }
+    });
+
+    // ── Placeholder canvas ────────────────────────────────────────
+    (function placeholder() {
+      const canvas = document.getElementById('cloud');
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#F8F5F0';
+      ctx.fillRect(0, 0, CW, CH);
+
+      // Subtle dot grid
+      ctx.fillStyle = '#E5E0D8';
+      for (let x = 30; x < CW; x += 38) {
+        for (let y = 30; y < CH; y += 38) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Ghost "preview" words to suggest what the output will look like
+      const ghosts = [
+        { text: 'Strategy',   x: CW/2,       y: CH/2,       fs: 56 },
+        { text: 'Growth',     x: CW/2 - 220, y: CH/2 - 40,  fs: 38 },
+        { text: 'Innovation', x: CW/2 + 180, y: CH/2 + 30,  fs: 32 },
+        { text: 'Vision',     x: CW/2 - 100, y: CH/2 + 90,  fs: 26 },
+        { text: 'Impact',     x: CW/2 + 120, y: CH/2 - 80,  fs: 22 },
+        { text: 'People',     x: CW/2 - 280, y: CH/2 + 80,  fs: 20 },
+        { text: 'Digital',    x: CW/2 + 310, y: CH/2 - 30,  fs: 18 },
+        { text: 'Future',     x: CW/2 - 50,  y: CH/2 - 120, fs: 18 },
+      ];
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ghosts.forEach(g => {
+        ctx.font = `700 ${g.fs}px 'Syne', sans-serif`;
+        ctx.fillStyle = `rgba(190,185,178,${0.3 + (g.fs / 56) * 0.35})`;
+        ctx.fillText(g.text, g.x, g.y);
+      });
+
+      ctx.font = `500 13px -apple-system, sans-serif`;
+      ctx.fillStyle = 'rgba(160,155,148,0.9)';
+      ctx.fillText('Enter your words in the sidebar and click Generate', CW / 2, CH - 30);
+    })();
+  </script>
+</body>
+</html>
