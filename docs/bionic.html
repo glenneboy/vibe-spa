@@ -144,6 +144,8 @@
         #webp-app button:disabled { background-color: #cccccc; cursor: not-allowed; }
         #webp-app .output-area { margin-top: 25px; text-align: center; }
         #webp-app .output-area img { max-width: 100%; max-height: 200px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; }
+        #webp-app .output-area video { max-width: 100%; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; }
+        #webp-app #durationControl { margin-bottom: 20px; text-align: left; }
         #webp-app .output-area a { display: inline-block; background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background-color 0.3s ease; }
         #webp-app .output-area a:hover { background-color: #0056b3; }
         #webp-app .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #007bff; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
@@ -266,10 +268,11 @@
             `,
             "webp-app": `
                 <div class="container">
-                    <h1>WebP to PNG/JPG Converter</h1>
-                    <div><label for="webpFile">Choose a WebP file:</label><input type="file" id="webpFile" name="webpFile" accept=".webp"></div>
-                    <div><label for="outputFormat">Convert to:</label><select id="outputFormat" name="outputFormat"><option value="png">PNG</option><option value="jpeg">JPG (JPEG)</option></select></div>
+                    <h1>WebP Converter</h1>
+                    <div><label for="webpFile">Choose a WebP file:</label><input type="file" id="webpFile" name="webpFile" accept=".webp,image/webp"></div>
+                    <div><label for="outputFormat">Convert to:</label><select id="outputFormat" name="outputFormat"><option value="png">PNG</option><option value="jpeg">JPG (JPEG)</option><option value="gif">Animated GIF</option><option value="mp4">MP4 / WebM Video</option></select></div>
                     <div id="qualityControl" style="display:none;"><label for="jpegQuality">JPG Quality (0.1 - 1.0):</label><input type="range" id="jpegQuality" name="jpegQuality" min="0.1" max="1.0" step="0.05" value="0.9"><span id="jpegQualityValue">0.9</span></div>
+                    <div id="durationControl" style="display:none;"><label for="gifDuration">Duration (seconds):</label><input type="number" id="gifDuration" name="gifDuration" min="1" max="30" value="3" style="display:inline-block;width:80px;padding:8px;border:1px solid #ddd;border-radius:5px;font-size:16px;margin-left:10px;"></div>
                     <button id="convertButton" disabled>Convert & Download</button>
                     <div class="loader" id="loader"></div><p id="statusMessage"></p>
                     <div class="output-area" id="outputArea"></div>
@@ -732,28 +735,130 @@
             // --- INITIALIZE WEBP CONVERTER ---
             const webpApp = document.getElementById('webp-app');
             if(webpApp) {
-                const webpFileElement = webpApp.querySelector('#webpFile');
-                const convertButtonElement = webpApp.querySelector('#convertButton');
-                const outputAreaElement = webpApp.querySelector('#outputArea');
+                const webpFileEl = webpApp.querySelector('#webpFile');
+                const convertBtn = webpApp.querySelector('#convertButton');
+                const outputArea = webpApp.querySelector('#outputArea');
+                const formatSelect = webpApp.querySelector('#outputFormat');
+                const qualityControl = webpApp.querySelector('#qualityControl');
+                const qualitySlider = webpApp.querySelector('#jpegQuality');
+                const qualityValue = webpApp.querySelector('#jpegQualityValue');
+                const durationControl = webpApp.querySelector('#durationControl');
+                const durationInput = webpApp.querySelector('#gifDuration');
+                const loader = webpApp.querySelector('#loader');
+                const statusMsg = webpApp.querySelector('#statusMessage');
                 let selectedFile = null;
-                webpFileElement.addEventListener('change', function (event) {
-                    selectedFile = event.target.files[0];
-                    convertButtonElement.disabled = !selectedFile || selectedFile.type !== "image/webp";
+
+                webpFileEl.addEventListener('change', e => {
+                    selectedFile = e.target.files[0];
+                    convertBtn.disabled = !selectedFile;
                 });
-                convertButtonElement.addEventListener('click', function () {
-                    const reader = new FileReader();
-                    reader.onload = function (event) {
-                        const image = new Image();
-                        image.onload = function () {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = image.width; canvas.height = image.height;
-                            canvas.getContext('2d').drawImage(image, 0, 0);
-                            const dataUrl = canvas.toDataURL('image/png');
-                            outputAreaElement.innerHTML = `<img src="${dataUrl}"><br><a href="${dataUrl}" download="converted.png" class="mt-2 inline-block bg-blue-600 text-white p-2 rounded">Download PNG</a>`;
+
+                formatSelect.addEventListener('change', () => {
+                    const fmt = formatSelect.value;
+                    qualityControl.style.display = fmt === 'jpeg' ? 'block' : 'none';
+                    durationControl.style.display = (fmt === 'gif' || fmt === 'mp4') ? 'block' : 'none';
+                });
+
+                qualitySlider.addEventListener('input', () => { qualityValue.textContent = qualitySlider.value; });
+
+                function loadImage(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = e => {
+                            const img = new Image();
+                            img.onload = () => resolve(img);
+                            img.onerror = reject;
+                            img.src = e.target.result;
                         };
-                        image.src = event.target.result;
-                    };
-                    reader.readAsDataURL(selectedFile);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+                function drawToCanvas(img) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width; canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0);
+                    return canvas;
+                }
+
+                async function convertToGif(canvas, duration) {
+                    statusMsg.textContent = 'Loading GIF encoder...';
+                    if (!window.GIF) {
+                        await new Promise((resolve, reject) => {
+                            const s = document.createElement('script');
+                            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js';
+                            s.onload = resolve; s.onerror = reject;
+                            document.head.appendChild(s);
+                        });
+                    }
+                    statusMsg.textContent = 'Encoding GIF...';
+                    const workerText = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js').then(r => r.text());
+                    const workerURL = URL.createObjectURL(new Blob([workerText], {type: 'text/javascript'}));
+                    return new Promise((resolve, reject) => {
+                        const gif = new GIF({ workers: 2, quality: 10, workerScript: workerURL, width: canvas.width, height: canvas.height });
+                        // For static images: one frame, delay = duration in ms
+                        gif.addFrame(canvas, { delay: duration * 1000, copy: true });
+                        gif.on('finished', blob => { URL.revokeObjectURL(workerURL); resolve(blob); });
+                        gif.on('error', err => { URL.revokeObjectURL(workerURL); reject(err); });
+                        gif.render();
+                    });
+                }
+
+                async function convertToVideo(canvas, duration) {
+                    return new Promise((resolve, reject) => {
+                        const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' :
+                                         MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+                        const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+                        const stream = canvas.captureStream(30);
+                        const recorder = new MediaRecorder(stream, { mimeType });
+                        const chunks = [];
+                        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                        recorder.onstop = () => resolve({ blob: new Blob(chunks, { type: mimeType }), ext });
+                        recorder.onerror = reject;
+                        recorder.start();
+                        setTimeout(() => recorder.stop(), duration * 1000);
+                    });
+                }
+
+                convertBtn.addEventListener('click', async () => {
+                    if (!selectedFile) return;
+                    loader.style.display = 'block';
+                    convertBtn.disabled = true;
+                    outputArea.innerHTML = '';
+                    try {
+                        const img = await loadImage(selectedFile);
+                        const canvas = drawToCanvas(img);
+                        const fmt = formatSelect.value;
+                        const baseName = selectedFile.name.replace(/\.webp$/i, '');
+                        if (fmt === 'png' || fmt === 'jpeg') {
+                            statusMsg.textContent = 'Converting...';
+                            const quality = fmt === 'jpeg' ? parseFloat(qualitySlider.value) : undefined;
+                            const dataUrl = canvas.toDataURL(`image/${fmt}`, quality);
+                            const ext = fmt === 'jpeg' ? 'jpg' : 'png';
+                            outputArea.innerHTML = `<img src="${dataUrl}"><br><a href="${dataUrl}" download="${baseName}.${ext}">Download ${ext.toUpperCase()}</a>`;
+                            statusMsg.textContent = 'Done!';
+                        } else if (fmt === 'gif') {
+                            const dur = parseInt(durationInput.value) || 3;
+                            const blob = await convertToGif(canvas, dur);
+                            const url = URL.createObjectURL(blob);
+                            outputArea.innerHTML = `<img src="${url}"><br><a href="${url}" download="${baseName}.gif">Download GIF</a>`;
+                            statusMsg.textContent = 'Done!';
+                        } else if (fmt === 'mp4') {
+                            const dur = parseInt(durationInput.value) || 3;
+                            statusMsg.textContent = `Recording video (${dur}s)...`;
+                            const { blob, ext } = await convertToVideo(canvas, dur);
+                            const url = URL.createObjectURL(blob);
+                            outputArea.innerHTML = `<video src="${url}" controls style="max-width:100%;border-radius:5px;margin-bottom:10px;"></video><br><a href="${url}" download="${baseName}.${ext}">Download ${ext.toUpperCase()}</a>`;
+                            statusMsg.textContent = 'Done!';
+                        }
+                    } catch (err) {
+                        statusMsg.textContent = 'Error: ' + err.message;
+                        console.error(err);
+                    } finally {
+                        loader.style.display = 'none';
+                        convertBtn.disabled = false;
+                    }
                 });
             }
 
