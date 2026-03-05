@@ -209,9 +209,9 @@
                     </div>
                 </header>
                 <main id="main-container" class="flex-grow grid grid-cols-[1fr,auto,1fr] p-4 gap-0 max-w-full w-full">
-                    <div id="editor-pane" class="flex flex-col min-w-0"><label for="markdown-input" class="text-sm font-medium text-slate-600 mb-2 px-1">Editor</label><textarea id="markdown-input" class="w-full h-full p-4 rounded-lg border border-slate-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out resize-none bg-white font-mono text-sm"></textarea></div>
+                    <div id="editor-pane" class="flex flex-col min-w-0"><div class="flex items-center justify-between mb-2 px-1"><label for="markdown-input" class="text-sm font-medium text-slate-600">Editor</label><div class="flex gap-1"><button id="copyEditorBtn" title="Copy markdown" class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy</button></div></div><textarea id="markdown-input" class="w-full h-full p-4 rounded-lg border border-slate-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out resize-none bg-white font-mono text-sm"></textarea></div>
                     <div id="resizer" class="resizer mx-2 rounded-full"></div>
-                    <div id="preview-pane" class="flex flex-col min-w-0"><label class="text-sm font-medium text-slate-600 mb-2 px-1">Preview</label><div id="html-output" class="w-full h-full p-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-y-auto preview-content"></div></div>
+                    <div id="preview-pane" class="flex flex-col min-w-0"><div class="flex items-center justify-between mb-2 px-1"><label class="text-sm font-medium text-slate-600">Preview</label><div class="flex gap-1"><button id="copyPreviewBtn" title="Copy preview text" class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy</button><button id="exportPdfBtn" title="Export preview as PDF" class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>PDF</button></div></div><div id="html-output" class="w-full h-full p-6 bg-white rounded-lg border border-slate-200 shadow-sm overflow-y-auto preview-content"></div></div>
                 </main>
             `,
             "webp-app": `
@@ -387,6 +387,34 @@
                     document.body.appendChild(a); a.click();
                     document.body.removeChild(a); URL.revokeObjectURL(url);
                 };
+                const copyEditor = async () => {
+                    try {
+                        await navigator.clipboard.writeText(markdownInput.value);
+                        const btn = document.getElementById('copyEditorBtn');
+                        const orig = btn.innerHTML;
+                        btn.textContent = 'Copied!';
+                        btn.classList.add('text-green-600');
+                        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-green-600'); }, 1500);
+                    } catch (e) { alert('Copy failed: ' + e); }
+                };
+                const copyPreview = async () => {
+                    try {
+                        await navigator.clipboard.writeText(htmlOutput.innerText);
+                        const btn = document.getElementById('copyPreviewBtn');
+                        const orig = btn.innerHTML;
+                        btn.textContent = 'Copied!';
+                        btn.classList.add('text-green-600');
+                        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-green-600'); }, 1500);
+                    } catch (e) { alert('Copy failed: ' + e); }
+                };
+                const exportPreviewPDF = () => {
+                    const win = window.open('', '_blank');
+                    const style = win.document.createElement('style');
+                    style.textContent = 'body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:20px;color:#1a1a1a;line-height:1.7}h1,h2,h3,h4{margin-top:1.5em;margin-bottom:0.5em}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;font-family:monospace}pre{background:#f4f4f4;padding:16px;border-radius:6px;overflow:auto}blockquote{border-left:4px solid #ccc;margin-left:0;padding-left:16px;color:#666}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px 12px}@media print{body{margin:0}}';
+                    win.document.head.appendChild(style);
+                    win.document.body.appendChild(win.document.importNode(htmlOutput, true));
+                    setTimeout(() => { win.print(); win.close(); }, 200);
+                };
 
                 let isResizing = false;
                 resizer.addEventListener('mousedown', () => { isResizing = true; resizer.classList.add('resizing'); document.body.style.cursor = 'col-resize'; });
@@ -467,6 +495,9 @@
 
                 markdownInput.addEventListener('input', updatePreview);
                 exportButton.addEventListener('click', exportMarkdown);
+                document.getElementById('copyEditorBtn').addEventListener('click', copyEditor);
+                document.getElementById('copyPreviewBtn').addEventListener('click', copyPreview);
+                document.getElementById('exportPdfBtn').addEventListener('click', exportPreviewPDF);
 
                 // Keyboard shortcuts
                 markdownInput.addEventListener('keydown', (e) => {
