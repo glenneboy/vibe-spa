@@ -782,7 +782,20 @@
                     return canvas;
                 }
 
-                async function convertToGif(canvas, duration) {
+                function renderFrame(img, canvas, progress) {
+                    const scale = 1.0 + progress * 0.08; // gentle 8% zoom
+                    const ctx = canvas.getContext('2d');
+                    const offX = (canvas.width * (scale - 1)) / 2;
+                    const offY = (canvas.height * (scale - 1)) / 2;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.save();
+                    ctx.translate(-offX, -offY);
+                    ctx.scale(scale, scale);
+                    ctx.drawImage(img, 0, 0);
+                    ctx.restore();
+                }
+
+                async function convertToGif(img, duration) {
                     statusMsg.textContent = 'Loading GIF encoder...';
                     if (!window.GIF) {
                         await new Promise((resolve, reject) => {
@@ -792,32 +805,53 @@
                             document.head.appendChild(s);
                         });
                     }
-                    statusMsg.textContent = 'Encoding GIF...';
                     const workerText = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js').then(r => r.text());
                     const workerURL = URL.createObjectURL(new Blob([workerText], {type: 'text/javascript'}));
+                    const fps = 10;
+                    const numFrames = Math.max(2, fps * duration);
+                    const delay = Math.round(1000 / fps);
+                    const frameCanvas = document.createElement('canvas');
+                    frameCanvas.width = img.width; frameCanvas.height = img.height;
                     return new Promise((resolve, reject) => {
-                        const gif = new GIF({ workers: 2, quality: 10, workerScript: workerURL, width: canvas.width, height: canvas.height });
-                        // For static images: one frame, delay = duration in ms
-                        gif.addFrame(canvas, { delay: duration * 1000, copy: true });
+                        statusMsg.textContent = `Encoding GIF (${numFrames} frames)...`;
+                        const gif = new GIF({ workers: 2, quality: 10, workerScript: workerURL, width: img.width, height: img.height, repeat: 0 });
+                        for (let i = 0; i < numFrames; i++) {
+                            renderFrame(img, frameCanvas, i / (numFrames - 1));
+                            gif.addFrame(frameCanvas, { delay, copy: true });
+                        }
                         gif.on('finished', blob => { URL.revokeObjectURL(workerURL); resolve(blob); });
                         gif.on('error', err => { URL.revokeObjectURL(workerURL); reject(err); });
                         gif.render();
                     });
                 }
 
-                async function convertToVideo(canvas, duration) {
+                async function convertToVideo(img, duration) {
                     return new Promise((resolve, reject) => {
-                        const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' :
-                                         MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+                        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' :
+                                         MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4';
                         const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width; canvas.height = img.height;
+                        renderFrame(img, canvas, 0);
                         const stream = canvas.captureStream(30);
                         const recorder = new MediaRecorder(stream, { mimeType });
                         const chunks = [];
                         recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
                         recorder.onstop = () => resolve({ blob: new Blob(chunks, { type: mimeType }), ext });
                         recorder.onerror = reject;
-                        recorder.start();
-                        setTimeout(() => recorder.stop(), duration * 1000);
+                        const startTime = performance.now();
+                        recorder.start(100); // collect data every 100ms
+                        function animate(now) {
+                            const elapsed = (now - startTime) / 1000;
+                            if (elapsed >= duration) {
+                                renderFrame(img, canvas, 1);
+                                recorder.stop();
+                                return;
+                            }
+                            renderFrame(img, canvas, elapsed / duration);
+                            requestAnimationFrame(animate);
+                        }
+                        requestAnimationFrame(animate);
                     });
                 }
 
@@ -828,11 +862,11 @@
                     outputArea.innerHTML = '';
                     try {
                         const img = await loadImage(selectedFile);
-                        const canvas = drawToCanvas(img);
                         const fmt = formatSelect.value;
                         const baseName = selectedFile.name.replace(/\.webp$/i, '');
                         if (fmt === 'png' || fmt === 'jpeg') {
                             statusMsg.textContent = 'Converting...';
+                            const canvas = drawToCanvas(img);
                             const quality = fmt === 'jpeg' ? parseFloat(qualitySlider.value) : undefined;
                             const dataUrl = canvas.toDataURL(`image/${fmt}`, quality);
                             const ext = fmt === 'jpeg' ? 'jpg' : 'png';
@@ -840,14 +874,14 @@
                             statusMsg.textContent = 'Done!';
                         } else if (fmt === 'gif') {
                             const dur = parseInt(durationInput.value) || 3;
-                            const blob = await convertToGif(canvas, dur);
+                            const blob = await convertToGif(img, dur);
                             const url = URL.createObjectURL(blob);
                             outputArea.innerHTML = `<img src="${url}"><br><a href="${url}" download="${baseName}.gif">Download GIF</a>`;
                             statusMsg.textContent = 'Done!';
                         } else if (fmt === 'mp4') {
                             const dur = parseInt(durationInput.value) || 3;
                             statusMsg.textContent = `Recording video (${dur}s)...`;
-                            const { blob, ext } = await convertToVideo(canvas, dur);
+                            const { blob, ext } = await convertToVideo(img, dur);
                             const url = URL.createObjectURL(blob);
                             outputArea.innerHTML = `<video src="${url}" controls style="max-width:100%;border-radius:5px;margin-bottom:10px;"></video><br><a href="${url}" download="${baseName}.${ext}">Download ${ext.toUpperCase()}</a>`;
                             statusMsg.textContent = 'Done!';
