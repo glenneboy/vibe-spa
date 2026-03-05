@@ -643,13 +643,24 @@
                     ordered: () => prefixLines('1. '),
                     link: () => linkBtn.click(),
                 };
+                function showCtxMenuAt(x, y) {
+                    ctxMenu.classList.add('visible');
+                    const menuW = 210, menuH = 420;
+                    ctxMenu.style.left = Math.min(x, window.innerWidth - menuW - 10) + 'px';
+                    ctxMenu.style.top = Math.min(y + 8, window.innerHeight - menuH - 10) + 'px';
+                }
+                // Show on text selection (mouseup) — works in all browsers incl. Safari
+                markdownInput.addEventListener('mouseup', (e) => {
+                    setTimeout(() => {
+                        if (markdownInput.selectionStart !== markdownInput.selectionEnd) {
+                            showCtxMenuAt(e.clientX, e.clientY);
+                        }
+                    }, 10);
+                });
+                // Also show on right-click (Chrome/Firefox where preventDefault works)
                 markdownInput.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
-                    const x = Math.min(e.clientX, window.innerWidth - 210);
-                    const y = Math.min(e.clientY, window.innerHeight - ctxMenu.offsetHeight - 10);
-                    ctxMenu.style.left = x + 'px';
-                    ctxMenu.style.top = y + 'px';
-                    ctxMenu.classList.add('visible');
+                    showCtxMenuAt(e.clientX, e.clientY);
                 });
                 ctxMenu.addEventListener('click', (e) => {
                     const item = e.target.closest('[data-action]');
