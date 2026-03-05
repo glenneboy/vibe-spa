@@ -432,7 +432,7 @@
                 const boldBtn = markdownApp.querySelector('#boldBtn');
                 const italicBtn = markdownApp.querySelector('#italicBtn');
                 const strikeBtn = markdownApp.querySelector('#strikeBtn');
-                const headingBtn = markdownApp.querySelector('#headingBtn');
+
                 const linkBtn = markdownApp.querySelector('#linkBtn');
                 const bionicBtn = markdownApp.querySelector('#bionicBtn');
                 
@@ -583,26 +583,6 @@
                 italicBtn.addEventListener('click', () => wrapText('*', '*'));
                 strikeBtn.addEventListener('click', () => wrapText('~~', '~~'));
 
-                headingBtn.addEventListener('click', () => {
-                    const pos = markdownInput.selectionStart;
-                    const text = markdownInput.value;
-                    const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
-                    const lineEnd = text.indexOf('\n', pos);
-                    const endPos = lineEnd === -1 ? text.length : lineEnd;
-                    const line = text.substring(lineStart, endPos);
-                    const m = line.match(/^(#{1,6}) /);
-                    let newLine;
-                    if (m && m[1].length < 6) {
-                        newLine = '#'.repeat(m[1].length + 1) + ' ' + line.substring(m[1].length + 1);
-                    } else if (m) {
-                        newLine = line.substring(m[1].length + 1);
-                    } else {
-                        newLine = '## ' + line;
-                    }
-                    markdownInput.value = text.substring(0, lineStart) + newLine + text.substring(endPos);
-                    markdownInput.focus();
-                    updatePreview();
-                });
 
                 linkBtn.addEventListener('click', () => {
                     const start = markdownInput.selectionStart, end = markdownInput.selectionEnd;
