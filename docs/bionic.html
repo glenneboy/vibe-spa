@@ -281,7 +281,7 @@
                     <div class="main-layout flex flex-col md:flex-row">
                         <div class="content-section flex-grow">
                             <div class="mb-6"><label for="inputText" class="block text-gray-700 text-sm font-semibold mb-2">Paste your text (Markdown supported):</label><textarea id="inputText" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3" placeholder="Enter text to convert..."></textarea></div>
-                            <div><label for="outputArea" class="block text-gray-700 text-sm font-semibold mb-2">Bionic Reader & Markdown Output:</label><div id="outputArea" class="text-gray-800"><p class="text-gray-500 italic">Your converted text will appear here.</p></div></div>
+                            <div><div class="flex items-center justify-between mb-2"><label for="outputArea" class="block text-gray-700 text-sm font-semibold">Bionic Reader & Markdown Output:</label><button id="copyOutputBtn" title="Copy selected text (or all text if none selected)" class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Copy</button></div><div id="outputArea" class="text-gray-800"><p class="text-gray-500 italic">Your converted text will appear here.</p></div></div>
                         </div>
                         <div class="controls-section p-4 bg-gray-50 rounded-md shadow-inner mt-6 md:mt-0">
                             <h2 class="text-xl font-semibold mb-4 text-gray-700">Adjust Formatting</h2>
@@ -823,6 +823,19 @@
                 lineHeightSlider.addEventListener('input', () => { lineHeightValueSpan.textContent = lineHeightSlider.value; applyTextStyling(); });
                 letterSpacingSlider.addEventListener('input', () => { letterSpacingValueSpan.textContent = letterSpacingSlider.value + 'px'; applyTextStyling(); });
                 
+                bionicApp.querySelector('#copyOutputBtn').addEventListener('click', async () => {
+                    const btn = bionicApp.querySelector('#copyOutputBtn');
+                    const selection = window.getSelection();
+                    const textToCopy = (selection && selection.toString().trim()) ? selection.toString() : outputArea.innerText;
+                    try {
+                        await navigator.clipboard.writeText(textToCopy);
+                        const orig = btn.innerHTML;
+                        btn.textContent = 'Copied!';
+                        btn.classList.add('text-green-600');
+                        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('text-green-600'); }, 1500);
+                    } catch (e) { alert('Copy failed: ' + e); }
+                });
+
                 exportPdfBtn.addEventListener('click', () => {
                     html2canvas(outputArea, { scale: 2 }).then(canvas => {
                         const { jsPDF } = window.jspdf;
