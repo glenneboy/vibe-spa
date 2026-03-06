@@ -643,6 +643,39 @@ code {
 .font-size-controls .fsize-md { font-size: 13px; }
 .font-size-controls .fsize-lg { font-size: 16px; }
 
+/* ─── COPY BUTTONS ─── */
+.copy-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 5px;
+  color: #9b8a7a;
+  font-size: 11px; font-weight: 600;
+  padding: 3px 9px; cursor: pointer;
+  transition: all 0.18s; margin-left: auto; flex-shrink: 0;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.14); color: #d4c5b5; }
+.copy-btn.copied { color: #5eebb4; border-color: rgba(94,235,180,0.3); background: rgba(94,235,180,0.06); }
+.copy-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+.c-cmd, .c-str {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.12s, color 0.12s;
+}
+.c-cmd:hover { background: rgba(94,235,180,0.08); }
+.c-str:hover { background: rgba(251,191,36,0.1); }
+.c-cmd::after, .c-str::after {
+  content: ' ⎘';
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.c-cmd:hover::after, .c-str:hover::after { opacity: 0.5; }
+.c-cmd.flash-copied { color: #5eebb4 !important; background: rgba(94,235,180,0.12) !important; }
+.c-str.flash-copied { color: #5eebb4 !important; background: rgba(94,235,180,0.12) !important; }
+.c-cmd.flash-copied::after, .c-str.flash-copied::after { content: ' ✓'; opacity: 1; }
+
 /* ─── FOCUS / ACCESSIBILITY ─── */
 :focus-visible {
   outline: 2px solid var(--brand);
@@ -1703,6 +1736,62 @@ function renderSection(sec) {
 
   html += `</div>`;
   container.innerHTML = html;
+  attachCopyHandlers(container);
+}
+
+function makeCopyIcon() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+  const rect = document.createElementNS(ns, 'rect');
+  rect.setAttribute('x','9'); rect.setAttribute('y','9');
+  rect.setAttribute('width','13'); rect.setAttribute('height','13'); rect.setAttribute('rx','2');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d','M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1');
+  svg.appendChild(rect); svg.appendChild(path);
+  return svg;
+}
+
+function attachCopyHandlers(container) {
+  function flashBlock(btn, labelEl) {
+    btn.classList.add('copied');
+    labelEl.textContent = 'Copied!';
+    setTimeout(() => { btn.classList.remove('copied'); labelEl.textContent = 'Copy'; }, 2000);
+  }
+
+  // Block-level copy button injected into each code header
+  container.querySelectorAll('.code-block').forEach(block => {
+    const header = block.querySelector('.code-header');
+    const body = block.querySelector('.code-body');
+    if (!header || !body) return;
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.setAttribute('aria-label', 'Copy code block');
+    btn.appendChild(makeCopyIcon());
+    const label = document.createElement('span');
+    label.textContent = 'Copy';
+    btn.appendChild(label);
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(body.innerText.trim()).then(() => flashBlock(btn, label));
+    });
+    header.appendChild(btn);
+  });
+
+  // Per-command and per-prompt click-to-copy
+  container.querySelectorAll('.c-cmd, .c-str').forEach(span => {
+    span.setAttribute('title', 'Click to copy');
+    span.setAttribute('role', 'button');
+    span.setAttribute('tabindex', '0');
+    span.addEventListener('click', () => {
+      navigator.clipboard.writeText(span.innerText.trim()).then(() => {
+        span.classList.add('flash-copied');
+        setTimeout(() => span.classList.remove('flash-copied'), 1500);
+      });
+    });
+    span.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') span.click(); });
+  });
 }
 
 function getScoreText(sec, modId) {
