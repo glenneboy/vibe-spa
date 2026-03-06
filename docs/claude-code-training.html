@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Training</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #161b27;
+  --bg-card: #1c2333;
+  --bg-hover: #232d42;
+  --brand: #667eea;
+  --brand-end: #764ba2;
+  --brand-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --accent: #667eea;
+  --accent-glow: rgba(102,126,234,0.25);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --text-primary: #f0f4ff;
+  --text-secondary: #8b9ab8;
+  --text-muted: #4a5568;
+  --border: rgba(102,126,234,0.15);
+  --border-strong: rgba(102,126,234,0.35);
+  --sidebar-w: 280px;
+  --header-h: 56px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── TOP BAR ─── */
+.topbar {
+  height: var(--header-h);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.topbar-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.2s;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.topbar-back:hover { color: var(--text-primary); background: var(--bg-hover); }
+.topbar-back svg { width: 14px; height: 14px; }
+.topbar-divider { width: 1px; height: 20px; background: var(--border); }
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.topbar-logo .icon {
+  width: 28px; height: 28px;
+  background: var(--brand-gradient);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.topbar-logo .icon svg { width: 16px; height: 16px; fill: white; -webkit-text-fill-color: initial; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.progress-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.progress-pill .pct { color: var(--brand); font-weight: 700; }
+.progress-bar-mini {
+  width: 60px; height: 4px;
+  background: var(--bg-hover);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar-mini-fill {
+  height: 100%;
+  background: var(--brand-gradient);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* ─── LAYOUT ─── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sidebar-section-label {
+  padding: 16px 16px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+
+.mod-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.18s;
+  border-left: 3px solid transparent;
+  position: relative;
+}
+.mod-item:hover { background: var(--bg-hover); }
+.mod-item.active {
+  background: rgba(102,126,234,0.1);
+  border-left-color: var(--brand);
+}
+.mod-item.completed .mod-num { background: var(--success); color: var(--bg-primary); }
+.mod-num {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+}
+.mod-item.active .mod-num { background: var(--brand-gradient); border-color: transparent; color: white; }
+.mod-info { flex: 1; min-width: 0; }
+.mod-title { font-size: 12px; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
+.mod-item:not(.active) .mod-title { color: var(--text-secondary); }
+.mod-item.active .mod-title { color: var(--text-primary); }
+.mod-dur { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.mod-check { color: var(--success); font-size: 14px; flex-shrink: 0; opacity: 0; transition: opacity 0.2s; }
+.mod-item.completed .mod-check { opacity: 1; }
+
+.sidebar-section {
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.section-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: all 0.18s;
+}
+.section-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.section-btn.active { background: rgba(102,126,234,0.08); color: var(--brand); }
+.section-btn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+.section-btn.active .dot { background: var(--brand); }
+.section-btn.done .dot { background: var(--success); }
+.section-btn.done { color: var(--success); opacity: 0.7; }
+
+/* ─── MAIN CONTENT ─── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+.main::-webkit-scrollbar { width: 6px; }
+.main::-webkit-scrollbar-track { background: transparent; }
+.main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ─── VIEWS ─── */
+.view { display: none; animation: fadeSlideIn 0.35s ease; }
+.view.active { display: block; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── OVERVIEW / HERO ─── */
+.hero {
+  background: linear-gradient(135deg, #0f1117 0%, #1a1535 50%, #0f1117 100%);
+  padding: 60px 60px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -100px; right: -100px;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(102,126,234,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; left: 200px;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(118,75,162,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--brand); margin-bottom: 12px;
+}
+.hero h1 {
+  font-size: 42px; font-weight: 800; line-height: 1.15;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 14px;
+}
+.hero p { font-size: 16px; color: var(--text-secondary); max-width: 520px; line-height: 1.7; margin-bottom: 32px; }
+.hero-stats { display: flex; gap: 32px; }
+.stat { text-align: center; }
+.stat .val { font-size: 28px; font-weight: 800; background: var(--brand-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.stat .lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+.module-cards {
+  padding: 32px 60px 60px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.module-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.22s;
+  position: relative;
+  overflow: hidden;
+}
+.module-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--brand-gradient);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.module-card:hover { transform: translateY(-4px); border-color: var(--border-strong); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+.module-card:hover::before { transform: scaleX(1); }
+.module-card.completed { border-color: rgba(52,211,153,0.25); }
+.module-card.completed::before { transform: scaleX(1); background: linear-gradient(135deg, #34d399, #059669); }
+.card-num { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 10px; }
+.card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.card-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; }
+.card-meta { display: flex; align-items: center; gap: 8px; }
+.card-badge {
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: rgba(102,126,234,0.12); color: var(--brand); border: 1px solid rgba(102,126,234,0.2);
+}
+.card-badge.done { background: rgba(52,211,153,0.12); color: var(--success); border-color: rgba(52,211,153,0.2); }
+.card-dur { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+/* ─── MODULE CONTENT ─── */
+.module-content { padding: 0; }
+
+.module-header {
+  background: linear-gradient(135deg, #13182a 0%, #1a1535 100%);
+  padding: 40px 60px 32px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.module-header::after {
+  content: '';
+  position: absolute;
+  right: -50px; top: -50px;
+  width: 250px; height: 250px;
+  background: radial-gradient(circle, rgba(102,126,234,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.module-header .mod-eyebrow {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--brand); margin-bottom: 10px;
+}
+.module-header h2 { font-size: 30px; font-weight: 800; margin-bottom: 10px; line-height: 1.2; }
+.module-header .mod-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+.meta-chip {
+  padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: rgba(102,126,234,0.12); color: var(--brand); border: 1px solid rgba(102,126,234,0.2);
+}
+
+/* ─── SECTIONS ─── */
+.module-sections { padding: 40px 60px; display: flex; flex-direction: column; gap: 32px; }
+
+.content-section { animation: fadeSlideIn 0.3s ease; }
+
+.section-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.section-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(102,126,234,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.section-title-text { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); }
+.section-time { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+
+.prose { font-size: 14px; line-height: 1.8; color: var(--text-secondary); }
+.prose p { margin-bottom: 14px; }
+.prose strong { color: var(--text-primary); font-weight: 600; }
+
+/* ─── OBJECTIVES ─── */
+.objectives-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.obj { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); transition: border-color 0.2s; }
+.obj:hover { border-color: var(--border-strong); }
+.obj-icon { color: var(--brand); font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+/* ─── CODE BLOCK ─── */
+.code-block {
+  background: #0a0e1a;
+  border: 1px solid rgba(102,126,234,0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 14px 0;
+}
+.code-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: rgba(102,126,234,0.06);
+  border-bottom: 1px solid rgba(102,126,234,0.12);
+}
+.code-dots { display: flex; gap: 5px; }
+.code-dots span { width: 10px; height: 10px; border-radius: 50%; }
+.code-dots span:nth-child(1) { background: #ff5f57; }
+.code-dots span:nth-child(2) { background: #febc2e; }
+.code-dots span:nth-child(3) { background: #28c840; }
+.code-lang { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-left: auto; }
+.code-body {
+  padding: 16px 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.8;
+  overflow-x: auto;
+  white-space: pre;
+}
+.c-comment { color: #4a5568; }
+.c-cmd { color: #34d399; }
+.c-str { color: #fbbf24; }
+.c-kw { color: #a78bfa; }
+.c-flag { color: #f87171; }
+
+/* ─── TIP / INFO BOXES ─── */
+.tip-box {
+  display: flex; gap: 12px;
+  background: rgba(251,191,36,0.06);
+  border: 1px solid rgba(251,191,36,0.2);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 14px 0;
+  font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+}
+.tip-box .tip-icon { font-size: 18px; flex-shrink: 0; }
+.tip-box strong { color: var(--warning); }
+
+.info-box {
+  display: flex; gap: 12px;
+  background: rgba(102,126,234,0.06);
+  border: 1px solid rgba(102,126,234,0.2);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 14px 0;
+  font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+}
+.info-box .info-icon { font-size: 18px; flex-shrink: 0; }
+
+/* ─── EXERCISE ─── */
+.exercise-box {
+  background: var(--bg-card);
+  border: 1px solid rgba(102,126,234,0.3);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.exercise-header {
+  background: linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.1));
+  padding: 16px 24px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid rgba(102,126,234,0.2);
+}
+.exercise-badge {
+  padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  background: var(--brand-gradient); color: white;
+}
+.exercise-title { font-size: 15px; font-weight: 700; }
+.exercise-time { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+.exercise-body { padding: 20px 24px; }
+.exercise-body .prose { margin-bottom: 16px; }
+.exercise-steps { list-style: none; display: flex; flex-direction: column; gap: 10px; counter-reset: steps; }
+.exercise-steps li {
+  counter-increment: steps;
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.exercise-steps li:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.exercise-steps li::before {
+  content: counter(steps);
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--brand-gradient); color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0; margin-top: 1px;
+}
+.exercise-reflect {
+  margin-top: 16px; padding: 14px 18px;
+  background: rgba(52,211,153,0.06);
+  border: 1px solid rgba(52,211,153,0.2);
+  border-radius: 8px;
+  font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+}
+.exercise-reflect strong { color: var(--success); }
+
+/* ─── QUIZ ─── */
+.quiz-box {
+  background: var(--bg-card);
+  border: 1px solid rgba(248,113,113,0.25);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.quiz-header {
+  background: linear-gradient(135deg, rgba(248,113,113,0.1), rgba(239,68,68,0.06));
+  padding: 16px 24px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid rgba(248,113,113,0.2);
+}
+.quiz-badge {
+  padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #f87171, #ef4444); color: white;
+}
+.quiz-title { font-size: 15px; font-weight: 700; }
+.quiz-score { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text-muted); }
+.quiz-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 24px; }
+
+.quiz-q { }
+.quiz-q-text { font-size: 14px; font-weight: 600; margin-bottom: 12px; line-height: 1.5; }
+.quiz-q-num { color: var(--danger); margin-right: 6px; }
+.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.quiz-option {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 13px; line-height: 1.5; color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: left;
+}
+.quiz-option:hover:not(.selected):not(.locked) { border-color: var(--brand); color: var(--text-primary); background: rgba(102,126,234,0.05); }
+.quiz-option.selected { border-color: var(--brand); background: rgba(102,126,234,0.1); color: var(--text-primary); }
+.quiz-option.correct { border-color: var(--success); background: rgba(52,211,153,0.1); color: var(--success); font-weight: 600; }
+.quiz-option.wrong { border-color: var(--danger); background: rgba(248,113,113,0.08); color: var(--danger); }
+.quiz-option.locked { cursor: default; }
+.quiz-feedback {
+  margin-top: 10px; padding: 10px 14px;
+  border-radius: 8px; font-size: 12px; line-height: 1.6;
+  display: none;
+}
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); color: var(--success); }
+.quiz-feedback.wrong { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: var(--danger); }
+
+.quiz-submit-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.btn-submit {
+  padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  background: var(--brand-gradient); color: white; border: none; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.quiz-result { font-size: 13px; color: var(--text-secondary); display: none; }
+.quiz-result.show { display: block; }
+
+/* ─── BOTTOM NAV ─── */
+.module-nav {
+  padding: 24px 60px;
+  display: flex; align-items: center; gap: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+  position: sticky; bottom: 0;
+}
+.btn-nav {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: 1.5px solid var(--border-strong);
+  color: var(--text-secondary); background: transparent;
+  transition: all 0.18s;
+}
+.btn-nav:hover { border-color: var(--brand); color: var(--brand); background: rgba(102,126,234,0.06); }
+.btn-nav.primary { background: var(--brand-gradient); color: white; border-color: transparent; }
+.btn-nav.primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-nav:disabled { opacity: 0.3; cursor: not-allowed; transform: none !important; }
+.btn-nav svg { width: 14px; height: 14px; }
+.complete-btn {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer; border: none;
+  background: linear-gradient(135deg, #34d399, #059669); color: white;
+  transition: all 0.2s;
+}
+.complete-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(52,211,153,0.3); }
+.complete-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none; }
+
+/* ─── COMPLETION SCREEN ─── */
+.completion-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 70vh; padding: 60px;
+  text-align: center;
+}
+.completion-badge {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, #34d399, #059669);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; margin-bottom: 24px;
+  box-shadow: 0 0 40px rgba(52,211,153,0.3);
+  animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes popIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.completion-screen h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+.completion-screen p { font-size: 16px; color: var(--text-secondary); max-width: 480px; line-height: 1.7; margin-bottom: 32px; }
+.completion-actions { display: flex; gap: 12px; }
+
+/* ─── COMPARISON TABLE ─── */
+.compare-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  border-radius: 10px; overflow: hidden;
+}
+.compare-table th {
+  padding: 10px 16px; background: rgba(102,126,234,0.12);
+  text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--brand);
+}
+.compare-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: var(--bg-hover); }
+.compare-table td:first-child { color: var(--text-primary); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* ─── OVERALL PROGRESS TRACKER ─── */
+.progress-track {
+  padding: 24px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+.progress-track-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; }
+.progress-track-label span { color: var(--brand); font-weight: 700; }
+.progress-track-bar { height: 4px; background: var(--bg-hover); border-radius: 2px; overflow: hidden; }
+.progress-track-fill { height: 100%; background: var(--brand-gradient); border-radius: 2px; transition: width 0.5s ease; }
+.modules-progress-dots { display: flex; gap: 6px; margin-top: 12px; justify-content: center; }
+.prog-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg-hover); border: 1.5px solid var(--border); transition: all 0.3s; }
+.prog-dot.done { background: var(--success); border-color: var(--success); }
+.prog-dot.active { background: var(--brand); border-color: var(--brand); transform: scale(1.3); }
+
+/* ─── RESPONSIVE CODE ─── */
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  background: rgba(102,126,234,0.12);
+  color: #a78bfa;
+  padding: 2px 6px; border-radius: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <a href="index.html" class="topbar-back">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Dashboard
+  </a>
+  <div class="topbar-divider"></div>
+  <div class="topbar-logo">
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    Claude Code Training
+  </div>
+  <div class="topbar-right">
+    <div class="progress-pill">
+      <span>Progress</span>
+      <div class="progress-bar-mini">
+        <div class="progress-bar-mini-fill" id="topProgressFill" style="width:0%"></div>
+      </div>
+      <span class="pct" id="topProgressPct">0%</span>
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section-label">Modules</div>
+
+    <div class="mod-item active" onclick="goModule(0)" id="mod-nav-0">
+      <div class="mod-num">1</div>
+      <div class="mod-info">
+        <div class="mod-title">Getting Started</div>
+        <div class="mod-dur">30 mins · Foundation</div>
+      </div>
+      <div class="mod-check">✓</div>
+    </div>
+
+    <div class="mod-item" onclick="goModule(1)" id="mod-nav-1">
+      <div class="mod-num">2</div>
+      <div class="mod-info">
+        <div class="mod-title">Prompts &amp; CLAUDE.md</div>
+        <div class="mod-dur">35 mins · Core Skills</div>
+      </div>
+      <div class="mod-check">✓</div>
+    </div>
+
+    <div class="mod-item" onclick="goModule(2)" id="mod-nav-2">
+      <div class="mod-num">3</div>
+      <div class="mod-info">
+        <div class="mod-title">Bugs, Tests &amp; PRs</div>
+        <div class="mod-dur">35 mins · Practical</div>
+      </div>
+      <div class="mod-check">✓</div>
+    </div>
+
+    <div class="mod-item" onclick="goModule(3)" id="mod-nav-3">
+      <div class="mod-num">4</div>
+      <div class="mod-info">
+        <div class="mod-title">MCP, Hooks &amp; Skills</div>
+        <div class="mod-dur">40 mins · Advanced</div>
+      </div>
+      <div class="mod-check">✓</div>
+    </div>
+
+    <div class="mod-item" onclick="goModule(4)" id="mod-nav-4">
+      <div class="mod-num">5</div>
+      <div class="mod-info">
+        <div class="mod-title">Multi-Agent Workflows</div>
+        <div class="mod-dur">40 mins · Expert</div>
+      </div>
+      <div class="mod-check">✓</div>
+    </div>
+
+    <div class="sidebar-section-label" style="margin-top:8px;" id="sections-label"></div>
+    <div class="sidebar-section" id="sections-nav"></div>
+
+    <div style="flex:1"></div>
+    <div class="progress-track">
+      <div class="progress-track-label">
+        <span style="color:var(--text-muted)">Overall Progress</span>
+        <span id="progressLabel">0 / 5</span>
+      </div>
+      <div class="progress-track-bar">
+        <div class="progress-track-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="modules-progress-dots" id="progressDots"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainContent">
+
+    <!-- OVERVIEW -->
+    <div class="view active" id="view-overview">
+      <div class="hero">
+        <div class="hero-eyebrow">Vodafone Engineering · Developer Training</div>
+        <h1>Master Claude Code</h1>
+        <p>Five hands-on modules that take you from first install to multi-agent workflows running complex tasks on your behalf.</p>
+        <div class="hero-stats">
+          <div class="stat"><div class="val">5</div><div class="lbl">Modules</div></div>
+          <div class="stat"><div class="val">3hrs</div><div class="lbl">Total Time</div></div>
+          <div class="stat"><div class="val">15</div><div class="lbl">Exercises</div></div>
+          <div class="stat"><div class="val">15</div><div class="lbl">Quiz Questions</div></div>
+        </div>
+      </div>
+      <div class="module-cards" id="overview-cards"></div>
+    </div>
+
+    <!-- MODULE VIEWS -->
+    <div class="view" id="view-module">
+      <div id="module-render"></div>
+    </div>
+
+    <!-- COMPLETION -->
+    <div class="view" id="view-complete">
+      <div class="completion-screen">
+        <div class="completion-badge">🎓</div>
+        <h2>Training Complete!</h2>
+        <p>You've completed all five modules. You're now equipped to use Claude Code from first install through to multi-agent workflows. Go build something remarkable.</p>
+        <div class="completion-actions">
+          <button class="btn-nav primary" onclick="showOverview()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Back to Overview
+          </button>
+          <a href="index.html" class="btn-nav">Dashboard</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────
+const MODULES = [
+  {
+    id: 0,
+    title: "Getting Started: Install, Connect & Explore",
+    eyebrow: "Module 01 · Foundation",
+    duration: "30 mins",
+    level: "Beginner",
+    prereq: "Claude Pro/Teams account",
+    desc: "Install Claude Code, authenticate, and use natural language to explore and understand a real codebase for the first time.",
+    sections: [
+      {
+        id: "concepts", icon: "💡", title: "Conceptual Grounding", time: "5 mins",
+        type: "prose",
+        content: `<p>Claude Code is not an autocomplete tool or a chatbot bolted onto your editor. It is a <strong>fully agentic coding environment</strong>. That means it reads your files, runs your tests, executes terminal commands, and works through multi-step tasks while you watch — or step away entirely.</p>
+<p>The key mental shift: you describe <strong>what you want</strong>, and Claude figures out <strong>how to build it</strong>. It understands your whole codebase, not just the file you have open.</p>
+<p>Claude Code is available as a CLI, a VS Code/JetBrains extension, a desktop app, a web interface, and integrates with Slack and CI/CD. All surfaces share the same engine — your settings and project context carry everywhere.</p>`
+      },
+      {
+        id: "install", icon: "⚙️", title: "Installation", time: "10 mins",
+        type: "mixed",
+        content: `<p>Choose the method for your OS. The <strong>native installer is recommended</strong> — it updates automatically in the background.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># macOS / Linux / WSL (recommended)</span>
+<span class="c-cmd">curl -fsSL https://claude.ai/install.sh | bash</span>
+
+<span class="c-comment"># Windows PowerShell</span>
+<span class="c-cmd">irm https://claude.ai/install.ps1 | iex</span>
+
+<span class="c-comment"># Homebrew (does NOT auto-update)</span>
+<span class="c-cmd">brew install --cask claude-code</span>
+
+<span class="c-comment"># Then start Claude Code in any project</span>
+<span class="c-cmd">cd /path/to/your-project</span>
+<span class="c-cmd">claude</span>
+<span class="c-comment"># You'll be prompted to log in on first use</span>`
+        },
+        tip: { icon: "💡", text: "Press <strong>?</strong> at any time for keyboard shortcuts. Use <strong>Tab</strong> for command completion and <strong>↑</strong> to recall previous prompts. Type <strong>/</strong> to browse all built-in commands." }
+      },
+      {
+        id: "explore", icon: "🔍", title: "First Exploration", time: "10 mins",
+        type: "mixed",
+        content: `<p>The fastest way to understand Claude Code's power is to let it explore your own codebase. Try these prompts in sequence on a real project. Notice Claude always shows proposed changes and asks for approval before modifying files.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Understand the project at a high level</span>
+<span class="c-str">what does this project do?</span>
+<span class="c-str">what technologies does this project use?</span>
+
+<span class="c-comment"># Dig into structure and patterns</span>
+<span class="c-str">explain the folder structure and where key logic lives</span>
+<span class="c-str">how is authentication handled?</span>
+
+<span class="c-comment"># Make a simple change — see the review/approve flow</span>
+<span class="c-str">add a hello world function to the main file</span>`
+        }
+      },
+      {
+        id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "15 mins",
+        type: "exercise",
+        exerciseTitle: "The Silent Codebase Audit",
+        exerciseDuration: "15 mins",
+        exerciseIntro: "Pick a real repository you work with. <strong>You are not allowed to manually open or read any file.</strong> Only use Claude Code to answer the following questions.",
+        exerciseSteps: [
+          "Ask Claude to describe what the project does in plain English, for someone who has never seen it.",
+          "Ask Claude to identify the top 3 most complex files and explain why they're complex.",
+          "Ask Claude to find any functions that have no unit tests written for them.",
+          "Ask Claude to suggest one small improvement (just propose, don't apply yet) and explain its reasoning.",
+          "Now approve a single change and verify it did exactly what Claude said it would."
+        ],
+        reflect: "Did Claude's description match your own mental model? Where did it surprise you? The gap between your expectation and Claude's analysis is often where the most interesting conversations happen."
+      },
+      {
+        id: "quiz", icon: "🧠", title: "Module Quiz", time: "5 mins",
+        type: "quiz",
+        questions: [
+          {
+            q: "Claude Code always asks for approval before modifying files. When is it appropriate to enable 'Accept all' mode?",
+            options: ["Always — it saves time", "When you're confident in a well-scoped task and understand what Claude will do", "Never — you should always review each change", "Only in read-only mode"],
+            correct: 1,
+            feedback: "Trust calibration is key. Use 'Accept all' when the task is narrow and well-defined — not as a default. You're trading oversight for speed."
+          },
+          {
+            q: "You install Claude Code via Homebrew. What do you need to remember?",
+            options: ["Run 'brew upgrade claude-code' periodically — Homebrew doesn't auto-update", "Homebrew installations don't require authentication", "You can't use MCP servers with Homebrew installs", "Nothing — Homebrew updates work the same as native"],
+            correct: 0,
+            feedback: "Native installs update silently in the background. Homebrew does not — you must manually run 'brew upgrade claude-code' to get the latest features and security fixes."
+          },
+          {
+            q: "Claude Code can understand your codebase because it...",
+            options: ["Has been pre-trained on your company's repo", "Only reads files you manually add to the conversation", "Reads your project files as needed during a session, without requiring manual context", "Uses a separate indexing service that runs in the background"],
+            correct: 2,
+            feedback: "Claude Code reads your files dynamically as needed. You don't need to manually add context — it explores your codebase as part of the agentic loop."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 1,
+    title: "Working Effectively: Prompts, Context & CLAUDE.md",
+    eyebrow: "Module 02 · Core Skills",
+    duration: "35 mins",
+    level: "Beginner → Intermediate",
+    prereq: "Module 1 complete",
+    desc: "Learn to write prompts that get great results first time, manage the context window, and create a CLAUDE.md that makes Claude an expert in your project.",
+    sections: [
+      {
+        id: "context", icon: "📊", title: "Context Window: Your Most Valuable Resource", time: "8 mins",
+        type: "mixed",
+        content: `<p>The single most important constraint in Claude Code is the <strong>context window</strong>. It holds your entire conversation: every message, every file Claude reads, every command output. As it fills, <strong>performance degrades</strong>. Claude may start missing earlier instructions or making more mistakes.</p>
+<p>This means actively managing context rather than treating sessions as infinite.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Between unrelated tasks — reset fully</span>
+<span class="c-cmd">/clear</span>
+
+<span class="c-comment"># Compact with custom instructions on what to preserve</span>
+<span class="c-cmd">/compact Focus on the API changes and test failures</span>
+
+<span class="c-comment"># Undo Claude's actions and restore to a checkpoint</span>
+<span class="c-kw">Esc + Esc</span>  <span class="c-comment"># opens rewind menu</span>
+<span class="c-cmd">/rewind</span>     <span class="c-comment"># same thing as a command</span>`
+        },
+        tip: { icon: "💡", text: "Add to your CLAUDE.md: <code>When compacting, always preserve the full list of modified files and any failing test output.</code> This tells Claude what's important when it summarises." }
+      },
+      {
+        id: "prompts", icon: "✍️", title: "Prompt Craft", time: "8 mins",
+        type: "mixed",
+        content: `<p>Vague prompts produce vague results. Specific prompts with context, constraints, and verification criteria consistently outperform them.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># ✗ Too vague</span>
+<span class="c-flag">fix the bug</span>
+<span class="c-flag">add tests</span>
+
+<span class="c-comment"># ✓ Specific with verification criteria</span>
+<span class="c-str">users report login fails after session timeout. check the auth flow
+in src/auth/, especially token refresh. write a failing test that
+reproduces the issue, then fix it.</span>
+
+<span class="c-comment"># ✓ Reference files directly with @</span>
+<span class="c-str">look at @src/components/Login.tsx and add loading state handling</span>
+<span class="c-str">explain the logic in @src/utils/auth.js</span>`
+        }
+      },
+      {
+        id: "claudemd", icon: "📄", title: "CLAUDE.md: Persistent Project Memory", time: "10 mins",
+        type: "mixed",
+        content: `<p>CLAUDE.md is a markdown file in your project root that Claude reads at the start of <strong>every session</strong>. It's how you give Claude persistent context it cannot infer from code alone. Keep it <strong>under 200 lines</strong> — bloated files reduce adherence.</p>`,
+        code: {
+          lang: "markdown",
+          body: `<span class="c-comment"># Generate a starter file automatically</span>
+<span class="c-cmd">/init</span>
+
+<span class="c-comment"># Example CLAUDE.md</span>
+<span class="c-str">## Build & Test
+- Run `npm test` before committing
+- TypeScript: run `npm run typecheck` after code changes
+- API handlers live in src/api/handlers/ -- keep them there
+
+## Code Style
+- Use ES modules (import/export), not CommonJS (require)
+- 2-space indentation, single quotes for strings
+
+## Memory
+- When compacting, preserve the list of modified files</span>`
+        },
+        tip: { icon: "⚠️", text: "For every line in CLAUDE.md ask: <strong>'Would removing this cause Claude to make a mistake?'</strong> If not, cut it. Constraint is the point." }
+      },
+      {
+        id: "planmode", icon: "🗺️", title: "Plan Mode: Explore Before You Build", time: "5 mins",
+        type: "mixed",
+        content: `<p>Plan Mode instructs Claude to explore using <strong>read-only operations</strong> before touching any code. Use <code>Shift+Tab</code> to switch modes or start with the flag. Ideal for multi-file changes or unfamiliar areas.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Start a session in Plan Mode</span>
+<span class="c-cmd">claude --permission-mode plan</span>
+
+<span class="c-comment"># Explore first</span>
+<span class="c-str">read src/auth and understand how we handle sessions.
+What files would need to change to add Google OAuth?</span>
+
+<span class="c-comment"># Press Ctrl+G to edit the plan in your text editor</span>
+<span class="c-comment"># Then Shift+Tab to switch to Normal Mode and implement</span>`
+        }
+      },
+      {
+        id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "20 mins",
+        type: "exercise",
+        exerciseTitle: "Build Your Team's CLAUDE.md from Scratch",
+        exerciseDuration: "20 mins",
+        exerciseIntro: "Work on a shared repo your team all contribute to. The goal is a CLAUDE.md under 30 lines that is genuinely useful.",
+        exerciseSteps: [
+          "Run /init in your project to generate a starter CLAUDE.md. Review what Claude detected automatically.",
+          "Add three things Claude could not have inferred: a non-obvious build step, a project-specific naming convention, and a common gotcha that trips up new team members.",
+          "Start a fresh session (/clear) and ask Claude: 'what are the coding standards for this project?' — verify it answers from CLAUDE.md rather than guessing.",
+          "Give Claude a vague prompt about a task, then give a specific prompt for the same task referencing CLAUDE.md rules. Compare the two outputs side by side.",
+          "Remove one line from CLAUDE.md that Claude got right even without it. Prove it genuinely adds value before you keep it."
+        ],
+        reflect: "Most teams write too much in CLAUDE.md and it backfires. A 25-line file you've ruthlessly pruned outperforms a 200-line file that covers everything."
+      },
+      {
+        id: "quiz", icon: "🧠", title: "Module Quiz", time: "5 mins",
+        type: "quiz",
+        questions: [
+          {
+            q: "Your CLAUDE.md has grown to 350 lines. What problem does this cause?",
+            options: ["Claude refuses to read files over 300 lines", "Important instructions get lost and Claude's adherence drops", "The file is too large to be checked into git", "It causes context to fill faster but doesn't affect quality"],
+            correct: 1,
+            feedback: "Longer CLAUDE.md files paradoxically reduce quality. Claude treats it as context — longer files mean important rules get buried. Target under 200 lines."
+          },
+          {
+            q: "You've corrected Claude on the same issue three times in one session and it keeps reverting. What's the best fix?",
+            options: ["Repeat the correction more firmly", "Switch to a different model", "Run /clear and start fresh with a more specific initial prompt", "Add the rule to CLAUDE.md mid-session"],
+            correct: 2,
+            feedback: "Repeated corrections pollute context with failed approaches. A clean session with a better initial prompt almost always outperforms a long session of corrections."
+          },
+          {
+            q: "When is Plan Mode most valuable?",
+            options: ["When you want Claude to work faster", "When a change touches multiple files, you're unsure of the approach, or want to iterate before implementation", "For simple, single-file fixes", "Whenever you want read-only access"],
+            correct: 1,
+            feedback: "Plan Mode adds overhead, so skip it for trivial changes. Use it when you're uncertain about the approach or when the change touches many files."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 2,
+    title: "Real Dev Workflows: Bugs, Tests & PRs",
+    eyebrow: "Module 03 · Practical Application",
+    duration: "35 mins",
+    level: "Intermediate",
+    prereq: "Module 2 complete",
+    desc: "Debug efficiently, generate tests that match your project patterns, refactor safely, and manage the full git workflow — all conversationally.",
+    sections: [
+      {
+        id: "debugging", icon: "🐛", title: "Debugging with Claude", time: "8 mins",
+        type: "mixed",
+        content: `<p>The most effective debugging workflow: give Claude the error, the reproduction steps, and a clear definition of what <strong>'fixed' looks like</strong>. Claude traces the issue, identifies the root cause, and implements a fix.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Give the actual error message</span>
+<span class="c-str">TypeError: Cannot read properties of undefined (reading 'userId')
+    at UserService.getProfile (src/services/user.ts:47)
+
+reproduce: call getUserProfile with an expired session token.
+fix it and verify the tests pass. address the root cause.</span>
+
+<span class="c-comment"># Trace through the codebase</span>
+<span class="c-str">trace the login process from the front end to the database.
+where does the session token get validated?</span>
+
+<span class="c-comment"># Intermittent issues</span>
+<span class="c-str">this error is intermittent under concurrent load.
+check src/auth/ for any race conditions.</span>`
+        },
+        tip: { icon: "🎯", text: "Always tell Claude the command to reproduce the issue and ask it to <strong>verify the fix works</strong> before considering it done. Clear success criteria dramatically improve results." }
+      },
+      {
+        id: "tests", icon: "✅", title: "Writing Tests", time: "8 mins",
+        type: "mixed",
+        content: `<p>Claude examines your existing test files and <strong>matches the style, frameworks, and assertion patterns</strong> already in use. Be specific about what behaviour you want to verify, and always ask it to run the tests after writing them.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Identify gaps first</span>
+<span class="c-str">find functions in src/services/NotificationService.ts
+not covered by tests</span>
+
+<span class="c-comment"># Write with specific edge cases</span>
+<span class="c-str">write unit tests for the calculateDiscount function.
+cover: quantity is zero, discount exceeds 100%, user not authenticated.
+match the existing test patterns in src/__tests__/.
+run them after writing and fix any failures.</span>`
+        }
+      },
+      {
+        id: "git", icon: "🔀", title: "Git & Pull Requests", time: "5 mins",
+        type: "mixed",
+        content: `<p>Claude Code works directly with git — staging changes, writing commit messages, creating branches, opening pull requests. When you create a PR with <code>gh pr create</code>, the session links to that PR and is resumable later.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Git operations, conversationally</span>
+<span class="c-str">what files have I changed?</span>
+<span class="c-str">commit my changes with a descriptive message</span>
+<span class="c-str">create a new branch called feature/oauth-integration</span>
+
+<span class="c-comment"># Full PR workflow</span>
+<span class="c-str">summarise the changes I've made to the auth module</span>
+<span class="c-str">create a pr</span>
+<span class="c-str">enhance the PR description with more context about the security improvements</span>
+
+<span class="c-comment"># Resume a session linked to a PR</span>
+<span class="c-cmd">claude --from-pr 123</span>
+<span class="c-cmd">/rename oauth-integration</span>  <span class="c-comment"># name sessions early!</span>`
+        }
+      },
+      {
+        id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "25 mins",
+        type: "exercise",
+        exerciseTitle: "Bug-to-PR in a Single Session",
+        exerciseDuration: "25 mins",
+        exerciseIntro: "Pick a real bug or small feature from your backlog. Complete the full workflow below using only Claude Code. <strong>Do not write any code manually.</strong>",
+        exerciseSteps: [
+          "Name your session at the start: /rename [your-task-name].",
+          "Paste the bug report and ask Claude to explore the relevant code before proposing a fix. Use Plan Mode first.",
+          "Ask Claude to write a failing test that demonstrates the bug (or a test for the expected new behaviour).",
+          "Switch to Normal Mode and ask Claude to implement the fix. Verify the test now passes.",
+          "Ask Claude to run any linting or type-checking that applies to your project. Fix any issues.",
+          "Ask Claude to commit with a descriptive message and open a draft PR. Review the PR description — would you accept it from a colleague?"
+        ],
+        reflect: "The surprising part is usually step 3 — having Claude write the test before the fix is a different mental model. Think about what it changes in how you'd normally approach a bug."
+      },
+      {
+        id: "quiz", icon: "🧠", title: "Module Quiz", time: "5 mins",
+        type: "quiz",
+        questions: [
+          {
+            q: "What single thing most improves Claude's debugging performance?",
+            options: ["Giving Claude access to your entire codebase at once", "Using the Opus model instead of Sonnet", "Providing clear verification criteria: a test to pass, a command that succeeds", "Running Claude in Plan Mode before debugging"],
+            correct: 2,
+            feedback: "Verification criteria are the highest-leverage thing you can provide. Without them, you become the only feedback loop and every mistake requires your attention."
+          },
+          {
+            q: "When writing tests with Claude, why does it matter which existing test files you have in the project?",
+            options: ["Claude refuses to write tests without existing examples", "Claude examines them to match your project's style, frameworks, and assertion patterns", "Claude uses them to estimate how many new tests to write", "It doesn't matter — Claude uses a standard test pattern"],
+            correct: 1,
+            feedback: "Claude looks at your existing tests and matches them — the testing framework, assertion style, naming conventions, and file structure. This produces tests that actually fit your project."
+          },
+          {
+            q: "You've created a PR with 'gh pr create'. A week later you want to continue working on it. What command do you use?",
+            options: ["claude --continue", "claude --from-pr [PR number]", "claude --resume --pr [number]", "claude --branch [branch-name]"],
+            correct: 1,
+            feedback: "When you create a PR with gh pr create, Claude automatically links the session. Resume it any time with --from-pr and the PR number."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 3,
+    title: "Extending Claude Code: MCP, Hooks & Skills",
+    eyebrow: "Module 04 · Advanced Configuration",
+    duration: "40 mins",
+    level: "Intermediate → Advanced",
+    prereq: "Module 3 complete",
+    desc: "Connect external tools via MCP, create deterministic hooks that can't be ignored, and build Skills that give Claude domain expertise on demand.",
+    sections: [
+      {
+        id: "landscape", icon: "🗺️", title: "The Extension Landscape", time: "5 mins",
+        type: "table",
+        content: `<p>Four extension mechanisms let you tailor Claude Code to exactly how your team works. Understanding <em>when to use each one</em> is the key insight of this module.</p>`,
+        table: {
+          headers: ["Mechanism", "What it is", "Best for"],
+          rows: [
+            ["CLAUDE.md", "Advisory context. Claude reads and tries to follow it.", "Coding standards, architecture decisions, project-specific rules"],
+            ["Skills", "Domain knowledge/workflows that load on demand.", "Complex multi-step workflows, specialist context not needed every session"],
+            ["Hooks", "Deterministic shell commands at lifecycle points.", "Things that MUST happen every time with zero exceptions: lint, format, validate"],
+            ["MCP Servers", "Connect Claude to external tools and data sources.", "Jira, Slack, databases, Figma, GitHub — any external service"]
+          ]
+        },
+        info: { icon: "⚡", text: "Key difference: CLAUDE.md is <strong>advisory</strong>. Hooks are <strong>deterministic</strong>. If you want ESLint to run after every file edit, a hook <em>guarantees</em> it. An instruction in CLAUDE.md just asks Claude nicely." }
+      },
+      {
+        id: "mcp", icon: "🔌", title: "MCP: Connecting External Tools", time: "10 mins",
+        type: "mixed",
+        content: `<p>The Model Context Protocol is an open standard for connecting AI tools to external services. Once connected, interact with your tools in plain English.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Add an MCP server</span>
+<span class="c-cmd">claude mcp add</span>
+
+<span class="c-comment"># Once connected — natural language interaction</span>
+<span class="c-str">implement the requirements from Jira ticket PLAT-1234</span>
+<span class="c-str">check the latest errors from our Datadog dashboard and identify patterns</span>
+<span class="c-str">look at the design in our Figma file and implement the new card component</span>
+<span class="c-str">update Slack channel #engineering with a summary of what was deployed</span>
+
+<span class="c-comment"># See connected servers and tools</span>
+<span class="c-cmd">/mcp</span>`
+        }
+      },
+      {
+        id: "hooks", icon: "🪝", title: "Hooks: Deterministic Actions", time: "8 mins",
+        type: "mixed",
+        content: `<p>Hooks run shell scripts at specific points in Claude's workflow: before a tool use, after a file edit, on session stop. Unlike instructions, <strong>hooks cannot be ignored</strong>. Ask Claude to write them for you.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Ask Claude to create hooks for you</span>
+<span class="c-str">write a hook that runs eslint after every file edit</span>
+<span class="c-str">write a hook that blocks writes to the migrations/ folder</span>
+<span class="c-str">write a hook that sends a desktop notification when Claude finishes</span>
+
+<span class="c-comment"># Configure hooks interactively</span>
+<span class="c-cmd">/hooks</span>
+
+<span class="c-comment"># Notification hook command (macOS)</span>
+<span class="c-str">osascript -e 'display notification "Claude Code needs your attention"
+    with title "Claude Code"'</span>`
+        },
+        tip: { icon: "🔔", text: "Set up the <strong>notification hook</strong>: type /hooks, select Notification, match all, add the osascript command above, and save to User settings. Now kick off a big task, switch tabs, and let Claude page you back." }
+      },
+      {
+        id: "skills", icon: "🎯", title: "Skills: Domain Knowledge on Demand", time: "8 mins",
+        type: "mixed",
+        content: `<p>Skills are markdown files in <code>.claude/skills/</code> that give Claude domain knowledge and reusable workflows. Unlike CLAUDE.md, skills <strong>only load when invoked</strong> — keeping every session lean.</p>`,
+        code: {
+          lang: "markdown",
+          body: `<span class="c-comment"># .claude/skills/api-conventions/SKILL.md</span>
+<span class="c-str">---
+name: api-conventions
+description: REST API design conventions for our services
+---
+
+# API Conventions
+- Use kebab-case for URL paths
+- Use camelCase for JSON properties
+- Always include pagination for list endpoints
+- Version APIs in the URL path (/v1/, /v2/)</span>
+
+<span class="c-comment"># Invoke with /skill-name</span>
+<span class="c-cmd">/api-conventions</span>
+
+<span class="c-comment"># Or create a workflow skill</span>
+<span class="c-str">---
+name: fix-issue
+disable-model-invocation: true
+---
+Fix GitHub issue $ARGUMENTS using gh issue view,
+write tests, fix the code, then open a PR.</span>
+
+<span class="c-cmd">/fix-issue 1234</span>`
+        }
+      },
+      {
+        id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "25 mins",
+        type: "exercise",
+        exerciseTitle: "Wire Up Your Dev Environment",
+        exerciseDuration: "25 mins",
+        exerciseIntro: "This exercise sets up Claude Code to feel native to how your team already works. Use your actual project.",
+        exerciseSteps: [
+          "MCP: Add the Jira, GitHub, or Slack MCP server via 'claude mcp add'. Ask Claude to fetch a real ticket and describe what it would implement.",
+          "Hook: Ask Claude: 'write a hook that runs our linter after every file edit, and outputs any errors to the console.' Test it by making a deliberate linting error.",
+          "Skill: Create .claude/skills/ and write a skill capturing domain knowledge specific to your team — a deployment checklist, API naming standard, or debugging process. Test it with /your-skill-name.",
+          "Notification: Set up the desktop notification hook. Start a large task (write tests for an entire module), switch tabs, and wait to be paged back."
+        ],
+        reflect: "What would a hook for your team's most painful repeated task look like? Think about code review pre-checks, deployment validations, or compliance requirements that currently require human memory to remember."
+      },
+      {
+        id: "quiz", icon: "🧠", title: "Module Quiz", time: "5 mins",
+        type: "quiz",
+        questions: [
+          {
+            q: "Your team has a strict rule that no file in migrations/ should ever be edited by Claude. What's the right mechanism?",
+            options: ["Add it to CLAUDE.md as a strongly-worded rule", "Create a PreToolUse hook that blocks writes to that directory", "Create a Skill that reminds Claude of this rule", "Set file permissions on the directory to read-only"],
+            correct: 1,
+            feedback: "Hooks are deterministic. CLAUDE.md rules are advisory. If something must never happen, use a hook — not a reminder that can be forgotten."
+          },
+          {
+            q: "You have detailed API documentation (250 lines) Claude should use when building endpoints, but not for other tasks. Where should it live?",
+            options: ["At the top of CLAUDE.md so it's always available", "In a separate file imported via @ in CLAUDE.md", "In a Skill, so it loads on demand rather than consuming context every session", "In auto memory, so Claude learns it over time"],
+            correct: 2,
+            feedback: "Skills load on demand. CLAUDE.md loads every session. Detailed domain-specific docs belong in Skills to keep the context window clean for actual work."
+          },
+          {
+            q: "What does MCP allow Claude Code to do that it cannot do by default?",
+            options: ["Interact with external tools like Jira, Slack, Figma, and databases using natural language", "Run code in a sandboxed environment", "Spawn multiple parallel Claude sessions", "Read files outside the current project directory"],
+            correct: 0,
+            feedback: "MCP is the bridge to external services. Once connected, you interact with Jira tickets, Slack messages, Figma designs, and databases in plain English — no API wrangling required."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 4,
+    title: "Multi-Agent Power: Subagents & Parallel Workflows",
+    eyebrow: "Module 05 · Expert",
+    duration: "40 mins",
+    level: "Advanced",
+    prereq: "Modules 1–4 complete",
+    desc: "Spawn specialist subagents, run parallel sessions with git worktrees, build quality pipelines, and scale from one developer to team-wide automation.",
+    sections: [
+      {
+        id: "subagents", icon: "🤖", title: "What Are Subagents?", time: "8 mins",
+        type: "mixed",
+        content: `<p>Subagents are specialised AI assistants that Claude delegates tasks to. Each runs in its own <strong>context window</strong> with a custom system prompt, specific tool access, and independent permissions.</p>
+<p>The fundamental reason to use them: research consumes context. When Claude reads lots of files, they fill up fast. Subagents run in <strong>separate context windows</strong> and report back summaries — keeping your main conversation clean for implementation.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># See all available subagents</span>
+<span class="c-cmd">/agents</span>
+
+<span class="c-comment"># Built-in subagents:</span>
+<span class="c-comment"># Explore  - fast read-only search (Haiku model, low latency)</span>
+<span class="c-comment"># Plan     - research during Plan Mode</span>
+<span class="c-comment"># General  - complex multi-step tasks</span>
+
+<span class="c-comment"># Request subagents explicitly</span>
+<span class="c-str">use a subagent to review this code for edge cases</span>
+<span class="c-str">research the auth, database, and API modules in parallel
+using separate subagents</span>`
+        }
+      },
+      {
+        id: "custom", icon: "⚗️", title: "Creating Custom Subagents", time: "10 mins",
+        type: "mixed",
+        content: `<p>Subagents are markdown files in <code>.claude/agents/</code> (project-level, shared via git) or <code>~/.claude/agents/</code> (personal). The <code>description</code> field is critical — Claude uses it to decide when to delegate automatically.</p>`,
+        code: {
+          lang: "markdown",
+          body: `<span class="c-comment"># .claude/agents/security-reviewer.md</span>
+<span class="c-str">---
+name: security-reviewer
+description: Reviews code for security vulnerabilities. Use proactively
+             after any change touching auth, authorisation, or data handling.
+tools: Read, Grep, Glob, Bash
+model: opus
+---
+
+You are a senior security engineer. Review code for:
+- Injection vulnerabilities (SQL, XSS, command injection)
+- Authentication and authorisation flaws
+- Secrets exposed in code
+- Insecure data handling
+
+Provide specific line references and suggested fixes.</span>
+
+<span class="c-comment"># .claude/agents/test-runner.md</span>
+<span class="c-str">---
+name: test-runner
+description: Runs tests and fixes failures. Use proactively when code changes.
+tools: Read, Edit, Bash, Grep, Glob
+model: sonnet
+---</span>`
+        },
+        tip: { icon: "💡", text: "Add <strong>'Use proactively when...'</strong> to the description field to trigger automatic delegation without explicit user instruction. Commit project subagents to git so the whole team benefits." }
+      },
+      {
+        id: "parallel", icon: "⚡", title: "Parallel Workflows & Worktrees", time: "8 mins",
+        type: "mixed",
+        content: `<p>Git worktrees allow multiple Claude sessions to run simultaneously without conflicts. Each session gets its own working directory and branch while sharing the same repository history.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Create isolated worktrees for parallel sessions</span>
+<span class="c-cmd">claude --worktree feature-auth</span>
+<span class="c-cmd">claude --worktree bugfix-payment</span>  <span class="c-comment"># separate dir, no conflicts</span>
+
+<span class="c-comment"># Fan-out: distribute work across many parallel invocations</span>
+<span class="c-cmd">for file in $(cat files.txt); do
+  claude -p "migrate $file to Django 4.x patterns" \
+    --allowedTools "Edit,Bash(git commit *)" &
+done</span>
+
+<span class="c-comment"># Writer/Reviewer pattern — quality through fresh eyes</span>
+<span class="c-comment"># Session A: implement the feature</span>
+<span class="c-str">implement a rate limiter for our API endpoints</span>
+<span class="c-comment"># Session B: review with no bias from writing the code</span>
+<span class="c-str">review the rate limiter in @src/middleware/rateLimiter.ts.
+look for edge cases, race conditions, and consistency with existing middleware.</span>`
+        }
+      },
+      {
+        id: "automation", icon: "🏭", title: "Non-Interactive Mode & CI/CD", time: "5 mins",
+        type: "mixed",
+        content: `<p>Claude Code runs non-interactively in pipelines, pre-commit hooks, or scripts using <code>claude -p</code>. This is how you scale from one developer to team-wide automation.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># One-off automation</span>
+<span class="c-cmd">claude -p "translate new strings into French and raise a PR for review"</span>
+<span class="c-cmd">claude -p "review changed files for security issues" --output-format json</span>
+
+<span class="c-comment"># Pipe data in</span>
+<span class="c-cmd">tail -f app.log | claude -p "Slack me if you see any anomalies"</span>
+<span class="c-cmd">cat build-error.txt | claude -p "explain the root cause of this error"</span>
+
+<span class="c-comment"># In package.json scripts</span>
+<span class="c-str">"lint:ai": "claude -p 'check changes vs. main for typos,
+    return filename:line and description'"</span>`
+        }
+      },
+      {
+        id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "30 mins",
+        type: "exercise",
+        exerciseTitle: "Build a Multi-Agent Quality Pipeline",
+        exerciseDuration: "30 mins",
+        exerciseIntro: "Design and run a multi-agent workflow that handles a real development task at a level impossible in a single Claude session.",
+        exerciseSteps: [
+          "Create two custom subagents in .claude/agents/: a code-reviewer (read-only, Opus, quality/security focus) and a test-writer (read/write, Sonnet, matches your team's test patterns).",
+          "Pick a module with limited test coverage. Ask Claude: 'use the test-writer subagent to write tests for [module], then use the code-reviewer subagent to review both the module and the new tests.'",
+          "Start a second worktree session while the first is running: 'claude --worktree parallel-task'. Give it a different unrelated task. Observe both running simultaneously.",
+          "In the main session, ask Claude to use subagents to research three different areas of your codebase in parallel and synthesise findings into an architecture summary in markdown.",
+          "Review both subagent outputs. What did the code-reviewer flag that the test-writer missed? What would have been lost in a single-context conversation?"
+        ],
+        reflect: "Where in your current sprint could multi-agent workflows save hours? Think specifically about code review, security scanning, documentation generation, and regression testing — which of these currently runs as a manual process that could become an automated subagent pipeline?"
+      },
+      {
+        id: "quiz", icon: "🧠", title: "Module Quiz", time: "5 mins",
+        type: "quiz",
+        questions: [
+          {
+            q: "Why does the 'description' field in a subagent's frontmatter matter so much?",
+            options: ["It appears in the Claude UI as a label", "Claude uses it to decide when to automatically delegate tasks to that subagent", "It determines which model the subagent uses", "It's only used for documentation purposes"],
+            correct: 1,
+            feedback: "Claude reads descriptions to match task types to subagents. 'Use proactively when...' in the description is what enables automatic delegation without explicit user instruction."
+          },
+          {
+            q: "What problem do git worktrees solve when running parallel Claude sessions?",
+            options: ["They give each session a larger context window", "They allow sessions to share files in real time", "They give each session its own isolated working directory so changes don't conflict", "They enable Claude to commit to multiple branches simultaneously"],
+            correct: 2,
+            feedback: "Without worktrees, parallel sessions would conflict on the same files. Worktrees give each session a fully isolated working directory while sharing the same repo history."
+          },
+          {
+            q: "You want Claude to review every PR in your CI pipeline automatically. What combination would you use?",
+            options: ["CLAUDE.md with a review checklist and a manual trigger", "A custom subagent defining the review criteria, invoked via 'claude -p' in GitHub Actions", "A Skill loaded into the main conversation via /review-pr", "An MCP server connected to GitHub for real-time review"],
+            correct: 1,
+            feedback: "Non-interactive mode (claude -p) + a custom subagent is the right CI architecture. The subagent provides focus and the -p flag enables automation without a human in the loop."
+          }
+        ]
+      }
+    ]
+  }
+];
+
+// ─── STATE ───────────────────────────────────────────────────────
+let state = {
+  currentView: 'overview', // 'overview' | 'module'
+  currentModule: 0,
+  currentSection: 0,
+  completedModules: new Set(),
+  quizAnswers: {}, // {moduleId: {qIdx: answerIdx}}
+  quizSubmitted: {} // {moduleId: bool}
+};
+
+// ─── INIT ────────────────────────────────────────────────────────
+function init() {
+  buildOverviewCards();
+  buildProgressDots();
+  updateProgress();
+}
+
+function buildOverviewCards() {
+  const container = document.getElementById('overview-cards');
+  container.innerHTML = MODULES.map(m => `
+    <div class="module-card${state.completedModules.has(m.id) ? ' completed' : ''}" onclick="goModule(${m.id})">
+      <div class="card-num">Module ${m.id + 1}</div>
+      <div class="card-title">${m.title}</div>
+      <div class="card-desc">${m.desc}</div>
+      <div class="card-meta">
+        <div class="card-badge${state.completedModules.has(m.id) ? ' done' : ''}">${state.completedModules.has(m.id) ? '✓ Complete' : m.level}</div>
+        <div class="card-dur">${m.duration}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function buildProgressDots() {
+  const container = document.getElementById('progressDots');
+  container.innerHTML = MODULES.map(m => `<div class="prog-dot" id="pdot-${m.id}"></div>`).join('');
+}
+
+function updateProgress() {
+  const done = state.completedModules.size;
+  const total = MODULES.length;
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('topProgressFill').style.width = pct + '%';
+  document.getElementById('topProgressPct').textContent = pct + '%';
+  document.getElementById('progressLabel').textContent = `${done} / ${total}`;
+  MODULES.forEach(m => {
+    const dot = document.getElementById(`pdot-${m.id}`);
+    if (!dot) return;
+    dot.className = 'prog-dot' + (state.completedModules.has(m.id) ? ' done' : (state.currentModule === m.id && state.currentView === 'module' ? ' active' : ''));
+  });
+  // Update sidebar nav
+  MODULES.forEach(m => {
+    const el = document.getElementById(`mod-nav-${m.id}`);
+    if (!el) return;
+    el.className = 'mod-item' +
+      (state.currentModule === m.id && state.currentView === 'module' ? ' active' : '') +
+      (state.completedModules.has(m.id) ? ' completed' : '');
+  });
+  buildOverviewCards();
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────
+function showOverview() {
+  state.currentView = 'overview';
+  document.getElementById('view-overview').className = 'view active';
+  document.getElementById('view-module').className = 'view';
+  document.getElementById('view-complete').className = 'view';
+  document.getElementById('sections-label').textContent = '';
+  document.getElementById('sections-nav').innerHTML = '';
+  updateProgress();
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+function showCompletion() {
+  state.currentView = 'complete';
+  document.getElementById('view-overview').className = 'view';
+  document.getElementById('view-module').className = 'view';
+  document.getElementById('view-complete').className = 'view active';
+}
+
+function goModule(idx) {
+  state.currentModule = idx;
+  state.currentSection = 0;
+  state.currentView = 'module';
+  document.getElementById('view-overview').className = 'view';
+  document.getElementById('view-module').className = 'view active';
+  document.getElementById('view-complete').className = 'view';
+  renderModule();
+  updateProgress();
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+function renderModule() {
+  const mod = MODULES[state.currentModule];
+  const sec = mod.sections[state.currentSection];
+  const isLast = state.currentSection === mod.sections.length - 1;
+  const isLastModule = state.currentModule === MODULES.length - 1;
+
+  // Build sidebar sections
+  const labelEl = document.getElementById('sections-label');
+  const navEl = document.getElementById('sections-nav');
+  labelEl.textContent = `Module ${mod.id + 1} Sections`;
+  navEl.innerHTML = mod.sections.map((s, i) => `
+    <div class="section-btn${i === state.currentSection ? ' active' : ''}" onclick="goSection(${i})">
+      <div class="dot"></div>
+      ${s.icon} ${s.title}
+    </div>
+  `).join('');
+
+  // Build main content
+  document.getElementById('module-render').innerHTML = `
+    <div class="module-content">
+      <div class="module-header">
+        <div class="mod-eyebrow">${mod.eyebrow}</div>
+        <h2>${mod.title}</h2>
+        <div class="mod-meta">
+          <div class="meta-chip">⏱ ${mod.duration}</div>
+          <div class="meta-chip">📊 ${mod.level}</div>
+          <div class="meta-chip">🔗 ${mod.prereq}</div>
+          <div class="meta-chip">📍 ${state.currentSection + 1} / ${mod.sections.length}</div>
+        </div>
+      </div>
+      <div class="module-sections" id="section-content"></div>
+      <div class="module-nav">
+        <button class="btn-nav" onclick="prevSection()" ${state.currentSection === 0 ? 'disabled' : ''}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Previous
+        </button>
+        <button class="btn-nav" onclick="showOverview()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 8 12 12 16"/><line x1="16" y1="12" x2="8" y2="12"/></svg>
+          All Modules
+        </button>
+        ${!isLast ? `
+          <button class="btn-nav primary" onclick="nextSection()" style="margin-left:auto">
+            Next
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        ` : `
+          <button class="complete-btn" id="completeBtn" onclick="completeModule()" style="margin-left:auto">
+            ${state.completedModules.has(mod.id) ? '✓ Completed' : (isLastModule ? '🎓 Finish Training' : '✓ Complete Module')}
+          </button>
+        `}
+      </div>
+    </div>
+  `;
+
+  renderSection(sec);
+}
+
+function renderSection(sec) {
+  const container = document.getElementById('section-content');
+  let html = `
+    <div class="content-section">
+      <div class="section-header">
+        <div class="section-icon">${sec.icon}</div>
+        <div class="section-title-text">${sec.title}</div>
+        ${sec.time ? `<div class="section-time">⏱ ${sec.time}</div>` : ''}
+      </div>
+  `;
+
+  if (sec.type === 'prose' || sec.type === 'mixed') {
+    html += `<div class="prose">${sec.content}</div>`;
+  }
+
+  if (sec.code) {
+    html += `
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-dots"><span></span><span></span><span></span></div>
+          <div class="code-lang">${sec.code.lang}</div>
+        </div>
+        <div class="code-body">${sec.code.body}</div>
+      </div>
+    `;
+  }
+
+  if (sec.tip) {
+    html += `
+      <div class="tip-box">
+        <div class="tip-icon">${sec.tip.icon}</div>
+        <div>${sec.tip.text}</div>
+      </div>
+    `;
+  }
+
+  if (sec.info) {
+    html += `
+      <div class="info-box">
+        <div class="info-icon">${sec.info.icon}</div>
+        <div>${sec.info.text}</div>
+      </div>
+    `;
+  }
+
+  if (sec.type === 'table') {
+    html += `<div class="prose">${sec.content}</div>`;
+    if (sec.table) {
+      html += `<table class="compare-table"><thead><tr>${sec.table.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+      html += sec.table.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
+      html += `</tbody></table>`;
+    }
+    if (sec.info) {
+      html += `<div class="info-box" style="margin-top:16px"><div class="info-icon">${sec.info.icon}</div><div>${sec.info.text}</div></div>`;
+    }
+  }
+
+  if (sec.type === 'exercise') {
+    html += `
+      <div class="exercise-box">
+        <div class="exercise-header">
+          <div class="exercise-badge">Exercise</div>
+          <div class="exercise-title">${sec.exerciseTitle}</div>
+          <div class="exercise-time">⏱ ${sec.exerciseDuration}</div>
+        </div>
+        <div class="exercise-body">
+          <div class="prose">${sec.exerciseIntro}</div>
+          <ol class="exercise-steps">
+            ${sec.exerciseSteps.map(s => `<li>${s}</li>`).join('')}
+          </ol>
+          <div class="exercise-reflect">
+            <strong>💭 Reflect:</strong> ${sec.reflect}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (sec.type === 'quiz') {
+    const modId = state.currentModule;
+    const submitted = !!state.quizSubmitted[modId];
+    const answers = state.quizAnswers[modId] || {};
+    const allAnswered = sec.questions.every((_, i) => answers[i] !== undefined);
+
+    html += `
+      <div class="quiz-box">
+        <div class="quiz-header">
+          <div class="quiz-badge">Quiz</div>
+          <div class="quiz-title">Check Your Understanding</div>
+          <div class="quiz-score" id="quiz-score-display">${submitted ? getScoreText(sec, modId) : ''}</div>
+        </div>
+        <div class="quiz-body">
+    `;
+
+    sec.questions.forEach((q, qi) => {
+      const chosen = answers[qi];
+      html += `<div class="quiz-q" id="q-block-${qi}">
+        <div class="quiz-q-text"><span class="quiz-q-num">Q${qi + 1}.</span> ${q.q}</div>
+        <div class="quiz-options">
+          ${q.options.map((opt, oi) => {
+            let cls = 'quiz-option';
+            if (submitted) {
+              cls += ' locked';
+              if (oi === q.correct) cls += ' correct';
+              else if (oi === chosen && chosen !== q.correct) cls += ' wrong';
+            } else if (chosen === oi) cls += ' selected';
+            return `<button class="${cls}" onclick="selectAnswer(${qi}, ${oi})">${opt}</button>`;
+          }).join('')}
+        </div>
+        <div class="quiz-feedback${submitted ? ' show ' + (chosen === q.correct ? 'correct' : 'wrong') : ''}" id="qfb-${qi}">
+          ${submitted ? (chosen === q.correct ? '✓ Correct. ' : '✗ Incorrect. ') + q.feedback : ''}
+        </div>
+      </div>`;
+    });
+
+    html += `
+          <div class="quiz-submit-row">
+            <button class="btn-submit" id="quiz-submit-btn" onclick="submitQuiz()" ${!allAnswered || submitted ? 'disabled' : ''}>
+              ${submitted ? '✓ Submitted' : 'Submit Answers'}
+            </button>
+            <div class="quiz-result${submitted ? ' show' : ''}" id="quiz-result-msg">${submitted ? getScoreText(sec, modId) : ''}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (sec.type === 'objectives') {
+    html += `<div class="objectives-grid">${sec.items.map(item => `<div class="obj"><div class="obj-icon">✦</div>${item}</div>`).join('')}</div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function getScoreText(sec, modId) {
+  const answers = state.quizAnswers[modId] || {};
+  let correct = 0;
+  sec.questions.forEach((q, i) => { if (answers[i] === q.correct) correct++; });
+  const total = sec.questions.length;
+  return `${correct}/${total} correct${correct === total ? ' 🎉' : correct >= total - 1 ? ' 👍' : ' — review the feedback below'}`;
+}
+
+function selectAnswer(qi, oi) {
+  const modId = state.currentModule;
+  if (state.quizSubmitted[modId]) return;
+  if (!state.quizAnswers[modId]) state.quizAnswers[modId] = {};
+  state.quizAnswers[modId][qi] = oi;
+
+  // Update option styles
+  const sec = MODULES[modId].sections[state.currentSection];
+  const answers = state.quizAnswers[modId];
+  const allAnswered = sec.questions.every((_, i) => answers[i] !== undefined);
+
+  sec.questions.forEach((q, i) => {
+    const block = document.getElementById(`q-block-${i}`);
+    if (!block) return;
+    const opts = block.querySelectorAll('.quiz-option');
+    opts.forEach((btn, oi) => {
+      btn.className = 'quiz-option' + (answers[i] === oi ? ' selected' : '');
+    });
+  });
+
+  const submitBtn = document.getElementById('quiz-submit-btn');
+  if (submitBtn) submitBtn.disabled = !allAnswered;
+}
+
+function submitQuiz() {
+  const modId = state.currentModule;
+  const sec = MODULES[modId].sections[state.currentSection];
+  state.quizSubmitted[modId] = true;
+  renderSection(sec);
+}
+
+function goSection(idx) {
+  state.currentSection = idx;
+  renderModule();
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+function nextSection() {
+  const mod = MODULES[state.currentModule];
+  if (state.currentSection < mod.sections.length - 1) {
+    state.currentSection++;
+    renderModule();
+    document.getElementById('mainContent').scrollTop = 0;
+  }
+}
+
+function prevSection() {
+  if (state.currentSection > 0) {
+    state.currentSection--;
+    renderModule();
+    document.getElementById('mainContent').scrollTop = 0;
+  }
+}
+
+function completeModule() {
+  const modId = state.currentModule;
+  state.completedModules.add(modId);
+  updateProgress();
+
+  const isLastModule = modId === MODULES.length - 1;
+  if (isLastModule && state.completedModules.size === MODULES.length) {
+    showCompletion();
+  } else {
+    const nextId = Math.min(modId + 1, MODULES.length - 1);
+    goModule(nextId);
+  }
+}
+
+// ─── BOOT ────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
