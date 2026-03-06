@@ -755,7 +755,7 @@ code {
       <div class="mod-num">4</div>
       <div class="mod-info">
         <div class="mod-title">MCP, Hooks &amp; Skills</div>
-        <div class="mod-dur">40 mins · Advanced</div>
+        <div class="mod-dur">50 mins · Advanced</div>
       </div>
       <div class="mod-check">✓</div>
     </div>
@@ -764,7 +764,7 @@ code {
       <div class="mod-num">5</div>
       <div class="mod-info">
         <div class="mod-title">Multi-Agent Workflows</div>
-        <div class="mod-dur">40 mins · Expert</div>
+        <div class="mod-dur">60 mins · Expert</div>
       </div>
       <div class="mod-check">✓</div>
     </div>
@@ -1174,10 +1174,10 @@ run them after writing and fix any failures.</span>`
     id: 3,
     title: "Extending Claude Code: MCP, Hooks & Skills",
     eyebrow: "Module 04 · Advanced Configuration",
-    duration: "40 mins",
+    duration: "50 mins",
     level: "Intermediate → Advanced",
     prereq: "Module 3 complete",
-    desc: "Connect external tools via MCP, create deterministic hooks that can't be ignored, and build Skills that give Claude domain expertise on demand.",
+    desc: "Connect external tools via MCP, create deterministic hooks, and build Skills — from simple knowledge docs to automated workflows preloaded into specialist subagents.",
     sections: [
       {
         id: "landscape", icon: "🗺️", title: "The Extension Landscape", time: "5 mins",
@@ -1234,36 +1234,94 @@ run them after writing and fix any failures.</span>`
         tip: { icon: "🔔", text: "Set up the <strong>notification hook</strong>: type /hooks, select Notification, match all, add the osascript command above, and save to User settings. Now kick off a big task, switch tabs, and let Claude page you back." }
       },
       {
-        id: "skills", icon: "🎯", title: "Skills: Domain Knowledge on Demand", time: "8 mins",
+        id: "skills-structure", icon: "🎯", title: "Skills: SKILL.md Structure & File Format", time: "7 mins",
         type: "mixed",
-        content: `<p>Skills are markdown files in <code>.claude/skills/</code> that give Claude domain knowledge and reusable workflows. Unlike CLAUDE.md, skills <strong>only load when invoked</strong> — keeping every session lean.</p>`,
+        content: `<p>Skills are <strong>markdown files</strong> stored in <code>.claude/skills/skill-name/SKILL.md</code> (project-level) or <code>~/.claude/skills/</code> (personal, available in all projects). Each skill lives in its own folder with <code>SKILL.md</code> at the root as the required entry point.</p>
+<p>The YAML frontmatter defines the skill's identity. The <code>name</code> field becomes the slash command (<code>/api-conventions</code>). The <code>description</code> field is what Claude reads to decide whether to invoke the skill automatically — write it as a trigger condition, not a readme blurb.</p>`,
         code: {
           lang: "markdown",
-          body: `<span class="c-comment"># .claude/skills/api-conventions/SKILL.md</span>
+          body: `<span class="c-comment"># Folder structure</span>
+<span class="c-str">.claude/
+  skills/
+    api-conventions/
+      SKILL.md          ← required entry point
+      openapi-spec.yaml ← supporting files allowed
+      examples.md
+    deployment-checklist/
+      SKILL.md</span>
+
+<span class="c-comment"># SKILL.md — complete format with YAML frontmatter</span>
 <span class="c-str">---
-name: api-conventions
-description: REST API design conventions for our services
+name: api-conventions          # lowercase, hyphens only, max 64 chars
+description: >
+  Use when implementing or reviewing REST API endpoints.
+  Covers naming standards, versioning, pagination, and error formats.
+  Invoke proactively when building any service endpoint.
 ---
 
 # API Conventions
-- Use kebab-case for URL paths
-- Use camelCase for JSON properties
-- Always include pagination for list endpoints
-- Version APIs in the URL path (/v1/, /v2/)</span>
 
-<span class="c-comment"># Invoke with /skill-name</span>
+## URL Paths
+- Use kebab-case: /user-profiles, not /userProfiles
+- Always version: /v1/orders, /v2/orders
+
+## JSON Properties
+- camelCase throughout: { "userId": 123, "createdAt": "..." }
+
+## Pagination
+Required on all list endpoints: { "data": [], "nextCursor": "..." }</span>
+
+<span class="c-comment"># Invoke manually — skill content is injected into context</span>
 <span class="c-cmd">/api-conventions</span>
 
-<span class="c-comment"># Or create a workflow skill</span>
+<span class="c-comment"># User-level skills (shared across all your projects)</span>
+<span class="c-str">~/.claude/skills/debugging-process/SKILL.md</span>`
+        },
+        tip: { icon: "📁", text: "<strong>Name requirements:</strong> lowercase letters, numbers, hyphens only — no spaces, no uppercase. Reserved words 'anthropic' and 'claude' are blocked. The <code>description</code> is the trigger condition Claude reads to auto-invoke. 'Use when implementing REST endpoints' is actionable. 'Helps with APIs' is not." }
+      },
+      {
+        id: "skills-advanced", icon: "⚙️", title: "Skills: Workflows, Arguments & Subagent Integration", time: "8 mins",
+        type: "mixed",
+        content: `<p>Skills aren't just knowledge documents — they can encode <strong>multi-step automation workflows</strong>. Set <code>disable-model-invocation: true</code> in frontmatter to turn a skill into a pure prompt that runs directly as an instruction. Use <code>$ARGUMENTS</code> to pass parameters at invocation time.</p>
+<p>Critically: subagents <strong>do not inherit skills from the main conversation</strong>. If a subagent needs your team's conventions, explicitly list them under the <code>skills:</code> field in the subagent's frontmatter. The skill content is <em>fully injected</em> into the subagent's context at startup — not just made available; it's already there.</p>`,
+        code: {
+          lang: "markdown",
+          body: `<span class="c-comment"># Workflow automation skill — runs as direct instruction</span>
 <span class="c-str">---
 name: fix-issue
 disable-model-invocation: true
+description: Fix a GitHub issue end-to-end. Invoke with issue number.
 ---
-Fix GitHub issue $ARGUMENTS using gh issue view,
-write tests, fix the code, then open a PR.</span>
+Use gh issue view $ARGUMENTS to read the issue requirements.
+Write failing tests that describe the expected behaviour first.
+Fix the code until all tests pass.
+Open a PR with a summary referencing the issue number.</span>
 
-<span class="c-cmd">/fix-issue 1234</span>`
-        }
+<span class="c-cmd">/fix-issue 1234</span>   <span class="c-comment"># $ARGUMENTS becomes "1234"</span>
+
+<span class="c-comment"># Preloading skills into a subagent's context at startup</span>
+<span class="c-str">---
+name: api-developer
+description: Implement API endpoints following our team conventions.
+model: sonnet
+tools: Read, Edit, Bash, Grep
+skills:
+  - api-conventions        # full skill content injected at startup
+  - error-handling-patterns
+  - auth-patterns
+---
+
+Implement API endpoints. The team conventions, error patterns,
+and auth patterns are already in your context from the loaded skills.
+Never guess at conventions — reference them directly.</span>
+
+<span class="c-comment"># Supporting files alongside SKILL.md</span>
+<span class="c-str">.claude/skills/test-conventions/
+  SKILL.md
+  examples/unit-test-sample.ts   ← Claude can read these too
+  examples/integration-test.ts</span>`
+        },
+        info: { icon: "💡", text: "<strong>Key difference from CLAUDE.md:</strong> CLAUDE.md loads on <em>every</em> session and consumes context even when irrelevant. Skills load <em>on demand</em> — only when invoked or preloaded into a specific subagent. Put detailed domain docs (API specs, runbooks, architecture decisions) in Skills. Put universal rules in CLAUDE.md." }
       },
       {
         id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "25 mins",
@@ -1307,124 +1365,226 @@ write tests, fix the code, then open a PR.</span>
   },
   {
     id: 4,
-    title: "Multi-Agent Power: Subagents & Parallel Workflows",
+    title: "Multi-Agent Power: Subagents, Teams & Automation",
     eyebrow: "Module 05 · Expert",
-    duration: "40 mins",
+    duration: "60 mins",
     level: "Advanced",
     prereq: "Modules 1–4 complete",
-    desc: "Spawn specialist subagents, run parallel sessions with git worktrees, build quality pipelines, and scale from one developer to team-wide automation.",
+    desc: "Build custom subagents with persistent memory and hooks, coordinate peer-to-peer agent teams for complex parallel work, and deploy Claude in CI/CD pipelines at scale.",
     sections: [
       {
-        id: "subagents", icon: "🤖", title: "What Are Subagents?", time: "8 mins",
-        type: "mixed",
-        content: `<p>Subagents are specialised AI assistants that Claude delegates tasks to. Each runs in its own <strong>context window</strong> with a custom system prompt, specific tool access, and independent permissions.</p>
-<p>The fundamental reason to use them: research consumes context. When Claude reads lots of files, they fill up fast. Subagents run in <strong>separate context windows</strong> and report back summaries — keeping your main conversation clean for implementation.</p>`,
-        code: {
-          lang: "bash",
-          body: `<span class="c-comment"># See all available subagents</span>
-<span class="c-cmd">/agents</span>
-
-<span class="c-comment"># Built-in subagents:</span>
-<span class="c-comment"># Explore  - fast read-only search (Haiku model, low latency)</span>
-<span class="c-comment"># Plan     - research during Plan Mode</span>
-<span class="c-comment"># General  - complex multi-step tasks</span>
-
-<span class="c-comment"># Request subagents explicitly</span>
-<span class="c-str">use a subagent to review this code for edge cases</span>
-<span class="c-str">research the auth, database, and API modules in parallel
-using separate subagents</span>`
-        }
+        id: "concepts", icon: "🤖", title: "Subagents: Core Concepts & Built-ins", time: "8 mins",
+        type: "table",
+        content: `<p>Subagents are specialised AI assistants that run in their <strong>own context window</strong> with a custom system prompt, specific tool access, and independent permissions. When Claude delegates to a subagent, it works independently and returns a summary — keeping your main conversation clean for implementation.</p>
+<p>Three reasons to use them: <strong>context preservation</strong> (exploration stays out of your main context), <strong>constraint enforcement</strong> (limit tools and permissions for safety or focus), and <strong>cost control</strong> (route tasks to faster, cheaper models like Haiku for routine work).</p>`,
+        table: {
+          headers: ["Built-in Subagent", "Model", "Tools", "When Claude Uses It"],
+          rows: [
+            ["Explore", "Haiku (fast)", "Read-only (no Write/Edit)", "File discovery, codebase search — keeps verbose output out of main context"],
+            ["Plan", "Inherits from main", "Read-only (no Write/Edit)", "Research during Plan Mode before presenting you with a plan"],
+            ["General-purpose", "Inherits from main", "All tools", "Complex multi-step tasks requiring both exploration and modification"],
+            ["Claude Code Guide", "Haiku", "Read + Web fetch", "When you ask questions about Claude Code features and documentation"],
+            ["statusline-setup", "Sonnet", "Read, Edit", "When you run /statusline to configure your terminal status bar"]
+          ]
+        },
+        tip: { icon: "⚠️", text: "Subagents <strong>cannot spawn other subagents</strong> — only the main conversation can delegate. For workflows requiring nested delegation, chain subagents sequentially from the main conversation, or use Agent Teams (covered later in this module)." }
       },
       {
-        id: "custom", icon: "⚗️", title: "Creating Custom Subagents", time: "10 mins",
+        id: "create", icon: "⚗️", title: "Creating Custom Subagents", time: "10 mins",
         type: "mixed",
-        content: `<p>Subagents are markdown files in <code>.claude/agents/</code> (project-level, shared via git) or <code>~/.claude/agents/</code> (personal). The <code>description</code> field is critical — Claude uses it to decide when to delegate automatically.</p>`,
+        content: `<p>Subagents are <strong>markdown files with YAML frontmatter</strong>. The body becomes the system prompt. Store them in <code>.claude/agents/</code> (project-level, check into git so the whole team benefits) or <code>~/.claude/agents/</code> (personal, available in all projects).</p>
+<p>The <code>description</code> field is the most important part — Claude reads it to decide when to delegate <em>automatically without being asked</em>. Write it as trigger conditions: <em>"Use proactively after any code change touching auth"</em> beats <em>"Reviews security issues"</em>.</p>
+<p>Use <code>/agents</code> for guided interactive creation, or create the file manually for full control.</p>`,
         code: {
           lang: "markdown",
-          body: `<span class="c-comment"># .claude/agents/security-reviewer.md</span>
+          body: `<span class="c-comment"># .claude/agents/code-reviewer.md</span>
 <span class="c-str">---
-name: security-reviewer
-description: Reviews code for security vulnerabilities. Use proactively
-             after any change touching auth, authorisation, or data handling.
-tools: Read, Grep, Glob, Bash
-model: opus
+name: code-reviewer
+description: >
+  Expert code reviewer. Use proactively immediately after writing or
+  modifying any code. Focuses on quality, security, and maintainability.
+tools: Read, Grep, Glob, Bash   # only what's needed — no Edit or Write
+model: opus                      # opus | sonnet | haiku | inherit
 ---
 
-You are a senior security engineer. Review code for:
-- Injection vulnerabilities (SQL, XSS, command injection)
-- Authentication and authorisation flaws
-- Secrets exposed in code
-- Insecure data handling
+You are a senior code reviewer ensuring high standards.
 
-Provide specific line references and suggested fixes.</span>
+When invoked:
+1. Run git diff to see recent changes
+2. Focus on modified files only
+3. Begin review immediately without asking for confirmation
 
-<span class="c-comment"># .claude/agents/test-runner.md</span>
-<span class="c-str">---
-name: test-runner
-description: Runs tests and fixes failures. Use proactively when code changes.
-tools: Read, Edit, Bash, Grep, Glob
-model: sonnet
----</span>`
+Provide feedback organised by priority:
+- Critical issues (must fix before merge)
+- Warnings (should fix)
+- Suggestions (consider improving)</span>
+
+<span class="c-comment"># Create or manage subagents interactively</span>
+<span class="c-cmd">/agents</span>
+
+<span class="c-comment"># List all configured subagents from CLI</span>
+<span class="c-cmd">claude agents</span>
+
+<span class="c-comment"># CLI-defined subagent (session-only, no file needed)</span>
+<span class="c-cmd">claude --agents '{
+  "code-reviewer": {
+    "description": "Review code after changes",
+    "prompt": "You are a senior code reviewer...",
+    "tools": ["Read", "Grep", "Glob"],
+    "model": "sonnet"
+  }
+}'</span>`
         },
-        tip: { icon: "💡", text: "Add <strong>'Use proactively when...'</strong> to the description field to trigger automatic delegation without explicit user instruction. Commit project subagents to git so the whole team benefits." }
+        tip: { icon: "💡", text: "Commit <code>.claude/agents/</code> to git — every teammate gets the same specialist subagents automatically. Priority order when names conflict: CLI flag > <code>.claude/agents/</code> (project) > <code>~/.claude/agents/</code> (user). The higher-priority definition wins." }
       },
       {
-        id: "parallel", icon: "⚡", title: "Parallel Workflows & Worktrees", time: "8 mins",
+        id: "capabilities", icon: "🔧", title: "Subagent Power Features: Memory, Hooks & Permissions", time: "12 mins",
         type: "mixed",
-        content: `<p>Git worktrees allow multiple Claude sessions to run simultaneously without conflicts. Each session gets its own working directory and branch while sharing the same repository history.</p>`,
+        content: `<p>Beyond basic tool restrictions, subagents support <strong>persistent memory</strong> that survives across sessions, <strong>lifecycle hooks</strong> for validation and side effects, and fine-grained <strong>permission modes</strong>. These turn simple helpers into long-lived specialists that accumulate project knowledge over time.</p>
+<p>The <code>memory</code> field is particularly powerful: the subagent gets a persistent directory where it writes <code>MEMORY.md</code> — and reads it at startup on every future session. A code reviewer that has run 50 times will know your codebase's patterns better than one starting from scratch.</p>`,
+        code: {
+          lang: "markdown",
+          body: `<span class="c-comment"># Full frontmatter reference</span>
+<span class="c-str">---
+name: db-analyst
+description: Analyse queries and schema. Use for any database questions.
+tools: Bash, Read, Write        # allowlist — inherits all tools if omitted
+disallowedTools: Edit           # denylist — removes from inherited set
+model: sonnet
+permissionMode: acceptEdits     # default | acceptEdits | dontAsk | bypassPermissions | plan
+maxTurns: 20                    # stop after N agentic turns
+memory: project                 # user | project | local
+  # user    → ~/.claude/agent-memory/db-analyst/MEMORY.md
+  # project → .claude/agent-memory/db-analyst/MEMORY.md (committable)
+  # local   → .claude/agent-memory-local/db-analyst/MEMORY.md
+skills:
+  - sql-conventions             # full skill content injected at startup
+mcpServers:
+  - postgres                    # named MCP server from your config
+background: false               # true = always run concurrently
+isolation: worktree             # run in isolated git worktree copy
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/validate-readonly-query.sh"
+  PostToolUse:
+    - matcher: "Edit|Write"
+      hooks:
+        - type: command
+          command: "npm run lint"
+---
+
+You are a database analyst with read-only access.
+Update your memory as you discover table structures and query patterns.
+This builds institutional knowledge across sessions.</span>`
+        },
+        info: { icon: "🧠", text: "<strong>Persistent memory tip:</strong> Include this in your subagent's body: <em>\"Update your memory as you discover codebase patterns, architectural decisions, and recurring issues.\"</em> Over multiple sessions it builds institutional knowledge. Ask the subagent: \"Check your memory before starting\" to get the benefit of prior sessions." }
+      },
+      {
+        id: "teams-intro", icon: "👥", title: "Agent Teams: Peer-to-Peer Coordination", time: "10 mins",
+        type: "table",
+        content: `<p>Agent teams coordinate multiple Claude Code sessions working <strong>simultaneously as peers</strong>. Unlike subagents — which only report back to the main agent — teammates have a <strong>shared task list</strong> and a mailbox to message each other directly. One session acts as team lead; the rest are teammates with fully independent context windows.</p>
+<p>The key architectural difference: subagents are hub-and-spoke (all communication flows through the main agent). Agent teams are peer-to-peer — teammates debate, challenge each other's findings, and self-coordinate on the shared task list.</p>`,
+        table: {
+          headers: ["", "Subagents", "Agent Teams"],
+          rows: [
+            ["Context", "Own context window; results return to caller", "Fully independent context windows; teammates don't share context"],
+            ["Communication", "Report results to main agent only", "Teammates message each other directly via shared mailbox"],
+            ["Coordination", "Main agent assigns and manages all work", "Shared task list; teammates self-claim and coordinate"],
+            ["Best for", "Focused tasks where only the result matters", "Research, debate, competing hypotheses, cross-layer features"],
+            ["Token cost", "Lower — results are summarised back to main", "Higher — each teammate is a full independent Claude instance"],
+            ["Nested delegation", "Cannot spawn sub-subagents", "Lead spawns teammates; teammates cannot spawn further"]
+          ]
+        },
+        tip: { icon: "⚡", text: "<strong>Enable agent teams:</strong> Add <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code> to your environment or to <code>settings.json</code> under the <code>env</code> key. Teams are experimental — known limitations: session resumption with in-process teammates doesn't work, and task status can sometimes lag." }
+      },
+      {
+        id: "teams-setup", icon: "🛠️", title: "Agent Teams: Setup & Practical Patterns", time: "10 mins",
+        type: "mixed",
+        content: `<p>Once enabled, describe the team in natural language — the lead handles spawning, task assignment, and coordination. You interact with any teammate directly using <strong>Shift+Down</strong> to cycle between sessions (in-process mode) or by clicking a pane (split-pane/tmux mode).</p>
+<p>The strongest use cases for agent teams are tasks where <strong>parallel exploration adds real value</strong>: parallel research where investigators shouldn't bias each other, competing hypotheses where teammates actively try to disprove each other's theories, and cross-layer features where each teammate owns a different layer (API, frontend, tests) with zero file conflicts.</p>`,
         code: {
           lang: "bash",
-          body: `<span class="c-comment"># Create isolated worktrees for parallel sessions</span>
-<span class="c-cmd">claude --worktree feature-auth</span>
-<span class="c-cmd">claude --worktree bugfix-payment</span>  <span class="c-comment"># separate dir, no conflicts</span>
+          body: `<span class="c-comment"># settings.json — enable agent teams</span>
+<span class="c-str">{
+  "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" },
+  "teammateMode": "in-process"   <span class="c-comment"># or "tmux" for split panes</span>
+}</span>
 
-<span class="c-comment"># Fan-out: distribute work across many parallel invocations</span>
+<span class="c-comment"># Describe the team in natural language</span>
+<span class="c-str">Create an agent team with 3 teammates: one on the auth module,
+one on the database layer, one playing devil's advocate.
+Investigate why user sessions are expiring unexpectedly early.</span>
+
+<span class="c-comment"># Competing hypotheses pattern (powerful for bug investigation)</span>
+<span class="c-str">Spawn 4 teammates to investigate this crash. Each should
+test a different root-cause theory and actively try to
+disprove the other theories. Update findings.md with consensus.</span>
+
+<span class="c-comment"># Parallel code review with distinct lenses</span>
+<span class="c-str">Create an agent team to review PR #142. Spawn three reviewers:
+- One focused on security implications
+- One checking performance impact
+- One validating test coverage</span>
+
+<span class="c-comment"># In-process navigation</span>
+<span class="c-comment"># Shift+Down  — cycle through teammates</span>
+<span class="c-comment"># Ctrl+T      — toggle shared task list</span>
+<span class="c-comment"># Ctrl+B      — background the current task</span>
+
+<span class="c-comment"># Always clean up via the lead (not a teammate)</span>
+<span class="c-str">Clean up the team</span>`
+        },
+        tip: { icon: "🎯", text: "<strong>Right-size your team:</strong> Start with 3–5 teammates. Token costs scale linearly — each teammate has its own context window. Aim for 5–6 tasks per teammate to keep everyone productive. Larger teams (5+) only make sense when the work genuinely benefits from simultaneous independent investigation. Check CLAUDE.md is present — teammates read it automatically at startup." }
+      },
+      {
+        id: "automation", icon: "🏭", title: "Parallel Workflows, Worktrees & CI/CD", time: "6 mins",
+        type: "mixed",
+        content: `<p>Git worktrees let multiple Claude sessions run on the <strong>same repository without file conflicts</strong>. Each gets its own working directory and branch while sharing repo history. Combine with non-interactive mode (<code>claude -p</code>) to build CI/CD pipelines that scale from one developer to team-wide automation.</p>`,
+        code: {
+          lang: "bash",
+          body: `<span class="c-comment"># Parallel sessions via worktrees — no file conflicts</span>
+<span class="c-cmd">claude --worktree feature-auth</span>
+<span class="c-cmd">claude --worktree bugfix-payments</span>  <span class="c-comment"># separate dirs, same repo</span>
+
+<span class="c-comment"># Fan-out across many files simultaneously</span>
 <span class="c-cmd">for file in $(cat files.txt); do
   claude -p "migrate $file to Django 4.x patterns" \
     --allowedTools "Edit,Bash(git commit *)" &
 done</span>
 
-<span class="c-comment"># Writer/Reviewer pattern — quality through fresh eyes</span>
-<span class="c-comment"># Session A: implement the feature</span>
-<span class="c-str">implement a rate limiter for our API endpoints</span>
-<span class="c-comment"># Session B: review with no bias from writing the code</span>
-<span class="c-str">review the rate limiter in @src/middleware/rateLimiter.ts.
-look for edge cases, race conditions, and consistency with existing middleware.</span>`
+<span class="c-comment"># Pipe data into Claude non-interactively</span>
+<span class="c-cmd">tail -f app.log | claude -p "alert Slack if you see anomalies"</span>
+<span class="c-cmd">cat build-error.txt | claude -p "explain the root cause"</span>
+
+<span class="c-comment"># GitHub Actions CI integration</span>
+<span class="c-str">- name: AI Security Review
+  run: |
+    claude -p "review changed files for security issues" \
+      --output-format json > security-review.json</span>
+
+<span class="c-comment"># Writer/Reviewer pattern — fresh eyes catch more</span>
+<span class="c-comment"># Session A writes the feature; Session B reviews with zero context bias</span>
+<span class="c-str">review the rate limiter in @src/middleware/rateLimiter.ts
+for edge cases, race conditions, and consistency issues</span>`
         }
       },
       {
-        id: "automation", icon: "🏭", title: "Non-Interactive Mode & CI/CD", time: "5 mins",
-        type: "mixed",
-        content: `<p>Claude Code runs non-interactively in pipelines, pre-commit hooks, or scripts using <code>claude -p</code>. This is how you scale from one developer to team-wide automation.</p>`,
-        code: {
-          lang: "bash",
-          body: `<span class="c-comment"># One-off automation</span>
-<span class="c-cmd">claude -p "translate new strings into French and raise a PR for review"</span>
-<span class="c-cmd">claude -p "review changed files for security issues" --output-format json</span>
-
-<span class="c-comment"># Pipe data in</span>
-<span class="c-cmd">tail -f app.log | claude -p "Slack me if you see any anomalies"</span>
-<span class="c-cmd">cat build-error.txt | claude -p "explain the root cause of this error"</span>
-
-<span class="c-comment"># In package.json scripts</span>
-<span class="c-str">"lint:ai": "claude -p 'check changes vs. main for typos,
-    return filename:line and description'"</span>`
-        }
-      },
-      {
-        id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "30 mins",
+        id: "exercise", icon: "🏋️", title: "Hands-On Exercise", time: "35 mins",
         type: "exercise",
         exerciseTitle: "Build a Multi-Agent Quality Pipeline",
-        exerciseDuration: "30 mins",
-        exerciseIntro: "Design and run a multi-agent workflow that handles a real development task at a level impossible in a single Claude session.",
+        exerciseDuration: "35 mins",
+        exerciseIntro: "You will create two custom subagents with different capabilities, wire one with persistent memory, use them together on a real task, and optionally explore agent teams for parallel research.",
         exerciseSteps: [
-          "Create two custom subagents in .claude/agents/: a code-reviewer (read-only, Opus, quality/security focus) and a test-writer (read/write, Sonnet, matches your team's test patterns).",
-          "Pick a module with limited test coverage. Ask Claude: 'use the test-writer subagent to write tests for [module], then use the code-reviewer subagent to review both the module and the new tests.'",
-          "Start a second worktree session while the first is running: 'claude --worktree parallel-task'. Give it a different unrelated task. Observe both running simultaneously.",
-          "In the main session, ask Claude to use subagents to research three different areas of your codebase in parallel and synthesise findings into an architecture summary in markdown.",
-          "Review both subagent outputs. What did the code-reviewer flag that the test-writer missed? What would have been lost in a single-context conversation?"
+          "Create <code>.claude/agents/security-reviewer.md</code>: tools set to Read/Grep/Glob/Bash (no Edit), model opus, and a system prompt focused on injection vulnerabilities, exposed secrets, and auth flaws. Write the description as: 'Use proactively after any change to auth, data handling, or API endpoints.'",
+          "Create <code>.claude/agents/test-writer.md</code>: tools Read/Edit/Bash/Grep, model sonnet, <code>memory: project</code>. Include this in the system prompt body: 'Update your memory as you discover test patterns, coverage gaps, and testing conventions in this project.'",
+          "Test automatic delegation: ask Claude to 'pick a module with low test coverage and use the test-writer subagent to write tests for it, then use the security-reviewer subagent to review both the module and the new tests.' Observe what each subagent finds that the other misses.",
+          "After the test-writer has run, inspect its memory file at <code>.claude/agent-memory/test-writer/MEMORY.md</code>. What patterns did it record? Run it again and say: 'Check your memory before writing these tests' — confirm it applies what it learned.",
+          "(Optional — requires env var) Enable agent teams and ask: 'Create an agent team: one teammate investigates auth, one investigates the database layer, one plays devil's advocate challenging both. Have them discuss and update docs/architecture-notes.md with findings.' Navigate between teammates with Shift+Down."
         ],
-        reflect: "Where in your current sprint could multi-agent workflows save hours? Think specifically about code review, security scanning, documentation generation, and regression testing — which of these currently runs as a manual process that could become an automated subagent pipeline?"
+        reflect: "Where in your current workflow could agent teams solve a problem that's too complex for a single Claude session? Think specifically about tasks where you need to hold multiple competing hypotheses simultaneously — root-cause analysis with several theories, parallel feature work across layers, or comprehensive code review covering security, performance, and correctness at once."
       },
       {
         id: "quiz", icon: "🧠", title: "Module Quiz", time: "5 mins",
@@ -1432,21 +1592,27 @@ look for edge cases, race conditions, and consistency with existing middleware.<
         questions: [
           {
             q: "Why does the 'description' field in a subagent's frontmatter matter so much?",
-            options: ["It appears in the Claude UI as a label", "Claude uses it to decide when to automatically delegate tasks to that subagent", "It determines which model the subagent uses", "It's only used for documentation purposes"],
+            options: ["It appears in the Claude UI as a visible label for the user", "Claude reads it to decide when to automatically delegate tasks to that subagent", "It sets the model the subagent will use", "It determines which tools the subagent can access"],
             correct: 1,
-            feedback: "Claude reads descriptions to match task types to subagents. 'Use proactively when...' in the description is what enables automatic delegation without explicit user instruction."
+            feedback: "Claude reads descriptions to match task types to subagents. 'Use proactively when...' in the description is what enables automatic delegation without any explicit user instruction — the subagent triggers itself based on context."
           },
           {
-            q: "What problem do git worktrees solve when running parallel Claude sessions?",
-            options: ["They give each session a larger context window", "They allow sessions to share files in real time", "They give each session its own isolated working directory so changes don't conflict", "They enable Claude to commit to multiple branches simultaneously"],
+            q: "You set memory: project on a subagent. What does this do?",
+            options: ["Gives the subagent access to the project's CLAUDE.md contents", "Creates a persistent directory at .claude/agent-memory/<name>/ that survives across sessions", "Lets the subagent read the full git history", "Enables the subagent to share context with the main conversation"],
+            correct: 1,
+            feedback: "The memory field creates a persistent directory where the subagent writes a MEMORY.md file. At startup on every future session, the first 200 lines of MEMORY.md are injected into its context — the subagent accumulates knowledge about your project over time."
+          },
+          {
+            q: "What is the KEY architectural difference between subagents and agent teams?",
+            options: ["Agent teams use faster, cheaper models", "Subagents can only run in read-only mode", "Agent team members communicate directly with each other; subagents can only report back to the main agent", "Subagents consume more tokens than agent teams"],
             correct: 2,
-            feedback: "Without worktrees, parallel sessions would conflict on the same files. Worktrees give each session a fully isolated working directory while sharing the same repo history."
+            feedback: "The architectural difference: subagents are hub-and-spoke — all results flow through the main agent. Agent team members have a shared task list and can message each other directly, enabling peer debate, knowledge sharing, and self-coordination without the main agent as intermediary."
           },
           {
-            q: "You want Claude to review every PR in your CI pipeline automatically. What combination would you use?",
-            options: ["CLAUDE.md with a review checklist and a manual trigger", "A custom subagent defining the review criteria, invoked via 'claude -p' in GitHub Actions", "A Skill loaded into the main conversation via /review-pr", "An MCP server connected to GitHub for real-time review"],
+            q: "You want every PR in your CI pipeline reviewed automatically for security issues. What's the right architecture?",
+            options: ["A CLAUDE.md rule asking Claude to review code carefully before committing", "A custom subagent defining review criteria, invoked via 'claude -p' in GitHub Actions", "An agent team with 3 security reviewers running in parallel on every PR", "An MCP server connected to GitHub that triggers reviews in real time"],
             correct: 1,
-            feedback: "Non-interactive mode (claude -p) + a custom subagent is the right CI architecture. The subagent provides focus and the -p flag enables automation without a human in the loop."
+            feedback: "Non-interactive mode (claude -p) + a custom subagent is the right CI architecture. The subagent provides focused review criteria; -p enables headless automation. Agent teams add unnecessary coordination overhead for a single-pass CI review."
           }
         ]
       }
