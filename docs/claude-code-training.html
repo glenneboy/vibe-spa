@@ -4,26 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Code Training</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg-primary: #0f1117;
-  --bg-secondary: #161b27;
-  --bg-card: #1c2333;
-  --bg-hover: #232d42;
-  --brand: #667eea;
-  --brand-end: #764ba2;
-  --brand-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --accent: #667eea;
-  --accent-glow: rgba(102,126,234,0.25);
+  --bg-primary: #1a1715;
+  --bg-secondary: #221e1b;
+  --bg-card: #2a2420;
+  --bg-hover: #342e28;
+  --brand: #D97757;
+  --brand-end: #B8573A;
+  --brand-gradient: linear-gradient(135deg, #D97757 0%, #B8573A 100%);
+  --accent: #D97757;
+  --accent-glow: rgba(217,119,87,0.25);
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #f87171;
-  --text-primary: #f0f4ff;
-  --text-secondary: #8b9ab8;
-  --text-muted: #4a5568;
-  --border: rgba(102,126,234,0.15);
-  --border-strong: rgba(102,126,234,0.35);
+  --text-primary: #F5F0E8;
+  --text-secondary: #9B9086;
+  --text-muted: #5a5048;
+  --border: rgba(217,119,87,0.12);
+  --border-strong: rgba(217,119,87,0.3);
   --sidebar-w: 280px;
   --header-h: 56px;
 }
@@ -31,7 +30,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   height: 100vh;
@@ -151,7 +150,7 @@ body {
 }
 .mod-item:hover { background: var(--bg-hover); }
 .mod-item.active {
-  background: rgba(102,126,234,0.1);
+  background: rgba(217,119,87,0.1);
   border-left-color: var(--brand);
 }
 .mod-item.completed .mod-num { background: var(--success); color: var(--bg-primary); }
@@ -191,7 +190,7 @@ body {
   transition: all 0.18s;
 }
 .section-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
-.section-btn.active { background: rgba(102,126,234,0.08); color: var(--brand); }
+.section-btn.active { background: rgba(217,119,87,0.08); color: var(--brand); }
 .section-btn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
 .section-btn.active .dot { background: var(--brand); }
 .section-btn.done .dot { background: var(--success); }
@@ -218,7 +217,7 @@ body {
 
 /* ─── OVERVIEW / HERO ─── */
 .hero {
-  background: linear-gradient(135deg, #0f1117 0%, #1a1535 50%, #0f1117 100%);
+  background: linear-gradient(135deg, #1a1715 0%, #2a1f18 50%, #1a1715 100%);
   padding: 60px 60px 40px;
   position: relative;
   overflow: hidden;
@@ -228,7 +227,7 @@ body {
   position: absolute;
   top: -100px; right: -100px;
   width: 400px; height: 400px;
-  background: radial-gradient(circle, rgba(102,126,234,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(217,119,87,0.12) 0%, transparent 70%);
   pointer-events: none;
 }
 .hero::after {
@@ -236,7 +235,7 @@ body {
   position: absolute;
   bottom: -60px; left: 200px;
   width: 300px; height: 300px;
-  background: radial-gradient(circle, rgba(118,75,162,0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(184,87,58,0.1) 0%, transparent 70%);
   pointer-events: none;
 }
 .hero-eyebrow {
@@ -291,7 +290,7 @@ body {
 .card-meta { display: flex; align-items: center; gap: 8px; }
 .card-badge {
   padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-  background: rgba(102,126,234,0.12); color: var(--brand); border: 1px solid rgba(102,126,234,0.2);
+  background: rgba(217,119,87,0.12); color: var(--brand); border: 1px solid rgba(217,119,87,0.2);
 }
 .card-badge.done { background: rgba(52,211,153,0.12); color: var(--success); border-color: rgba(52,211,153,0.2); }
 .card-dur { font-size: 11px; color: var(--text-muted); margin-left: auto; }
@@ -300,7 +299,7 @@ body {
 .module-content { padding: 0; }
 
 .module-header {
-  background: linear-gradient(135deg, #13182a 0%, #1a1535 100%);
+  background: linear-gradient(135deg, #201a17 0%, #2a1f18 100%);
   padding: 40px 60px 32px;
   border-bottom: 1px solid var(--border);
   position: relative;
@@ -311,7 +310,7 @@ body {
   position: absolute;
   right: -50px; top: -50px;
   width: 250px; height: 250px;
-  background: radial-gradient(circle, rgba(102,126,234,0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(217,119,87,0.1) 0%, transparent 70%);
   pointer-events: none;
 }
 .module-header .mod-eyebrow {
@@ -322,7 +321,7 @@ body {
 .module-header .mod-meta { display: flex; gap: 12px; flex-wrap: wrap; }
 .meta-chip {
   padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
-  background: rgba(102,126,234,0.12); color: var(--brand); border: 1px solid rgba(102,126,234,0.2);
+  background: rgba(217,119,87,0.12); color: var(--brand); border: 1px solid rgba(217,119,87,0.2);
 }
 
 /* ─── SECTIONS ─── */
@@ -338,7 +337,7 @@ body {
 }
 .section-icon {
   width: 32px; height: 32px; border-radius: 8px;
-  background: rgba(102,126,234,0.15);
+  background: rgba(217,119,87,0.15);
   display: flex; align-items: center; justify-content: center;
   font-size: 15px;
   flex-shrink: 0;
@@ -358,8 +357,8 @@ body {
 
 /* ─── CODE BLOCK ─── */
 .code-block {
-  background: #0a0e1a;
-  border: 1px solid rgba(102,126,234,0.2);
+  background: #120e0b;
+  border: 1px solid rgba(217,119,87,0.2);
   border-radius: 10px;
   overflow: hidden;
   margin: 14px 0;
@@ -367,8 +366,8 @@ body {
 .code-header {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 16px;
-  background: rgba(102,126,234,0.06);
-  border-bottom: 1px solid rgba(102,126,234,0.12);
+  background: rgba(217,119,87,0.06);
+  border-bottom: 1px solid rgba(217,119,87,0.12);
 }
 .code-dots { display: flex; gap: 5px; }
 .code-dots span { width: 10px; height: 10px; border-radius: 50%; }
@@ -378,7 +377,7 @@ body {
 .code-lang { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-left: auto; }
 .code-body {
   padding: 16px 20px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
   font-size: 12.5px;
   line-height: 1.8;
   overflow-x: auto;
@@ -387,7 +386,7 @@ body {
 .c-comment { color: #4a5568; }
 .c-cmd { color: #34d399; }
 .c-str { color: #fbbf24; }
-.c-kw { color: #a78bfa; }
+.c-kw { color: #E8A07A; }
 .c-flag { color: #f87171; }
 
 /* ─── TIP / INFO BOXES ─── */
@@ -405,8 +404,8 @@ body {
 
 .info-box {
   display: flex; gap: 12px;
-  background: rgba(102,126,234,0.06);
-  border: 1px solid rgba(102,126,234,0.2);
+  background: rgba(217,119,87,0.06);
+  border: 1px solid rgba(217,119,87,0.2);
   border-radius: 10px;
   padding: 14px 18px;
   margin: 14px 0;
@@ -417,15 +416,15 @@ body {
 /* ─── EXERCISE ─── */
 .exercise-box {
   background: var(--bg-card);
-  border: 1px solid rgba(102,126,234,0.3);
+  border: 1px solid rgba(217,119,87,0.3);
   border-radius: 12px;
   overflow: hidden;
 }
 .exercise-header {
-  background: linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.1));
+  background: linear-gradient(135deg, rgba(217,119,87,0.15), rgba(184,87,58,0.1));
   padding: 16px 24px;
   display: flex; align-items: center; gap: 12px;
-  border-bottom: 1px solid rgba(102,126,234,0.2);
+  border-bottom: 1px solid rgba(217,119,87,0.2);
 }
 .exercise-badge {
   padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 800;
@@ -501,8 +500,8 @@ body {
   transition: all 0.18s;
   text-align: left;
 }
-.quiz-option:hover:not(.selected):not(.locked) { border-color: var(--brand); color: var(--text-primary); background: rgba(102,126,234,0.05); }
-.quiz-option.selected { border-color: var(--brand); background: rgba(102,126,234,0.1); color: var(--text-primary); }
+.quiz-option:hover:not(.selected):not(.locked) { border-color: var(--brand); color: var(--text-primary); background: rgba(217,119,87,0.05); }
+.quiz-option.selected { border-color: var(--brand); background: rgba(217,119,87,0.1); color: var(--text-primary); }
 .quiz-option.correct { border-color: var(--success); background: rgba(52,211,153,0.1); color: var(--success); font-weight: 600; }
 .quiz-option.wrong { border-color: var(--danger); background: rgba(248,113,113,0.08); color: var(--danger); }
 .quiz-option.locked { cursor: default; }
@@ -542,7 +541,7 @@ body {
   color: var(--text-secondary); background: transparent;
   transition: all 0.18s;
 }
-.btn-nav:hover { border-color: var(--brand); color: var(--brand); background: rgba(102,126,234,0.06); }
+.btn-nav:hover { border-color: var(--brand); color: var(--brand); background: rgba(217,119,87,0.06); }
 .btn-nav.primary { background: var(--brand-gradient); color: white; border-color: transparent; }
 .btn-nav.primary:hover { opacity: 0.9; transform: translateY(-1px); }
 .btn-nav:disabled { opacity: 0.3; cursor: not-allowed; transform: none !important; }
@@ -586,14 +585,14 @@ body {
   border-radius: 10px; overflow: hidden;
 }
 .compare-table th {
-  padding: 10px 16px; background: rgba(102,126,234,0.12);
+  padding: 10px 16px; background: rgba(217,119,87,0.12);
   text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 1px; color: var(--brand);
 }
 .compare-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
 .compare-table tr:last-child td { border-bottom: none; }
 .compare-table tr:hover td { background: var(--bg-hover); }
-.compare-table td:first-child { color: var(--text-primary); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.compare-table td:first-child { color: var(--text-primary); font-weight: 600; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Monaco', 'Consolas', monospace; font-size: 12px; }
 
 /* ─── OVERALL PROGRESS TRACKER ─── */
 .progress-track {
@@ -613,10 +612,10 @@ body {
 
 /* ─── RESPONSIVE CODE ─── */
 code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
   font-size: 11.5px;
-  background: rgba(102,126,234,0.12);
-  color: #a78bfa;
+  background: rgba(217,119,87,0.12);
+  color: #E8A07A;
   padding: 2px 6px; border-radius: 4px;
 }
 </style>
@@ -917,8 +916,8 @@ reproduces the issue, then fix it.</span>
 
 <span class="c-comment"># Example CLAUDE.md</span>
 <span class="c-str">## Build & Test
-- Run `npm test` before committing
-- TypeScript: run `npm run typecheck` after code changes
+- Run \`npm test\` before committing
+- TypeScript: run \`npm run typecheck\` after code changes
 - API handlers live in src/api/handlers/ -- keep them there
 
 ## Code Style
