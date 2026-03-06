@@ -6,25 +6,26 @@
 <title>Claude Code Training</title>
 <style>
 :root {
-  --bg-primary: #1a1715;
-  --bg-secondary: #221e1b;
-  --bg-card: #2a2420;
-  --bg-hover: #342e28;
-  --brand: #D97757;
-  --brand-end: #B8573A;
-  --brand-gradient: linear-gradient(135deg, #D97757 0%, #B8573A 100%);
-  --accent: #D97757;
-  --accent-glow: rgba(217,119,87,0.25);
-  --success: #34d399;
-  --warning: #fbbf24;
-  --danger: #f87171;
-  --text-primary: #F5F0E8;
-  --text-secondary: #9B9086;
-  --text-muted: #5a5048;
-  --border: rgba(217,119,87,0.12);
-  --border-strong: rgba(217,119,87,0.3);
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F5F2EE;
+  --bg-card: #FFFFFF;
+  --bg-hover: #EDE8E3;
+  --brand: #C4622D;
+  --brand-end: #9E4420;
+  --brand-gradient: linear-gradient(135deg, #C4622D 0%, #9E4420 100%);
+  --accent: #C4622D;
+  --accent-glow: rgba(196,98,45,0.15);
+  --success: #16793a;
+  --warning: #b45309;
+  --danger: #C0392B;
+  --text-primary: #1C1410;
+  --text-secondary: #3D3128;
+  --text-muted: #705E53;
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(196,98,45,0.35);
   --sidebar-w: 280px;
   --header-h: 56px;
+  --prose-size: 15px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,8 +43,9 @@ body {
 /* ─── TOP BAR ─── */
 .topbar {
   height: var(--header-h);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  background: #FFFFFF;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -217,7 +219,7 @@ body {
 
 /* ─── OVERVIEW / HERO ─── */
 .hero {
-  background: linear-gradient(135deg, #1a1715 0%, #2a1f18 50%, #1a1715 100%);
+  background: linear-gradient(135deg, #FFF8F4 0%, #FFF0E8 50%, #FFF8F4 100%);
   padding: 60px 60px 40px;
   position: relative;
   overflow: hidden;
@@ -299,7 +301,7 @@ body {
 .module-content { padding: 0; }
 
 .module-header {
-  background: linear-gradient(135deg, #201a17 0%, #2a1f18 100%);
+  background: linear-gradient(135deg, #FFF5EE 0%, #FFEEE4 100%);
   padding: 40px 60px 32px;
   border-bottom: 1px solid var(--border);
   position: relative;
@@ -345,7 +347,7 @@ body {
 .section-title-text { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); }
 .section-time { margin-left: auto; font-size: 11px; color: var(--text-muted); }
 
-.prose { font-size: 14px; line-height: 1.8; color: var(--text-secondary); }
+.prose { font-size: var(--prose-size); line-height: 1.8; color: var(--text-secondary); }
 .prose p { margin-bottom: 14px; }
 .prose strong { color: var(--text-primary); font-weight: 600; }
 
@@ -374,7 +376,7 @@ body {
 .code-dots span:nth-child(1) { background: #ff5f57; }
 .code-dots span:nth-child(2) { background: #febc2e; }
 .code-dots span:nth-child(3) { background: #28c840; }
-.code-lang { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-left: auto; }
+.code-lang { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #9b8a7a; margin-left: auto; }
 .code-body {
   padding: 16px 20px;
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
@@ -382,9 +384,10 @@ body {
   line-height: 1.8;
   overflow-x: auto;
   white-space: pre;
+  color: #d4c5b5; /* explicit light fallback for dark bg */
 }
-.c-comment { color: #4a5568; }
-.c-cmd { color: #34d399; }
+.c-comment { color: #7a8a9e; }
+.c-cmd { color: #5eebb4; }
 .c-str { color: #fbbf24; }
 .c-kw { color: #E8A07A; }
 .c-flag { color: #f87171; }
@@ -392,20 +395,20 @@ body {
 /* ─── TIP / INFO BOXES ─── */
 .tip-box {
   display: flex; gap: 12px;
-  background: rgba(251,191,36,0.06);
-  border: 1px solid rgba(251,191,36,0.2);
+  background: #FFFBEB;
+  border: 1px solid #F5D87A;
   border-radius: 10px;
   padding: 14px 18px;
   margin: 14px 0;
-  font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+  font-size: 13px; line-height: 1.6; color: #4A3A10;
 }
 .tip-box .tip-icon { font-size: 18px; flex-shrink: 0; }
-.tip-box strong { color: var(--warning); }
+.tip-box strong { color: #92600A; }
 
 .info-box {
   display: flex; gap: 12px;
-  background: rgba(217,119,87,0.06);
-  border: 1px solid rgba(217,119,87,0.2);
+  background: #FFF5EE;
+  border: 1px solid rgba(196,98,45,0.3);
   border-radius: 10px;
   padding: 14px 18px;
   margin: 14px 0;
@@ -457,12 +460,12 @@ body {
 }
 .exercise-reflect {
   margin-top: 16px; padding: 14px 18px;
-  background: rgba(52,211,153,0.06);
-  border: 1px solid rgba(52,211,153,0.2);
+  background: #F0FDF4;
+  border: 1px solid #86EFAC;
   border-radius: 8px;
-  font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+  font-size: 13px; line-height: 1.6; color: #1A3D29;
 }
-.exercise-reflect strong { color: var(--success); }
+.exercise-reflect strong { color: #15703A; }
 
 /* ─── QUIZ ─── */
 .quiz-box {
@@ -502,8 +505,8 @@ body {
 }
 .quiz-option:hover:not(.selected):not(.locked) { border-color: var(--brand); color: var(--text-primary); background: rgba(217,119,87,0.05); }
 .quiz-option.selected { border-color: var(--brand); background: rgba(217,119,87,0.1); color: var(--text-primary); }
-.quiz-option.correct { border-color: var(--success); background: rgba(52,211,153,0.1); color: var(--success); font-weight: 600; }
-.quiz-option.wrong { border-color: var(--danger); background: rgba(248,113,113,0.08); color: var(--danger); }
+.quiz-option.correct { border-color: #15803D; background: #F0FDF4; color: #15803D; font-weight: 600; }
+.quiz-option.wrong { border-color: #DC2626; background: #FEF2F2; color: #DC2626; }
 .quiz-option.locked { cursor: default; }
 .quiz-feedback {
   margin-top: 10px; padding: 10px 14px;
@@ -511,8 +514,8 @@ body {
   display: none;
 }
 .quiz-feedback.show { display: block; }
-.quiz-feedback.correct { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); color: var(--success); }
-.quiz-feedback.wrong { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: var(--danger); }
+.quiz-feedback.correct { background: #F0FDF4; border: 1px solid #86EFAC; color: #15803D; }
+.quiz-feedback.wrong { background: #FEF2F2; border: 1px solid #FCA5A5; color: #B91C1C; }
 
 .quiz-submit-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .btn-submit {
@@ -614,10 +617,40 @@ body {
 code {
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Monaco', 'Consolas', monospace;
   font-size: 11.5px;
-  background: rgba(217,119,87,0.12);
-  color: #E8A07A;
+  background: rgba(196,98,45,0.1);
+  color: #9E4420;
   padding: 2px 6px; border-radius: 4px;
+  border: 1px solid rgba(196,98,45,0.15);
 }
+
+/* ─── FONT SIZE CONTROLS ─── */
+.font-size-controls {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  padding: 3px 4px;
+}
+.font-size-controls button {
+  background: none; border: none; cursor: pointer;
+  font-weight: 700; border-radius: 5px;
+  color: var(--text-muted); transition: all 0.15s;
+  padding: 3px 8px; line-height: 1;
+}
+.font-size-controls button:hover { background: white; color: var(--brand); }
+.font-size-controls button.active { background: white; color: var(--brand); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.font-size-controls .fsize-sm { font-size: 11px; }
+.font-size-controls .fsize-md { font-size: 13px; }
+.font-size-controls .fsize-lg { font-size: 16px; }
+
+/* ─── FOCUS / ACCESSIBILITY ─── */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.mod-item { cursor: pointer; }
+.mod-item:focus-visible { outline-offset: -2px; }
 </style>
 </head>
 <body>
@@ -636,7 +669,12 @@ code {
     Claude Code Training
   </div>
   <div class="topbar-right">
-    <div class="progress-pill">
+    <div class="font-size-controls" role="group" aria-label="Text size">
+      <button class="fsize-sm" onclick="setFontSize('sm')" id="fsBtn-sm" aria-pressed="false" title="Small text">A</button>
+      <button class="fsize-md active" onclick="setFontSize('md')" id="fsBtn-md" aria-pressed="true" title="Medium text">A</button>
+      <button class="fsize-lg" onclick="setFontSize('lg')" id="fsBtn-lg" aria-pressed="false" title="Large text">A</button>
+    </div>
+    <div class="progress-pill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Course progress">
       <span>Progress</span>
       <div class="progress-bar-mini">
         <div class="progress-bar-mini-fill" id="topProgressFill" style="width:0%"></div>
@@ -653,26 +691,26 @@ code {
   <div class="sidebar">
     <div class="sidebar-section-label">Modules</div>
 
-    <div class="mod-item active" onclick="goModule(0)" id="mod-nav-0">
-      <div class="mod-num">1</div>
+    <div class="mod-item active" onclick="goModule(0)" id="mod-nav-0" role="button" tabindex="0" aria-label="Module 1: Getting Started" onkeydown="if(event.key==='Enter'||event.key===' ')goModule(0)">
+      <div class="mod-num" aria-hidden="true">1</div>
       <div class="mod-info">
         <div class="mod-title">Getting Started</div>
         <div class="mod-dur">30 mins · Foundation</div>
       </div>
-      <div class="mod-check">✓</div>
+      <div class="mod-check" aria-hidden="true">✓</div>
     </div>
 
-    <div class="mod-item" onclick="goModule(1)" id="mod-nav-1">
-      <div class="mod-num">2</div>
+    <div class="mod-item" onclick="goModule(1)" id="mod-nav-1" role="button" tabindex="0" aria-label="Module 2: Prompts and CLAUDE.md" onkeydown="if(event.key==='Enter'||event.key===' ')goModule(1)">
+      <div class="mod-num" aria-hidden="true">2</div>
       <div class="mod-info">
         <div class="mod-title">Prompts &amp; CLAUDE.md</div>
         <div class="mod-dur">35 mins · Core Skills</div>
       </div>
-      <div class="mod-check">✓</div>
+      <div class="mod-check" aria-hidden="true">✓</div>
     </div>
 
-    <div class="mod-item" onclick="goModule(2)" id="mod-nav-2">
-      <div class="mod-num">3</div>
+    <div class="mod-item" onclick="goModule(2)" id="mod-nav-2" role="button" tabindex="0" aria-label="Module 3: Bugs, Tests and PRs" onkeydown="if(event.key==='Enter'||event.key===' ')goModule(2)">
+      <div class="mod-num" aria-hidden="true">3</div>
       <div class="mod-info">
         <div class="mod-title">Bugs, Tests &amp; PRs</div>
         <div class="mod-dur">35 mins · Practical</div>
@@ -1742,6 +1780,23 @@ function completeModule() {
     goModule(nextId);
   }
 }
+
+// ─── FONT SIZE ───────────────────────────────────────────────────
+const FONT_SIZES = { sm: '13px', md: '15px', lg: '18px' };
+function setFontSize(key) {
+  document.documentElement.style.setProperty('--prose-size', FONT_SIZES[key]);
+  localStorage.setItem('proseFontSize', key);
+  ['sm','md','lg'].forEach(k => {
+    const btn = document.getElementById('fsBtn-' + k);
+    if (!btn) return;
+    btn.classList.toggle('active', k === key);
+    btn.setAttribute('aria-pressed', k === key ? 'true' : 'false');
+  });
+}
+(function initFontSize() {
+  const saved = localStorage.getItem('proseFontSize') || 'md';
+  setFontSize(saved);
+})();
 
 // ─── BOOT ────────────────────────────────────────────────────────
 init();
