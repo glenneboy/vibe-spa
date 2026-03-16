@@ -450,6 +450,7 @@
                     if ('showSaveFilePicker' in window) {
                         try {
                             const opts = {
+                                id: 'md-editor-export', // This makes the browser remember the directory
                                 suggestedName: lastFilename,
                                 types: [{
                                     description: 'Markdown Files',
