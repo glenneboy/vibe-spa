@@ -432,13 +432,84 @@
                     });
                     htmlOutput.innerHTML = marked.parse(processed);
                 };
-                const exportMarkdown = () => {
-                    const blob = new Blob([markdownInput.value], { type: 'text/markdown' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url; a.download = 'document.md';
-                    document.body.appendChild(a); a.click();
-                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                
+                // Get last saved filename from localStorage
+                const getLastFilename = () => {
+                    return localStorage.getItem('md-editor-last-filename') || 'document.md';
+                };
+                
+                // Save filename to localStorage
+                const saveLastFilename = (filename) => {
+                    localStorage.setItem('md-editor-last-filename', filename);
+                };
+                
+                const exportMarkdown = async () => {
+                    const lastFilename = getLastFilename();
+                    
+                    // Check if File System Access API is supported (Chrome, Edge)
+                    if ('showSaveFilePicker' in window) {
+                        try {
+                            const opts = {
+                                suggestedName: lastFilename,
+                                types: [{
+                                    description: 'Markdown Files',
+                                    accept: { 'text/markdown': ['.md'] }
+                                }]
+                            };
+                            
+                            const handle = await window.showSaveFilePicker(opts);
+                            const writable = await handle.createWritable();
+                            await writable.write(markdownInput.value);
+                            await writable.close();
+                            
+                            // Save the filename for next time
+                            saveLastFilename(handle.name);
+                            
+                            // Show success feedback
+                            const btn = exportButton;
+                            const origHTML = btn.innerHTML;
+                            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Saved!`;
+                            btn.classList.add('text-green-600');
+                            setTimeout(() => {
+                                btn.innerHTML = origHTML;
+                                btn.classList.remove('text-green-600');
+                            }, 2000);
+                        } catch (err) {
+                            // User cancelled or error occurred
+                            if (err.name !== 'AbortError') {
+                                console.error('Error saving file:', err);
+                                alert('Error saving file: ' + err.message);
+                            }
+                        }
+                    } else {
+                        // Fallback for browsers without File System Access API
+                        const filename = prompt('Enter filename:', lastFilename);
+                        if (!filename) return; // User cancelled
+                        
+                        // Ensure .md extension
+                        const finalFilename = filename.endsWith('.md') ? filename : filename + '.md';
+                        saveLastFilename(finalFilename);
+                        
+                        const blob = new Blob([markdownInput.value], { type: 'text/markdown' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url; 
+                        a.download = finalFilename;
+                        document.body.appendChild(a); 
+                        a.click();
+                        document.body.removeChild(a); 
+                        URL.revokeObjectURL(url);
+                        
+                        // Show success feedback
+                        const btn = exportButton;
+                        const origHTML = btn.innerHTML;
+                        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Saved!`;
+                        btn.classList.add('text-green-600');
+                        setTimeout(() => {
+                            btn.innerHTML = origHTML;
+                            btn.classList.remove('text-green-600');
+                        }, 2000);
+                    }
                 };
                 const copyEditor = async () => {
                     try {
