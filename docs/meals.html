@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halal Evening Meals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #F7F2EA; --warm-white: #FDFAF5; --ink: #1C1812; --ink-soft: #4A4035; --ink-muted: #8A7E70;
+    --amber: #C4782A; --amber-light: #E8C27A; --amber-pale: #F5E4C3;
+    --sage: #5C7A5C; --sage-pale: #E0EBE0; --rust: #A3402A; --rust-pale: #F2E0DB;
+    --border: rgba(28,24,18,0.12);
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+
+  /* HERO */
+  .hero { background: var(--ink); color: var(--cream); padding: 4rem 2rem 3rem; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 70% 40%, rgba(196,120,42,0.18) 0%, transparent 70%); pointer-events: none; }
+  .hero-inner { max-width: 900px; margin: 0 auto; position: relative; }
+  .hero-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber-light); margin-bottom: 1.2rem; }
+  .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.4rem, 6vw, 4.2rem); font-weight: 400; line-height: 1.08; margin-bottom: 1rem; }
+  .hero h1 em { font-style: italic; color: var(--amber-light); }
+  .hero-sub { font-size: 15px; font-weight: 300; color: rgba(247,242,234,0.65); line-height: 1.6; max-width: 480px; }
+  .hero-stats { display: flex; gap: 2rem; margin-top: 2.5rem; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 600; color: var(--amber-light); line-height: 1; }
+  .stat-label { font-size: 11px; color: rgba(247,242,234,0.5); letter-spacing: 0.06em; }
+
+  /* CONTROLS */
+  .controls { background: var(--warm-white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
+  .controls-inner { max-width: 900px; margin: 0 auto; padding: 1rem 2rem; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .filter-label { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); white-space: nowrap; margin-right: 4px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+  .filter-btn:hover { border-color: var(--amber); color: var(--amber); }
+  .filter-btn.active { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .controls-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .search-input { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px; background: var(--cream); color: var(--ink); width: 180px; outline: none; transition: border-color 0.18s, width 0.25s; }
+  .search-input:focus { border-color: var(--amber); width: 220px; }
+  .search-input::placeholder { color: var(--ink-muted); }
+
+  /* SHOPPING LIST BUTTON */
+  .sl-toggle { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--amber); background: transparent; color: var(--amber); cursor: pointer; transition: all 0.18s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .sl-toggle:hover { background: var(--amber-pale); }
+  .sl-toggle.has-items { background: var(--amber); color: var(--warm-white); }
+  .sl-toggle.has-items:hover { background: var(--ink); border-color: var(--ink); }
+  .sl-badge { display: none; background: var(--warm-white); color: var(--amber); font-size: 10px; font-weight: 700; border-radius: 50%; width: 18px; height: 18px; align-items: center; justify-content: center; line-height: 1; }
+  .sl-toggle.has-items .sl-badge { display: flex; }
+
+  /* MAIN */
+  .main { max-width: 900px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+  .results-bar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+  .results-count { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--ink-soft); }
+  .results-count span { color: var(--amber); font-weight: 600; }
+
+  /* GRID */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .card { background: var(--warm-white); padding: 1.5rem; display: flex; flex-direction: column; gap: 10px; animation: fadeUp 0.4s ease both; }
+  .card.in-list { background: #f0f7f0; }
+  .card-clickable { cursor: pointer; }
+  .card-clickable:hover { background: var(--amber-pale); }
+  .card.in-list .card-clickable:hover { background: #e4f0e4; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 400; line-height: 1.3; color: var(--ink); flex: 1; }
+  .time-pill { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 12px; background: var(--sage-pale); color: var(--sage); white-space: nowrap; flex-shrink: 0; }
+  .card-desc { font-size: 13px; font-weight: 300; color: var(--ink-soft); line-height: 1.55; }
+  .card-footer { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); align-items: center; }
+  .tag { font-size: 10px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+  .tag-protein { background: var(--amber-pale); color: var(--amber); }
+  .tag-both { background: var(--sage-pale); color: var(--sage); }
+  .tag-cuisine { background: var(--cream); color: var(--ink-muted); border: 1px solid var(--border); }
+  .add-list-btn { margin-left: auto; font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--ink-muted); cursor: pointer; transition: all 0.18s; white-space: nowrap; flex-shrink: 0; }
+  .add-list-btn:hover { border-color: var(--sage); color: var(--sage); background: var(--sage-pale); }
+  .add-list-btn.added { background: var(--sage); color: white; border-color: var(--sage); }
+  .add-list-btn.added:hover { background: var(--rust); border-color: var(--rust); }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 4rem 2rem; background: var(--warm-white); border-radius: 4px; }
+  .empty p { font-family: 'Playfair Display', serif; font-style: italic; color: var(--ink-muted); font-size: 1.1rem; }
+
+  /* RECIPE MODAL */
+  .modal-bg { position: fixed; inset: 0; background: rgba(28,24,18,0.6); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  @media (min-width: 600px) { .modal-bg { align-items: center; padding: 1.5rem; } }
+  .modal-bg.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--warm-white); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; border-radius: 12px 12px 0 0; transform: translateY(40px); transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1); }
+  @media (min-width: 600px) { .modal { border-radius: 8px; transform: translateY(20px) scale(0.98); } }
+  .modal-bg.open .modal { transform: translateY(0) scale(1); }
+  .modal-header { background: var(--ink); color: var(--cream); padding: 1.5rem 1.5rem 1.2rem; position: sticky; top: 0; z-index: 10; border-radius: 12px 12px 0 0; }
+  @media (min-width: 600px) { .modal-header { border-radius: 8px 8px 0 0; } }
+  .modal-close { position: absolute; top: 1rem; right: 1rem; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(247,242,234,0.25); background: transparent; color: var(--cream); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .modal-close:hover { background: rgba(247,242,234,0.1); }
+  .modal-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--amber-light); margin-bottom: 8px; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 400; line-height: 1.2; margin-bottom: 6px; }
+  .modal-meta { font-size: 13px; font-weight: 300; color: rgba(247,242,234,0.6); }
+  .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  .section-title { font-size: 10px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 10px; }
+  .ingredients-list { list-style: none; }
+  .ingredients-list li { font-size: 14px; font-weight: 300; color: var(--ink); padding: 7px 0; border-bottom: 1px solid var(--border); line-height: 1.4; display: flex; gap: 8px; }
+  .ingredients-list li::before { content: '—'; color: var(--amber); flex-shrink: 0; font-size: 12px; }
+  .steps-list { list-style: none; counter-reset: steps; display: flex; flex-direction: column; gap: 12px; }
+  .steps-list li { counter-increment: steps; font-size: 14px; font-weight: 300; color: var(--ink); line-height: 1.6; display: flex; gap: 14px; align-items: flex-start; }
+  .steps-list li::before { content: counter(steps); font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--amber); flex-shrink: 0; width: 20px; text-align: right; padding-top: 1px; }
+  .modal-footer { padding: 0 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 12px; }
+  .tip-block { background: var(--amber-pale); border-left: 3px solid var(--amber); border-radius: 0 4px 4px 0; padding: 12px 14px; }
+  .tip-block p { font-size: 13px; font-weight: 300; color: var(--ink-soft); line-height: 1.55; }
+  .tip-block strong { font-weight: 500; color: var(--amber); }
+  .modal-add-btn { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; padding: 12px 20px; border-radius: 6px; border: none; background: var(--sage); color: white; cursor: pointer; transition: all 0.18s; width: 100%; }
+  .modal-add-btn:hover { background: var(--ink); }
+  .modal-add-btn.added { background: var(--rust); }
+  .modal-add-btn.added:hover { background: #7a2c18; }
+
+  /* SHOPPING LIST DRAWER */
+  .sl-drawer-bg { position: fixed; inset: 0; background: rgba(28,24,18,0.5); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  .sl-drawer-bg.open { opacity: 1; pointer-events: all; }
+  .sl-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 420px; background: var(--warm-white); z-index: 201; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.34,1.1,0.64,1); display: flex; flex-direction: column; overflow: hidden; }
+  .sl-drawer-bg.open .sl-drawer { transform: translateX(0); }
+  .sl-drawer-header { background: var(--ink); color: var(--cream); padding: 1.5rem; flex-shrink: 0; position: relative; }
+  .sl-drawer-header h2 { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 400; margin-bottom: 4px; }
+  .sl-drawer-sub { font-size: 13px; font-weight: 300; color: rgba(247,242,234,0.55); }
+  .sl-close { position: absolute; top: 1rem; right: 1rem; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(247,242,234,0.25); background: transparent; color: var(--cream); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .sl-close:hover { background: rgba(247,242,234,0.1); }
+
+  .sl-recipes-section { padding: 1rem 1.5rem 0.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .sl-recipes-label { font-size: 10px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 8px; }
+  .sl-recipe-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sl-recipe-chip { font-size: 12px; padding: 4px 10px; border-radius: 14px; background: var(--amber-pale); color: var(--amber); border: 1px solid rgba(196,120,42,0.25); display: flex; align-items: center; gap: 6px; }
+  .sl-chip-remove { background: none; border: none; color: var(--amber); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; opacity: 0.6; transition: opacity 0.15s; }
+  .sl-chip-remove:hover { opacity: 1; }
+
+  .sl-items-section { flex: 1; overflow-y: auto; padding: 1rem 1.5rem; }
+  .sl-items-label { font-size: 10px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 10px; }
+  .sl-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: opacity 0.15s; }
+  .sl-item.checked { opacity: 0.4; }
+  .sl-checkbox { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .sl-item.checked .sl-checkbox { background: var(--sage); border-color: var(--sage); }
+  .sl-check-icon { display: none; width: 10px; height: 7px; border-left: 2px solid white; border-bottom: 2px solid white; transform: rotate(-45deg) translateY(-1px); }
+  .sl-item.checked .sl-check-icon { display: block; }
+  .sl-item-text { font-size: 14px; font-weight: 300; color: var(--ink); line-height: 1.4; flex: 1; }
+  .sl-item.checked .sl-item-text { text-decoration: line-through; color: var(--ink-muted); }
+  .sl-item-source { font-size: 10px; color: var(--ink-muted); white-space: nowrap; padding-top: 2px; flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+
+  .sl-empty-state { text-align: center; padding: 3rem 1rem; }
+  .sl-empty-state p { font-family: 'Playfair Display', serif; font-style: italic; color: var(--ink-muted); font-size: 1rem; line-height: 1.7; }
+
+  .sl-actions { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-shrink: 0; }
+  .sl-btn { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; transition: all 0.18s; flex: 1; text-align: center; }
+  .sl-btn-copy { background: var(--amber); color: white; }
+  .sl-btn-copy:hover { background: var(--ink); }
+  .sl-btn-copy.copied { background: var(--sage); }
+  .sl-btn-clear { background: var(--cream); color: var(--ink-soft); border: 1px solid var(--border); }
+  .sl-btn-clear:hover { background: var(--rust-pale); color: var(--rust); border-color: var(--rust); }
+
+  /* FOOTER */
+  footer { background: var(--ink); color: rgba(247,242,234,0.4); text-align: center; padding: 2rem; font-size: 12px; font-weight: 300; letter-spacing: 0.05em; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .card:nth-child(1){animation-delay:.02s}.card:nth-child(2){animation-delay:.06s}.card:nth-child(3){animation-delay:.10s}.card:nth-child(4){animation-delay:.14s}.card:nth-child(5){animation-delay:.18s}.card:nth-child(6){animation-delay:.22s}
+
+  @media (max-width: 600px) {
+    .controls-inner { gap: 8px; }
+    .controls-right { width: 100%; }
+    .search-input { flex: 1; width: auto; }
+    .search-input:focus { width: auto; }
+    .hero { padding: 3rem 1.25rem 2rem; }
+    .main { padding: 1.5rem 1.25rem 3rem; }
+    .sl-drawer { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <p class="hero-eyebrow">Halal · Whole foods · Under 30 mins</p>
+    <h1>Evening meals<br>worth <em>cooking.</em></h1>
+    <p class="hero-sub">High-protein, simple recipes for two. No bones, no junk, no faff. Built for people over 40 who still want to eat well without spending the evening in the kitchen.</p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num">20</span><span class="stat-label">Recipes</span></div>
+      <div class="stat"><span class="stat-num">&lt;30</span><span class="stat-label">Minutes each</span></div>
+      <div class="stat"><span class="stat-num">30–48g</span><span class="stat-label">Protein per meal</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="controls-inner">
+    <span class="filter-label">Filter</span>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="beef">Beef &amp; Lamb</button>
+      <button class="filter-btn" data-filter="chicken">Chicken</button>
+      <button class="filter-btn" data-filter="seafood">Seafood</button>
+      <button class="filter-btn" data-filter="middleeastern">Middle Eastern</button>
+      <button class="filter-btn" data-filter="asian">Asian</button>
+      <button class="filter-btn" data-filter="mediterranean">Mediterranean</button>
+    </div>
+    <div class="controls-right">
+      <input type="text" class="search-input" id="search" placeholder="Search recipes…" autocomplete="off">
+      <button class="sl-toggle" id="sl-toggle" onclick="openDrawer()">
+        Shopping list <span class="sl-badge" id="sl-badge">0</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+  <div class="results-bar">
+    <p class="results-count" id="results-count"><span>20</span> recipes</p>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none;"><p>Nothing found — try a different search.</p></div>
+</main>
+
+<!-- Recipe modal -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="modal-close" id="close-btn">&#x2715;</button>
+      <p class="modal-eyebrow" id="modal-eyebrow"></p>
+      <h2 class="modal-title" id="modal-title"></h2>
+      <p class="modal-meta" id="modal-meta"></p>
+    </div>
+    <div class="modal-body">
+      <div>
+        <p class="section-title">Ingredients — serves 2</p>
+        <ul class="ingredients-list" id="modal-ingredients"></ul>
+      </div>
+      <div>
+        <p class="section-title">Method</p>
+        <ol class="steps-list" id="modal-steps"></ol>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="tip-block" id="modal-tip"></div>
+      <button class="modal-add-btn" id="modal-add-btn"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Shopping list drawer -->
+<div class="sl-drawer-bg" id="sl-drawer-bg">
+  <div class="sl-drawer">
+    <div class="sl-drawer-header">
+      <button class="sl-close" onclick="closeDrawer()">&#x2715;</button>
+      <h2>Shopping list</h2>
+      <p class="sl-drawer-sub" id="sl-drawer-sub">No recipes added yet</p>
+    </div>
+    <div class="sl-recipes-section" id="sl-recipes-section" style="display:none;">
+      <p class="sl-recipes-label">Recipes included</p>
+      <div class="sl-recipe-chips" id="sl-recipe-chips"></div>
+    </div>
+    <div class="sl-items-section">
+      <div id="sl-empty-state" class="sl-empty-state">
+        <p>Tap "+ List" on any recipe card,<br>or open a recipe and tap<br>"Add to shopping list".</p>
+      </div>
+      <div id="sl-items-wrap" style="display:none;">
+        <p class="sl-items-label">Ingredients — tap to tick off</p>
+        <div id="sl-items"></div>
+      </div>
+    </div>
+    <div class="sl-actions">
+      <button class="sl-btn sl-btn-copy" id="sl-copy-btn" onclick="copyList()">Copy for WhatsApp</button>
+      <button class="sl-btn sl-btn-clear" onclick="clearList()">Clear all</button>
+    </div>
+  </div>
+</div>
+
+<footer>Halal Evening Meals &mdash; Built with whole foods, no shortcuts.</footer>
+
+<script>
+const recipes = [
+  { title:"Lamb kofta with garlic yoghurt", time:"20 mins", desc:"Spiced lamb mince shaped into patties, pan-charred, served with garlic yoghurt and warm flatbreads.", tags:["beef","middleeastern"], protein:"38g", wifeNote:false, cuisine:"Middle Eastern", tip:"<strong>Tip:</strong> Wet your hands before shaping the kofta — they'll hold together better and brown more evenly.", ingredients:["400g lamb mince","1 tsp cumin","1 tsp ground coriander","1 tsp paprika","½ tsp chilli flakes","Salt & black pepper","4 tbsp full-fat Greek yoghurt","1 clove garlic, finely grated","2 flatbreads","Fresh parsley (optional)"], steps:["Mix lamb mince with cumin, coriander, paprika, chilli, salt and pepper until well combined. Shape into 6 oval patties.","Heat a dry frying pan on high heat. Cook kofta 3–4 mins each side until deeply charred and cooked through.","Stir grated garlic into the yoghurt with a pinch of salt.","Warm flatbreads in the pan for 30 seconds each side.","Serve kofta on flatbreads, yoghurt spooned generously over."] },
+  { title:"Seared sirloin with chimichurri", time:"15 mins", desc:"Hard-seared steak, rested properly, finished with a punchy green herb sauce. Serve over rice or with bread.", tags:["beef","mediterranean"], protein:"45g", wifeNote:false, cuisine:"Mediterranean", tip:"<strong>Key move:</strong> Rest the steak at least 5 mins after cooking. Cutting too early loses all the juice onto the board.", ingredients:["2 sirloin steaks (~220g each)","Salt & black pepper","1 tbsp olive oil","Large handful fresh flat-leaf parsley","2 cloves garlic","3 tbsp olive oil","1 tbsp red wine vinegar","½ tsp chilli flakes"], steps:["Pat steaks completely dry. Season generously with salt and pepper on both sides.","Heat pan until it's smoking hot. Add oil, cook steaks 2–3 mins per side for medium. Don't touch them.","Rest steaks on a board, loosely covered, for 5 mins.","Finely chop parsley and garlic together (or blitz). Mix with olive oil, vinegar and chilli.","Slice steak against the grain. Spoon chimichurri over generously."] },
+  { title:"Turkish-style beef mince rice", time:"25 mins", desc:"Spiced mince and fluffy rice cooked together in one pan. Classic, filling, dead simple.", tags:["beef","middleeastern"], protein:"35g", wifeNote:true, cuisine:"Middle Eastern", tip:"<strong>One pan rule:</strong> Don't lift the lid while the rice steams. Leave it closed for the full 12 minutes.", ingredients:["350g beef mince","1 cup basmati rice (rinsed well)","1 medium onion, finely diced","2 tbsp tomato paste","1 tsp cumin","1 tsp paprika","½ tsp cinnamon","1.5 cups beef stock or water","Salt & pepper","Olive oil"], steps:["Fry onion in oil over medium heat 3–4 mins until soft. Add mince, break up well and brown 5 mins.","Add spices and tomato paste. Stir constantly for 1 min.","Add rinsed rice and stock. Stir once to combine. Bring to the boil.","Cover with a tight lid, reduce to low heat, cook 12 mins. Turn off the heat and rest 5 mins, lid still on.","Fluff with a fork and serve."] },
+  { title:"Pan-fried salmon with lemon butter", time:"15 mins", desc:"Crispy-skin salmon with a simple garlic and lemon butter sauce. One pan, big protein, excellent fats.", tags:["seafood","mediterranean"], protein:"40g", wifeNote:true, cuisine:"Mediterranean", tip:"<strong>Crispy skin trick:</strong> Press the fillet flat onto the pan for the first 10 seconds to stop it curling up.", ingredients:["2 salmon fillets, skin on (~180g each)","1 tbsp olive oil","20g unsalted butter","2 cloves garlic, thinly sliced","Juice of ½ lemon","Salt & black pepper","Fresh dill or parsley (optional)"], steps:["Season salmon all over with salt and pepper.","Heat oil in a pan over medium-high heat. Place salmon skin-side down. Press gently for 10 secs. Cook 4 mins without moving.","Flip carefully. Add butter and garlic to the pan. Tilt and spoon melted butter over the fish continuously for 2 mins.","Squeeze lemon over. Serve with rice or a simple green salad."] },
+  { title:"Prawn stir-fry with garlic & ginger", time:"12 mins", desc:"King prawns, punchy sauce, hot wok. Ready in 12 minutes and genuinely good.", tags:["seafood","asian"], protein:"35g", wifeNote:true, cuisine:"Asian", tip:"<strong>Wok heat matters:</strong> Get it screaming hot before anything goes in. A cool wok just steams everything.", ingredients:["300g raw king prawns, peeled and deveined","3 cloves garlic, thinly sliced","1 thumb fresh ginger, grated","2 tbsp soy sauce","1 tsp sesame oil","1 tsp honey","½ tsp chilli flakes","1 tbsp vegetable oil","2 spring onions, sliced"], steps:["Mix soy sauce, sesame oil, honey and chilli flakes in a small bowl. Set aside.","Heat wok on maximum heat until just smoking. Add oil, then garlic and ginger. Stir 30 seconds.","Add prawns in one layer. Leave 1 min then toss. Cook until just pink throughout — 2 mins total.","Pour sauce in. Toss everything together 1 min until coated and sticky.","Serve over jasmine rice, topped with spring onions."] },
+  { title:"Shawarma chicken thighs", time:"25 mins", desc:"Boneless thighs loaded with shawarma spice and grilled until sticky and charred. Works in a wrap or with rice.", tags:["chicken","middleeastern"], protein:"42g", wifeNote:true, cuisine:"Middle Eastern", tip:"<strong>For variety:</strong> Serve half in a wrap and half over rice for a different feel from the same cook.", ingredients:["4 chicken thighs, boneless and skinless","1 tsp cumin","1 tsp ground coriander","1 tsp smoked paprika","½ tsp turmeric","¼ tsp cinnamon","2 cloves garlic, grated","2 tbsp full-fat Greek yoghurt","Juice of ½ lemon","Salt & pepper"], steps:["Mix all spices, garlic, yoghurt and lemon juice into a thick paste. Coat chicken all over — even 10 mins marinating helps.","Heat a grill pan or heavy frying pan on high. Cook thighs 5–6 mins per side until charred and cooked through (juices run clear).","Rest 3 mins. Slice thickly and serve with flatbread and yoghurt, or over spiced rice."] },
+  { title:"Lamb chops with cumin & mint", time:"20 mins", desc:"Loin chops seasoned hard and grilled fast. A bright mint sauce cuts straight through the lamb.", tags:["beef","middleeastern"], protein:"40g", wifeNote:false, cuisine:"Middle Eastern", tip:"<strong>Don't overcook lamb chops:</strong> Pull them at medium — pink in the middle. Overcooked loin chops are tough.", ingredients:["4 lamb loin chops","1 tsp cumin seeds (or ground)","½ tsp paprika","Salt & black pepper","1 tbsp olive oil","Large handful fresh mint leaves","1 tbsp olive oil","1 tbsp white wine vinegar","Pinch of sugar"], steps:["Rub chops with cumin, paprika, oil, salt and pepper. Leave 10 mins if you can.","Grill or fry on high heat 3–4 mins per side. Rest 3 mins on a warm plate.","Finely chop mint leaves. Mix with olive oil, vinegar, sugar and a pinch of salt.","Serve chops with mint sauce spooned over."] },
+  { title:"Beef & egg fried rice", time:"20 mins", desc:"Mince, eggs, soy and day-old rice. Simple man food done right.", tags:["beef","asian"], protein:"38g", wifeNote:false, cuisine:"Asian", tip:"<strong>Day-old rice is key:</strong> Fresh rice is too wet and goes mushy. Cook rice the night before and refrigerate.", ingredients:["300g beef mince","2 cups cooked basmati (day-old, cold)","3 large eggs","3 cloves garlic, minced","2 tbsp soy sauce","1 tsp sesame oil","1 tsp chilli sauce","2 spring onions, sliced","Vegetable oil"], steps:["Heat oil in a wok or large pan on high. Add garlic, stir 30 secs. Add mince, break up and cook until well browned — 5 mins.","Push mince to the sides. Crack eggs into the middle. Scramble lightly then fold through the mince.","Add cold rice. Break up any clumps and stir-fry everything together 3–4 mins until hot and slightly crispy.","Add soy, sesame oil and chilli sauce. Toss well. Taste and adjust seasoning.","Serve topped with sliced spring onions."] },
+  { title:"Sesame-crusted tuna steaks", time:"10 mins", desc:"Thick tuna steaks crusted in sesame seeds and seared rare. High protein, zero bones, serious flavour.", tags:["seafood","asian"], protein:"44g", wifeNote:true, cuisine:"Asian", tip:"<strong>Tuna is best rare to medium-rare:</strong> If it's cooked all the way through it dries out. 90 secs per side max on high heat.", ingredients:["2 tuna steaks (~200g each, at least 2cm thick)","3 tbsp sesame seeds","1 tbsp soy sauce","1 tbsp olive oil","1 tsp honey","1 tsp fresh ginger, grated","Squeeze of lime"], steps:["Mix soy, honey and ginger. Brush over both sides of the tuna steaks.","Pour sesame seeds onto a flat plate. Press tuna steaks firmly onto seeds on both sides to coat.","Heat pan on high with oil until very hot. Sear tuna 60–90 secs per side — rare/pink in the middle.","Squeeze lime over. Slice thickly and serve with rice or a sesame cucumber salad."] },
+  { title:"Harissa lamb flatbreads", time:"20 mins", desc:"Lamb mince cooked down with harissa and tomatoes. Piled onto warm flatbreads, finished with cool yoghurt.", tags:["beef","middleeastern"], protein:"36g", wifeNote:false, cuisine:"Middle Eastern", tip:"<strong>Harissa heat varies:</strong> Rose harissa is milder. Regular is hot. Taste before adding the full amount.", ingredients:["400g lamb mince","2 tbsp harissa paste","1 tin (400g) chopped tomatoes","1 medium onion, diced","2 flatbreads or wraps","4 tbsp Greek yoghurt","Salt & pepper","Olive oil"], steps:["Fry onion in oil over medium heat 3 mins until soft. Add mince, break up well and brown 5 mins.","Add harissa paste, stir 1 min. Add chopped tomatoes. Simmer 8–10 mins until thick. Season well.","Warm flatbreads in a dry pan 30 secs each side.","Pile lamb mix onto flatbreads. Spoon yoghurt on top."] },
+  { title:"Quick butter chicken", time:"25 mins", desc:"Proper tomato-butter sauce, diced thighs, garam masala. Real flavour without the all-day cook.", tags:["chicken","asian"], protein:"40g", wifeNote:true, cuisine:"Asian", tip:"<strong>For a richer sauce:</strong> Let the butter brown slightly before adding the tomatoes.", ingredients:["4 chicken thighs, boneless, diced into 3cm chunks","1 medium onion, finely diced","3 cloves garlic, grated","1 tsp fresh ginger paste","1 tin (400g) chopped tomatoes","25g butter","100ml single cream","1½ tsp garam masala","1 tsp smoked paprika","Salt","Vegetable oil"], steps:["Fry onion in oil until golden — 5 mins. Add garlic and ginger, stir 1 min.","Add diced chicken, stir and lightly brown 3 mins. Add spices, stir 30 secs.","Add tomatoes and butter. Stir well. Simmer 12 mins until chicken is cooked through.","Stir in cream, heat gently 2 mins. Don't boil after adding cream. Serve with rice or naan."] },
+  { title:"Grilled swordfish with capers", time:"15 mins", desc:"Firm, meaty, boneless. Swordfish eats more like steak than fish. Capers and lemon lift the whole thing.", tags:["seafood","mediterranean"], protein:"40g", wifeNote:true, cuisine:"Mediterranean", tip:"<strong>Don't overcook it:</strong> Swordfish dries out fast. 3 mins per side on high heat — slightly translucent in the centre is perfect.", ingredients:["2 swordfish steaks (~200g each)","2 tbsp olive oil","1 tbsp capers (drained)","Juice of ½ lemon","1 clove garlic, thinly sliced","Small handful fresh flat-leaf parsley","Salt & black pepper"], steps:["Season swordfish with salt, pepper and 1 tbsp olive oil.","Heat a grill pan or heavy frying pan on high. Cook swordfish 3 mins each side without moving.","In a small pan, warm remaining oil with garlic 1 min. Add capers and lemon juice, heat 1 min.","Plate the swordfish and pour caper butter over. Scatter parsley."] },
+  { title:"Beef kebab wraps", time:"20 mins", desc:"Thin beef strips, heavy seasoning, fast griddle. Stuffed into wraps with garlic sauce. Friday night food.", tags:["beef","middleeastern"], protein:"38g", wifeNote:false, cuisine:"Middle Eastern", tip:"<strong>Don't crowd the pan:</strong> Cook beef in batches so it sears rather than steams. High heat, fast, in batches.", ingredients:["400g beef rump or sirloin, sliced thin against the grain","1 tsp cumin","1 tsp paprika","½ tsp dried oregano","2 cloves garlic, grated","1 tbsp olive oil","2 large wraps or flatbreads","3 tbsp halal garlic mayo","Sliced tomato and onion to serve"], steps:["Toss beef strips in cumin, paprika, oregano, garlic and oil. Even 5 mins helps the flavour.","Heat griddle or frying pan to very high. Cook beef in batches, 2–3 mins per batch. Don't stir too much.","Warm wraps. Spread garlic mayo generously.","Pile in beef and salad. Roll tightly and serve immediately."] },
+  { title:"Coconut prawn curry", time:"20 mins", desc:"King prawns in a light coconut and tomato sauce. Warming, fast and not heavy at all.", tags:["seafood","asian"], protein:"33g", wifeNote:true, cuisine:"Asian", tip:"<strong>Don't overcook prawns:</strong> Add them last and pull off the heat the moment they're fully pink — 3 mins max.", ingredients:["300g raw king prawns, peeled","1 tin (400ml) coconut milk","1 tin (400g) chopped tomatoes","1 medium onion, finely diced","3 cloves garlic, grated","1 tsp fresh ginger paste","1 tsp ground cumin","1 tsp turmeric","½ tsp chilli powder","Salt","Vegetable oil"], steps:["Fry onion in oil 4 mins until softened and starting to colour. Add garlic and ginger, stir 1 min.","Add spices, stir 30 secs until fragrant. Add chopped tomatoes and coconut milk. Stir to combine.","Simmer 8–10 mins until the sauce reduces and thickens slightly.","Add prawns. Cook 3–4 mins until fully pink and curled. Season well.","Serve with basmati rice."] },
+  { title:"Lemon herb chicken breast", time:"20 mins", desc:"Butterflied breast stays moist. Lemon, garlic, oregano. Works with anything you put it next to.", tags:["chicken","mediterranean"], protein:"48g", wifeNote:true, cuisine:"Mediterranean", tip:"<strong>Butterflying is key:</strong> Slice through horizontally so the breast is half the thickness — cooks evenly and stays juicy.", ingredients:["2 large chicken breasts, butterflied (sliced horizontally)","1 tbsp olive oil","1 tsp dried oregano","1 tsp garlic powder","Juice of 1 lemon","Salt & black pepper","Fresh parsley to serve"], steps:["Butterfly each chicken breast by slicing through horizontally to open flat. Season both sides with oregano, garlic powder, salt and pepper.","Heat olive oil in pan over medium-high. Cook chicken 4 mins per side until golden and cooked through — no pink when you cut the thickest part.","Squeeze lemon over. Scatter parsley. Rest 2 mins before serving."] },
+  { title:"Cheat's lamb biryani", time:"30 mins", desc:"Lamb mince, pre-cooked rice, proper spice mix. All the flavour of biryani in half the time.", tags:["beef","asian"], protein:"38g", wifeNote:true, cuisine:"Asian", tip:"<strong>Crispy onion topping:</strong> Slice onions thin and fry in hot oil until deep golden. The bitterness sweetens as they go dark.", ingredients:["400g lamb mince","2 cups cooked basmati rice","1 large onion, thinly sliced","2 cloves garlic, grated","1 tsp garam masala","1 tsp ground cumin","½ tsp turmeric","¼ tsp chilli powder","2 tbsp ghee or unsalted butter","Salt"], steps:["Fry sliced onion in ghee over medium-high heat 8–10 mins until deep golden and slightly crispy. Remove half and set aside for topping.","Add garlic and spices to the pan, stir 1 min. Add lamb mince, break up well and brown 7 mins.","Season well. Layer the cooked rice on top of the mince in the pan. Cover and heat on low 5 mins until rice is warmed through.","Serve topped with the crispy onions and yoghurt or raita alongside."] },
+  { title:"Tuna & avocado rice bowl", time:"15 mins", desc:"Seared tuna, creamy avocado, soy-sesame dressing over rice. Clean, filling, excellent macros.", tags:["seafood","asian"], protein:"42g", wifeNote:true, cuisine:"Asian", tip:"<strong>Dressing balance:</strong> If it's too sharp, add a little more honey. If too sweet, a dash more vinegar.", ingredients:["2 tuna steaks (~180g each)","1 ripe avocado, sliced","2 cups cooked jasmine or basmati rice","2 tbsp soy sauce","1 tsp sesame oil","1 tbsp rice wine vinegar","1 tsp honey","Sesame seeds to serve","Cucumber, sliced (optional)"], steps:["Whisk soy, sesame oil, rice vinegar and honey together. Taste and adjust.","Sear tuna in a very hot dry pan — 60–90 secs per side. It should be rare in the middle.","Divide rice into two bowls. Slice tuna thickly and arrange on rice with avocado alongside.","Pour dressing over everything. Scatter sesame seeds."] },
+  { title:"One-pot spiced chicken rice", time:"28 mins", desc:"Chicken thighs and rice cooked together with warm spices. One pan, zero stress, proper dinner.", tags:["chicken","middleeastern"], protein:"44g", wifeNote:true, cuisine:"Middle Eastern", tip:"<strong>Skin-on thighs work great here:</strong> Brown skin-down first until crispy, then continue the recipe. Extra flavour into the rice.", ingredients:["4 chicken thighs (bone-in or boneless)","1 cup basmati rice, rinsed","1.5 cups chicken stock","1 medium onion, diced","3 cloves garlic, sliced","1 tsp ground cumin","1 tsp ground coriander","½ tsp turmeric","Salt & black pepper","Olive oil"], steps:["Season chicken well. Brown in oil both sides 4 mins per side. Remove and set aside.","In the same pan, fry onion and garlic 3 mins. Add spices, stir 30 secs.","Add rinsed rice, stir to coat in the spiced oil. Add stock and bring to the boil.","Sit chicken on top of rice. Cover with a tight lid. Reduce to low, cook 15 mins.","Turn off heat. Rest 5 mins covered. Serve straight from the pan."] },
+  { title:"Asian beef lettuce cups", time:"15 mins", desc:"Hoisin-glazed mince in crispy lettuce leaves. Light but genuinely satisfying.", tags:["beef","asian"], protein:"32g", wifeNote:true, cuisine:"Asian", tip:"<strong>Good for lighter days:</strong> No rice, just the mince in leaves. Add rice on the side if you want more fuel.", ingredients:["400g beef mince","3 cloves garlic, minced","1 thumb fresh ginger, grated","2 tbsp halal hoisin sauce","1 tbsp soy sauce","1 tsp sesame oil","½ tsp chilli flakes","Iceberg lettuce — separate into cups","2 spring onions, sliced"], steps:["Heat oil in pan or wok on high. Add garlic and ginger, stir 30 secs. Add mince, break up and cook until well browned — 5 mins.","Add hoisin, soy, sesame oil and chilli. Stir well and cook 2 mins until slightly glazed.","Serve scooped into cold lettuce cups. Top with spring onions."] },
+  { title:"Lamb kofta & halloumi plate", time:"20 mins", desc:"A mezze plate — spiced lamb fingers and golden grilled halloumi. Good protein, easy to pull together.", tags:["beef","middleeastern"], protein:"40g", wifeNote:true, cuisine:"Middle Eastern", tip:"<strong>Don't salt the halloumi:</strong> It's already salty enough. Pat it dry before grilling for better colour.", ingredients:["300g lamb mince","½ tsp cumin","½ tsp ground coriander","Salt & black pepper","200g halloumi, sliced into 1cm rounds","2 flatbreads","Good quality hummus","Lemon wedges"], steps:["Mix lamb mince with cumin, coriander, salt and pepper. Shape into finger-length logs or press onto small skewers.","Grill or pan-fry kofta 3–4 mins each side until well browned and cooked through.","Grill halloumi slices in a dry pan 1–2 mins per side until golden with visible grill marks.","Serve kofta and halloumi on a shared plate with hummus, warm flatbreads and lemon wedges."] }
+];
+
+let activeFilter = 'all', searchQuery = '', currentModalIdx = null;
+let shoppingList = {}, checkedItems = {};
+
+const grid = document.getElementById('grid');
+const empty = document.getElementById('empty');
+const countEl = document.getElementById('results-count');
+const searchEl = document.getElementById('search');
+const modalBg = document.getElementById('modal-bg');
+const slToggle = document.getElementById('sl-toggle');
+const slBadge = document.getElementById('sl-badge');
+const slDrawerBg = document.getElementById('sl-drawer-bg');
+
+function getFiltered() {
+  return recipes.filter(r => {
+    const mf = activeFilter === 'all' || r.tags.includes(activeFilter);
+    const q = searchQuery.toLowerCase();
+    const ms = !q || r.title.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q) || r.cuisine.toLowerCase().includes(q) || r.tags.some(t => t.includes(q));
+    return mf && ms;
+  });
+}
+
+function cuisineLabel(tags) {
+  const map = { middleeastern:'Middle Eastern', asian:'Asian', mediterranean:'Mediterranean' };
+  return tags.filter(t => map[t]).map(t => map[t]).join(' · ');
+}
+
+function render() {
+  const filtered = getFiltered();
+  const n = filtered.length;
+  countEl.innerHTML = `<span>${n}</span> recipe${n !== 1 ? 's' : ''}`;
+  if (n === 0) { grid.style.display = 'none'; empty.style.display = 'block'; return; }
+  grid.style.display = 'grid'; empty.style.display = 'none';
+  grid.innerHTML = filtered.map(r => {
+    const idx = recipes.indexOf(r);
+    const inList = !!shoppingList[idx];
+    return `<div class="card${inList?' in-list':''}">
+      <div class="card-top card-clickable" onclick="openModal(${idx})">
+        <h3 class="card-title">${r.title}</h3>
+        <span class="time-pill">${r.time}</span>
+      </div>
+      <p class="card-desc card-clickable" onclick="openModal(${idx})">${r.desc}</p>
+      <div class="card-footer">
+        <span class="tag tag-protein">~${r.protein} protein</span>
+        ${r.wifeNote?'<span class="tag tag-both">Both-friendly</span>':''}
+        <span class="tag tag-cuisine">${cuisineLabel(r.tags)}</span>
+        <button class="add-list-btn${inList?' added':''}" onclick="toggleRecipe(event,${idx})">${inList?'Remove':'+ List'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleRecipe(e, idx) {
+  e && e.stopPropagation();
+  if (shoppingList[idx]) {
+    delete shoppingList[idx];
+    Object.keys(checkedItems).forEach(k => { if (k.startsWith(idx+'|')) delete checkedItems[k]; });
+  } else {
+    shoppingList[idx] = true;
+  }
+  updateDrawer(); render();
+  if (currentModalIdx === idx) updateModalBtn(idx);
+}
+
+function updateDrawer() {
+  const ids = Object.keys(shoppingList).map(Number);
+  const total = ids.reduce((a, i) => a + recipes[i].ingredients.length, 0);
+
+  if (ids.length > 0) { slToggle.classList.add('has-items'); slBadge.textContent = ids.length; }
+  else { slToggle.classList.remove('has-items'); }
+
+  document.getElementById('sl-drawer-sub').textContent = ids.length === 0
+    ? 'No recipes added yet'
+    : `${ids.length} recipe${ids.length>1?'s':''} · ${total} ingredients`;
+
+  const chipsSection = document.getElementById('sl-recipes-section');
+  const chipsWrap = document.getElementById('sl-recipe-chips');
+  if (ids.length === 0) { chipsSection.style.display = 'none'; }
+  else {
+    chipsSection.style.display = 'block';
+    chipsWrap.innerHTML = ids.map(idx =>
+      `<div class="sl-recipe-chip"><span>${recipes[idx].title}</span><button class="sl-chip-remove" onclick="toggleRecipe(event,${idx})">&#x2715;</button></div>`
+    ).join('');
+  }
+
+  const emptyState = document.getElementById('sl-empty-state');
+  const itemsWrap = document.getElementById('sl-items-wrap');
+  const itemsEl = document.getElementById('sl-items');
+
+  if (ids.length === 0) { emptyState.style.display = 'block'; itemsWrap.style.display = 'none'; }
+  else {
+    emptyState.style.display = 'none'; itemsWrap.style.display = 'block';
+    const allItems = [];
+    ids.forEach(idx => recipes[idx].ingredients.forEach(ing => allItems.push({ ing, idx, key: `${idx}|${ing}` })));
+    itemsEl.innerHTML = allItems.map(({ ing, idx, key }) => {
+      const checked = checkedItems[key] ? ' checked' : '';
+      const short = recipes[idx].title.split(' ').slice(0,3).join(' ');
+      return `<div class="sl-item${checked}" onclick="toggleCheck('${CSS.escape(key)}','${key}')">
+        <div class="sl-checkbox"><div class="sl-check-icon"></div></div>
+        <span class="sl-item-text">${ing}</span>
+        <span class="sl-item-source">${short}</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+function toggleCheck(escapedKey, rawKey) {
+  if (checkedItems[rawKey]) { delete checkedItems[rawKey]; } else { checkedItems[rawKey] = true; }
+  updateDrawer();
+}
+
+function openDrawer() { updateDrawer(); slDrawerBg.classList.add('open'); document.body.style.overflow = 'hidden'; }
+function closeDrawer() { slDrawerBg.classList.remove('open'); document.body.style.overflow = ''; }
+slDrawerBg.addEventListener('click', e => { if (e.target === slDrawerBg) closeDrawer(); });
+
+function clearList() { shoppingList = {}; checkedItems = {}; updateDrawer(); render(); if (currentModalIdx !== null) updateModalBtn(currentModalIdx); }
+
+function copyList() {
+  const ids = Object.keys(shoppingList).map(Number);
+  if (!ids.length) return;
+  let text = '🛒 Shopping list\n\n';
+  ids.forEach(idx => { text += `📍 ${recipes[idx].title}\n`; recipes[idx].ingredients.forEach(i => { text += `  • ${i}\n`; }); text += '\n'; });
+  text += '— from Halal Evening Meals';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('sl-copy-btn');
+    btn.textContent = 'Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy for WhatsApp'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function openModal(idx) {
+  currentModalIdx = idx;
+  const r = recipes[idx];
+  document.getElementById('modal-eyebrow').textContent = `${r.cuisine} · ${r.time} · ~${r.protein} protein`;
+  document.getElementById('modal-title').textContent = r.title;
+  document.getElementById('modal-meta').textContent = r.desc;
+  document.getElementById('modal-ingredients').innerHTML = r.ingredients.map(i => `<li>${i}</li>`).join('');
+  document.getElementById('modal-steps').innerHTML = r.steps.map(s => `<li>${s}</li>`).join('');
+  document.getElementById('modal-tip').innerHTML = `<p>${r.tip}</p>`;
+  updateModalBtn(idx);
+  modalBg.classList.add('open'); document.body.style.overflow = 'hidden';
+}
+
+function updateModalBtn(idx) {
+  const btn = document.getElementById('modal-add-btn');
+  const inList = !!shoppingList[idx];
+  btn.textContent = inList ? 'Remove from shopping list' : '+ Add to shopping list';
+  btn.className = 'modal-add-btn' + (inList ? ' added' : '');
+  btn.onclick = (e) => toggleRecipe(e, idx);
+}
+
+function closeModal() { modalBg.classList.remove('open'); document.body.style.overflow = ''; currentModalIdx = null; }
+document.getElementById('close-btn').addEventListener('click', closeModal);
+modalBg.addEventListener('click', e => { if (e.target === modalBg) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeDrawer(); } });
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeFilter = btn.dataset.filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+
+searchEl.addEventListener('input', () => { searchQuery = searchEl.value; render(); });
+
+render();
+</script>
+</body>
+</html>
