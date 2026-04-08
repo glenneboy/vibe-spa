@@ -465,7 +465,7 @@ function parseFitFile(buffer) {
       lengthUnit: 'm',
       temperatureUnit: 'celsius',
       elapsedRecordField: true,
-      mode: 'list',
+      mode: 'cascade',
     });
     parser.parse(buffer, function(error, data) {
       if (error) reject(error);
@@ -475,11 +475,36 @@ function parseFitFile(buffer) {
 }
 
 function extractMetrics(data) {
-  var activity = data.activity || data;
-  var sessions = activity.sessions || [];
-  var records = activity.records || [];
+  // fit-file-parser cascade mode: data.activity.sessions[], with records nested in laps
+  // Also handle list mode fallback (flat: data.sessions[], data.records[])
+  var sessions, records = [];
 
-  if (sessions.length === 0) throw new Error('No session data found in this FIT file.');
+  if (data.activity && data.activity.sessions && data.activity.sessions.length > 0) {
+    sessions = data.activity.sessions;
+    // In cascade mode records live inside laps inside sessions
+    if (data.activity.records && data.activity.records.length > 0) {
+      records = data.activity.records;
+    } else {
+      sessions.forEach(function(sess) {
+        if (sess.laps) {
+          sess.laps.forEach(function(lap) {
+            if (lap.records) records = records.concat(lap.records);
+          });
+        }
+      });
+    }
+  } else if (data.sessions && data.sessions.length > 0) {
+    // list mode: flat plural keys
+    sessions = data.sessions;
+    records = data.records || [];
+  } else {
+    // log actual structure to help debug
+    console.error('FIT data keys:', Object.keys(data));
+    if (data.activity) console.error('activity keys:', Object.keys(data.activity));
+    throw new Error('No session data found. Structure: ' + Object.keys(data).join(', '));
+  }
+
+  if (!sessions || sessions.length === 0) throw new Error('No session data found in this FIT file.');
 
   var s = sessions[0];
   var ftp = s.threshold_power || 243;
