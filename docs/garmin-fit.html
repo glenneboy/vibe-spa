@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garmin FIT Analyser</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080B10;
+  --surface: #0F1520;
+  --surface-2: #172030;
+  --surface-3: #1E2A3D;
+  --border: rgba(255,255,255,0.07);
+  --border-2: rgba(255,255,255,0.12);
+  --text: #D8E4F0;
+  --text-dim: #7A92AC;
+  --text-muted: #3D5068;
+  --accent: #38BDF8;
+  --accent-dim: rgba(56,189,248,0.15);
+  --z1: #475569; --z2: #3B82F6; --z3: #10B981;
+  --z4: #F59E0B; --z5: #EF4444; --z6: #A78BFA;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Barlow', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── UPLOAD STATE ────────────────────────────────────── */
+#upload-view {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+}
+#upload-view::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 50%, rgba(56,189,248,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 80% 30%, rgba(251,146,60,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.back-link {
+  position: absolute; top: 1.5rem; left: 1.5rem;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim); text-decoration: none;
+  display: flex; align-items: center; gap: 6px;
+  transition: color 0.2s;
+}
+.back-link:hover { color: var(--accent); }
+
+.upload-brand { text-align: center; margin-bottom: 3rem; }
+.upload-brand .eyebrow {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 0.8rem;
+}
+.upload-brand h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800;
+  letter-spacing: -0.02em; line-height: 1; color: var(--text);
+}
+.upload-brand h1 span { color: var(--accent); }
+.upload-brand p {
+  margin-top: 0.75rem; font-size: 15px; font-weight: 300; color: var(--text-dim);
+}
+
+.drop-zone {
+  width: 100%; max-width: 520px;
+  border: 2px dashed var(--border-2); border-radius: 16px;
+  padding: 3.5rem 2rem; text-align: center; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+  background: var(--surface); position: relative;
+}
+.drop-zone:hover, .drop-zone.dragging {
+  border-color: var(--accent); background: rgba(56,189,248,0.04); transform: translateY(-2px);
+}
+.drop-icon {
+  width: 56px; height: 56px; margin: 0 auto 1.25rem;
+  background: var(--accent-dim); border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.drop-icon svg { width: 26px; height: 26px; stroke: var(--accent); }
+.drop-zone h3 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.2rem; font-weight: 700; letter-spacing: 0.03em; margin-bottom: 0.4rem;
+}
+.drop-zone p { font-size: 13px; color: var(--text-dim); font-weight: 300; }
+.file-input { display: none; }
+.or-divider {
+  margin: 1rem 0; font-size: 12px; color: var(--text-muted);
+  font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.file-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 22px; background: var(--surface-2); border: 1px solid var(--border-2);
+  border-radius: 8px; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text); cursor: pointer; transition: background 0.2s, border-color 0.2s;
+}
+.file-btn:hover { background: var(--surface-3); border-color: var(--accent); color: var(--accent); }
+
+.parse-error {
+  margin-top: 1rem; padding: 12px 16px;
+  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 8px; font-size: 13px; color: #FCA5A5; display: none;
+}
+.parse-error.visible { display: block; }
+
+.parsing-indicator {
+  margin-top: 1.5rem;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
+  display: none; align-items: center; gap: 8px;
+}
+.parsing-indicator.visible { display: flex; }
+.spin {
+  width: 16px; height: 16px;
+  border: 2px solid var(--accent-dim); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── DASHBOARD ───────────────────────────────────────── */
+#dashboard-view { display: none; }
+#dashboard-view.visible { display: block; }
+
+.dash-header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 1.25rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px);
+}
+.dash-back {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim);
+  text-decoration: none; display: flex; align-items: center; gap: 6px;
+  transition: color 0.2s; white-space: nowrap;
+}
+.dash-back:hover { color: var(--accent); }
+.dash-title-block { flex: 1; }
+.dash-title-block .eyebrow {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px;
+}
+.dash-title-block h2 {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700;
+  letter-spacing: 0.02em; color: var(--text); line-height: 1.2;
+}
+
+.quick-stats { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; }
+.qs-item { text-align: right; }
+.qs-val {
+  font-family: 'DM Mono', monospace; font-size: 1.05rem; font-weight: 500;
+  color: var(--text); display: block; line-height: 1;
+}
+.qs-label {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted);
+  margin-top: 2px; display: block;
+}
+
+.copy-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; background: var(--accent); color: #080B10;
+  border: none; border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; transition: background 0.2s, transform 0.15s; white-space: nowrap;
+}
+.copy-btn:hover { background: #7DD3FC; transform: translateY(-1px); }
+.copy-btn:active { transform: translateY(0); }
+.copy-btn.copied { background: #10B981; color: #fff; }
+
+.dash-body { max-width: 1200px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+
+.section { margin-bottom: 2.5rem; }
+.section-title {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* METRIC GRID */
+.metric-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+}
+.metric-card {
+  background: var(--surface); padding: 1.1rem 1.25rem;
+  display: flex; flex-direction: column; gap: 4px; transition: background 0.15s;
+}
+.metric-card:hover { background: var(--surface-2); }
+.metric-label {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted);
+}
+.metric-val {
+  font-family: 'DM Mono', monospace; font-size: 1.65rem; font-weight: 500;
+  color: var(--text); line-height: 1.1;
+}
+.metric-unit { font-size: 0.65em; margin-left: 3px; color: var(--text-dim); }
+
+/* ZONE CHARTS */
+.zone-chart { display: flex; flex-direction: column; gap: 8px; }
+.zone-row { display: flex; align-items: center; gap: 10px; }
+.zone-label {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; width: 36px; flex-shrink: 0;
+}
+.zone-name {
+  font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 300;
+  color: var(--text-dim); width: 100px; flex-shrink: 0;
+}
+.zone-bar-track {
+  flex: 1; height: 22px; background: var(--surface-2);
+  border-radius: 4px; overflow: hidden;
+}
+.zone-bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); min-width: 2px;
+}
+.zone-pct {
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  width: 48px; text-align: right; flex-shrink: 0; color: var(--text-dim);
+}
+
+/* CARDIAC DRIFT */
+.drift-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 1px;
+}
+.drift-card { background: var(--surface); padding: 1.25rem 1.5rem; }
+.drift-card h4 {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem;
+}
+.drift-stat { margin-bottom: 0.75rem; }
+.drift-stat-val {
+  font-family: 'DM Mono', monospace; font-size: 1.4rem; font-weight: 500; line-height: 1;
+}
+.drift-stat-lbl {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-top: 2px;
+}
+.drift-summary {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 0 0 10px 10px; overflow: hidden;
+}
+.drift-delta { background: var(--surface); padding: 1rem 1.5rem; }
+.drift-delta-lbl {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;
+}
+.drift-delta-val {
+  font-family: 'DM Mono', monospace; font-size: 1.5rem; font-weight: 500; color: var(--text-dim);
+}
+.drift-delta-val.pos { color: #F87171; }
+.drift-delta-val.neg { color: #34D399; }
+
+/* PEDAL DYNAMICS */
+.pedal-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+}
+.pedal-card { background: var(--surface); padding: 1.1rem 1.25rem; }
+.pedal-card-title {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;
+}
+.pedal-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.pedal-row-lbl {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
+}
+.pedal-row-val { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--text); }
+
+.balance-bar {
+  margin-top: 8px; height: 8px; border-radius: 4px;
+  background: var(--surface-3); overflow: hidden; position: relative;
+}
+.balance-bar-left {
+  position: absolute; left: 0; top: 0; bottom: 0; background: #38BDF8;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.balance-bar-right {
+  position: absolute; right: 0; top: 0; bottom: 0; background: #FB923C;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.balance-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+.balance-labels span { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); }
+.balance-labels .bal-left { color: #38BDF8; }
+.balance-labels .bal-right { color: #FB923C; }
+.asymm-flag {
+  display: inline-block; margin-top: 6px; padding: 2px 8px;
+  background: rgba(251,191,36,0.1); border-radius: 4px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: #FBBF24;
+}
+</style>
+</head>
+<body>
+
+<!-- UPLOAD VIEW -->
+<div id="upload-view">
+  <a href="index.html" class="back-link">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    Dashboard
+  </a>
+
+  <div class="upload-brand">
+    <div class="eyebrow">Garmin FIT Analyser</div>
+    <h1>Decode your<br><span>ride data</span></h1>
+    <p>Drop a .FIT file to extract power, HR, zones &amp; pedal dynamics</p>
+  </div>
+
+  <div class="drop-zone" id="dropZone">
+    <div class="drop-icon">
+      <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/>
+        <circle cx="12" cy="9" r="2.5"/>
+      </svg>
+    </div>
+    <h3>Drop .FIT file here</h3>
+    <p>Garmin cycling activity file</p>
+    <div class="or-divider">or</div>
+    <button class="file-btn" onclick="document.getElementById('fileInput').click()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Browse File
+    </button>
+    <input type="file" id="fileInput" class="file-input" accept=".fit">
+    <div class="parse-error" id="parseError"></div>
+    <div class="parsing-indicator" id="parsingIndicator">
+      <div class="spin"></div>
+      Parsing FIT data&hellip;
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD VIEW -->
+<div id="dashboard-view">
+  <header class="dash-header">
+    <a href="index.html" class="dash-back">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Dashboard
+    </a>
+    <div class="dash-title-block">
+      <div class="eyebrow">Garmin FIT Analyser</div>
+      <h2 id="rideTitle">—</h2>
+    </div>
+    <div class="quick-stats" id="quickStats"></div>
+    <button class="copy-btn" id="copyBtn" onclick="copyForClaude()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy for Claude
+    </button>
+  </header>
+
+  <div class="dash-body">
+    <div class="section">
+      <div class="section-title">Session Metrics</div>
+      <div class="metric-grid" id="metricGrid"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Power Zone Distribution</div>
+      <div class="zone-chart" id="powerZoneChart"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Heart Rate Zone Distribution</div>
+      <div class="zone-chart" id="hrZoneChart"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Cardiac Drift</div>
+      <div class="drift-grid" id="driftGrid"></div>
+      <div class="drift-summary" id="driftSummary"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Pedal Dynamics</div>
+      <div class="pedal-grid" id="pedalGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/fit-file-parser/dist/fit-file-parser.js"></script>
+<script>
+// ── SAFE STRING HELPERS ───────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function fmt(val, dec) {
+  dec = dec === undefined ? 0 : dec;
+  if (val == null || val === undefined || isNaN(Number(val))) return '--';
+  return Number(val).toFixed(dec);
+}
+
+function fmtTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '--';
+  const s = Math.floor(Number(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  return m + ':' + String(sec).padStart(2, '0');
+}
+
+function fmtDate(date) {
+  if (!date) return '--';
+  try {
+    return new Date(date).toLocaleDateString('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  } catch (e) { return '--'; }
+}
+
+function fmtDateShort(date) {
+  if (!date) return '--';
+  try {
+    const d = new Date(date);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return '--'; }
+}
+
+function sign(val) {
+  return (val != null && !isNaN(val) && val >= 0) ? '+' : '';
+}
+
+// ── FIT PARSING ────────────────────────────────────────
+let rideData = null;
+
+function parseFitFile(buffer) {
+  return new Promise(function(resolve, reject) {
+    if (typeof FitParser === 'undefined') {
+      reject(new Error('FIT parser library failed to load. Check your internet connection.'));
+      return;
+    }
+    var parser = new FitParser({
+      force: true,
+      speedUnit: 'm/s',
+      lengthUnit: 'm',
+      temperatureUnit: 'celsius',
+      elapsedRecordField: true,
+      mode: 'list',
+    });
+    parser.parse(buffer, function(error, data) {
+      if (error) reject(error);
+      else resolve(data);
+    });
+  });
+}
+
+function extractMetrics(data) {
+  var activity = data.activity || data;
+  var sessions = activity.sessions || [];
+  var records = activity.records || [];
+
+  if (sessions.length === 0) throw new Error('No session data found in this FIT file.');
+
+  var s = sessions[0];
+  var ftp = s.threshold_power || 243;
+  var maxHR = s.max_heart_rate || 185;
+
+  var metrics = {
+    startTime: s.start_time || s.timestamp,
+    endTime: s.timestamp,
+    distance: (s.total_distance || 0) / 1609.34,
+    movingTime: s.total_timer_time,
+    elapsedTime: s.total_elapsed_time,
+    ascent: (s.total_ascent || 0) * 3.281,
+    descent: (s.total_descent || 0) * 3.281,
+    avgPower: s.avg_power,
+    normPower: s.normalized_power,
+    maxPower: s.max_power,
+    ftp: ftp,
+    intensityFactor: s.intensity_factor != null
+      ? s.intensity_factor
+      : (s.normalized_power && ftp ? parseFloat((s.normalized_power / ftp).toFixed(3)) : null),
+    tss: s.training_stress_score,
+    trainingEffect: s.total_training_effect,
+    anaerobicEffect: s.total_anaerobic_training_effect,
+    avgHR: s.avg_heart_rate,
+    maxHR: maxHR,
+    avgCadence: s.avg_cadence,
+    maxCadence: s.max_cadence,
+    avgSpeed: s.avg_speed ? s.avg_speed * 2.23694 : null,
+    calories: s.total_calories,
+    avgLTE: s.avg_left_torque_effectiveness,
+    avgRTE: s.avg_right_torque_effectiveness,
+    avgLPS: s.avg_left_pedal_smoothness,
+    avgRPS: s.avg_right_pedal_smoothness,
+    standCount: s.stand_count,
+    timeStanding: s.time_standing,
+    avgTempC: s.avg_temperature,
+    // avg_cadence_position and avg_power_position are [seated, standing] tuples
+    cadenceSeated:   Array.isArray(s.avg_cadence_position) ? s.avg_cadence_position[0] : null,
+    cadenceStanding: Array.isArray(s.avg_cadence_position) ? s.avg_cadence_position[1] : null,
+    powerSeated:     Array.isArray(s.avg_power_position)   ? s.avg_power_position[0]   : null,
+    powerStanding:   Array.isArray(s.avg_power_position)   ? s.avg_power_position[1]   : null,
+    maxCadenceSeated:   Array.isArray(s.max_cadence_position) ? s.max_cadence_position[0] : null,
+    maxCadenceStanding: Array.isArray(s.max_cadence_position) ? s.max_cadence_position[1] : null,
+    maxPowerSeated:   Array.isArray(s.max_power_position) ? s.max_power_position[0] : null,
+    maxPowerStanding: Array.isArray(s.max_power_position) ? s.max_power_position[1] : null,
+  };
+
+  return {
+    metrics: metrics,
+    powerZones: computePowerZones(records, ftp),
+    hrZones: computeHRZones(records, maxHR),
+    cardiacDrift: computeCardiacDrift(records),
+    lrBalance: computeLRBalance(records),
+  };
+}
+
+function computePowerZones(records, ftp) {
+  var counts = [0, 0, 0, 0, 0, 0], total = 0;
+  for (var i = 0; i < records.length; i++) {
+    var p = records[i].power;
+    if (p == null || p <= 0) continue;
+    total++;
+    var r = p / ftp;
+    if (r < 0.55)      counts[0]++;
+    else if (r < 0.75) counts[1]++;
+    else if (r < 0.90) counts[2]++;
+    else if (r < 1.05) counts[3]++;
+    else if (r < 1.20) counts[4]++;
+    else               counts[5]++;
+  }
+  return total === 0 ? [0,0,0,0,0,0] : counts.map(function(c) { return parseFloat((c / total * 100).toFixed(1)); });
+}
+
+function computeHRZones(records, maxHR) {
+  var counts = [0, 0, 0, 0, 0], total = 0;
+  for (var i = 0; i < records.length; i++) {
+    var h = records[i].heart_rate;
+    if (h == null || h <= 0) continue;
+    total++;
+    var r = h / maxHR;
+    if (r < 0.60)      counts[0]++;
+    else if (r < 0.70) counts[1]++;
+    else if (r < 0.80) counts[2]++;
+    else if (r < 0.90) counts[3]++;
+    else               counts[4]++;
+  }
+  return total === 0 ? [0,0,0,0,0] : counts.map(function(c) { return parseFloat((c / total * 100).toFixed(1)); });
+}
+
+function computeCardiacDrift(records) {
+  var n = records.length;
+  if (n < 9) return null;
+  var sz = Math.floor(n / 3);
+  var thirds = [records.slice(0, sz), records.slice(sz, sz * 2), records.slice(sz * 2)];
+
+  function avgField(arr, field) {
+    var vals = arr.map(function(r) { return r[field]; }).filter(function(v) { return v != null && v > 0; });
+    return vals.length ? vals.reduce(function(a, b) { return a + b; }, 0) / vals.length : null;
+  }
+
+  var result = thirds.map(function(t) { return { hr: avgField(t, 'heart_rate'), power: avgField(t, 'power') }; });
+  var hrDrift = (result[0].hr && result[2].hr)
+    ? parseFloat(((result[2].hr - result[0].hr) / result[0].hr * 100).toFixed(1)) : null;
+  var powerDrift = (result[0].power && result[2].power)
+    ? parseFloat(((result[2].power - result[0].power) / result[0].power * 100).toFixed(1)) : null;
+  return { thirds: result, hrDrift: hrDrift, powerDrift: powerDrift };
+}
+
+function computeLRBalance(records) {
+  var leftSum = 0, count = 0;
+  for (var i = 0; i < records.length; i++) {
+    var raw = records[i].left_right_balance;
+    if (raw == null) continue;
+    var leftPct;
+    if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+      leftPct = raw.right ? (100 - raw.value) : raw.value;
+    } else if (typeof raw === 'number') {
+      leftPct = raw & 0x7F;
+    } else {
+      continue;
+    }
+    if (leftPct < 20 || leftPct > 80) continue;
+    leftSum += leftPct;
+    count++;
+  }
+  if (count === 0) return null;
+  var left = parseFloat((leftSum / count).toFixed(1));
+  var right = parseFloat((100 - left).toFixed(1));
+  return { left: left, right: right, asymmetric: Math.abs(left - 50) > 3 };
+}
+
+// ── RENDER ─────────────────────────────────────────────
+var ZONE_COLORS = ['var(--z1)','var(--z2)','var(--z3)','var(--z4)','var(--z5)','var(--z6)'];
+var POWER_ZONE_NAMES = ['Active Recovery','Endurance','Tempo','Threshold','VO2 Max','Anaerobic'];
+var HR_ZONE_NAMES = ['Recovery','Aerobic Base','Aerobic','Threshold','VO2 Max'];
+
+function makeMetricCard(label, value, unit, color) {
+  var card = document.createElement('div');
+  card.className = 'metric-card';
+
+  var lbl = document.createElement('div');
+  lbl.className = 'metric-label';
+  lbl.textContent = label;
+
+  var valEl = document.createElement('div');
+  valEl.className = 'metric-val';
+  if (color) valEl.style.color = color;
+  valEl.textContent = value;
+
+  if (unit) {
+    var unitEl = document.createElement('span');
+    unitEl.className = 'metric-unit';
+    unitEl.textContent = unit;
+    valEl.appendChild(unitEl);
+  }
+
+  card.appendChild(lbl);
+  card.appendChild(valEl);
+  return card;
+}
+
+function makeZoneRow(zoneNum, name, pct, color) {
+  var row = document.createElement('div');
+  row.className = 'zone-row';
+
+  var lbl = document.createElement('span');
+  lbl.className = 'zone-label';
+  lbl.style.color = color;
+  lbl.textContent = 'Z' + zoneNum;
+
+  var nm = document.createElement('span');
+  nm.className = 'zone-name';
+  nm.textContent = name;
+
+  var track = document.createElement('div');
+  track.className = 'zone-bar-track';
+  var fill = document.createElement('div');
+  fill.className = 'zone-bar-fill';
+  fill.style.background = color;
+  fill.style.width = pct + '%';
+  track.appendChild(fill);
+
+  var pctEl = document.createElement('span');
+  pctEl.className = 'zone-pct';
+  pctEl.textContent = pct + '%';
+
+  row.appendChild(lbl);
+  row.appendChild(nm);
+  row.appendChild(track);
+  row.appendChild(pctEl);
+  return row;
+}
+
+function render(parsed) {
+  var m = parsed.metrics;
+  var pz = parsed.powerZones;
+  var hz = parsed.hrZones;
+  var cd = parsed.cardiacDrift;
+  var lr = parsed.lrBalance;
+
+  // Title
+  document.getElementById('rideTitle').textContent = fmtDate(m.startTime);
+
+  // Quick stats
+  var qs = document.getElementById('quickStats');
+  qs.innerHTML = '';
+  function addQS(val, label, color) {
+    var item = document.createElement('div');
+    item.className = 'qs-item';
+    var v = document.createElement('span');
+    v.className = 'qs-val';
+    v.textContent = val;
+    if (color) v.style.color = color;
+    var l = document.createElement('span');
+    l.className = 'qs-label';
+    l.textContent = label;
+    item.appendChild(v);
+    item.appendChild(l);
+    qs.appendChild(item);
+  }
+  addQS(fmt(m.distance, 1) + ' mi', 'Distance');
+  addQS(fmtTime(m.movingTime), 'Moving Time');
+  addQS(fmt(m.normPower) + 'W', 'NP', 'var(--accent)');
+  addQS(fmt(m.tss), 'TSS', '#FB923C');
+
+  // Metric grid
+  var mg = document.getElementById('metricGrid');
+  mg.innerHTML = '';
+  var cards = [
+    { label: 'Distance',          val: fmt(m.distance, 2),       unit: 'mi' },
+    { label: 'Moving Time',       val: fmtTime(m.movingTime),    unit: '' },
+    { label: 'Elapsed Time',      val: fmtTime(m.elapsedTime),   unit: '' },
+    { label: 'Elevation Gain',    val: fmt(m.ascent, 0),         unit: 'ft' },
+    { label: 'Elevation Loss',    val: fmt(m.descent, 0),        unit: 'ft' },
+    { label: 'Avg Power',         val: fmt(m.avgPower),          unit: 'W' },
+    { label: 'Normalised Power',  val: fmt(m.normPower),         unit: 'W',  color: 'var(--accent)' },
+    { label: 'Max Power',         val: fmt(m.maxPower),          unit: 'W' },
+    { label: 'FTP',               val: fmt(m.ftp),               unit: 'W' },
+    { label: 'Intensity Factor',  val: fmt(m.intensityFactor, 3),unit: '',   color: '#FB923C' },
+    { label: 'TSS',               val: fmt(m.tss, 0),            unit: '',   color: '#FB923C' },
+    { label: 'Avg Heart Rate',    val: fmt(m.avgHR),             unit: 'bpm',color: '#F87171' },
+    { label: 'Max Heart Rate',    val: fmt(m.maxHR),             unit: 'bpm',color: '#F87171' },
+    { label: 'Avg Cadence',       val: fmt(m.avgCadence),        unit: 'rpm' },
+    { label: 'Max Cadence',       val: fmt(m.maxCadence),        unit: 'rpm' },
+    { label: 'Avg Speed',         val: fmt(m.avgSpeed, 1),       unit: 'mph' },
+    { label: 'Calories',          val: fmt(m.calories),          unit: 'kcal' },
+    { label: 'Aerobic Effect',    val: fmt(m.trainingEffect, 1), unit: '' },
+    { label: 'Anaerobic Effect',  val: fmt(m.anaerobicEffect, 1),unit: '' },
+  ];
+  cards.forEach(function(c) {
+    mg.appendChild(makeMetricCard(c.label, c.val, c.unit || '', c.color || ''));
+  });
+
+  // Power zones
+  var pzc = document.getElementById('powerZoneChart');
+  pzc.innerHTML = '';
+  pz.forEach(function(pct, i) {
+    pzc.appendChild(makeZoneRow(i + 1, POWER_ZONE_NAMES[i], pct, ZONE_COLORS[i]));
+  });
+
+  // HR zones
+  var hzc = document.getElementById('hrZoneChart');
+  hzc.innerHTML = '';
+  hz.forEach(function(pct, i) {
+    hzc.appendChild(makeZoneRow(i + 1, HR_ZONE_NAMES[i], pct, ZONE_COLORS[i]));
+  });
+
+  // Cardiac drift
+  var dg = document.getElementById('driftGrid');
+  var ds = document.getElementById('driftSummary');
+  dg.innerHTML = '';
+  ds.innerHTML = '';
+  if (cd) {
+    var thirdLabels = ['First Third', 'Middle Third', 'Last Third'];
+    var thirdColors = ['var(--z2)', 'var(--z3)', 'var(--z5)'];
+    cd.thirds.forEach(function(t, i) {
+      var card = document.createElement('div');
+      card.className = 'drift-card';
+      var h4 = document.createElement('h4');
+      h4.textContent = thirdLabels[i];
+      card.appendChild(h4);
+
+      var hrStat = document.createElement('div');
+      hrStat.className = 'drift-stat';
+      var hrVal = document.createElement('div');
+      hrVal.className = 'drift-stat-val';
+      hrVal.style.color = thirdColors[i];
+      hrVal.textContent = fmt(t.hr, 1);
+      var hrLbl = document.createElement('div');
+      hrLbl.className = 'drift-stat-lbl';
+      hrLbl.textContent = 'Avg HR (bpm)';
+      hrStat.appendChild(hrVal);
+      hrStat.appendChild(hrLbl);
+      card.appendChild(hrStat);
+
+      var pwStat = document.createElement('div');
+      pwStat.className = 'drift-stat';
+      var pwVal = document.createElement('div');
+      pwVal.className = 'drift-stat-val';
+      pwVal.textContent = fmt(t.power, 1);
+      var pwLbl = document.createElement('div');
+      pwLbl.className = 'drift-stat-lbl';
+      pwLbl.textContent = 'Avg Power (W)';
+      pwStat.appendChild(pwVal);
+      pwStat.appendChild(pwLbl);
+      card.appendChild(pwStat);
+
+      dg.appendChild(card);
+    });
+
+    // Drift deltas
+    function makeDeltaCell(label, val, cls) {
+      var cell = document.createElement('div');
+      cell.className = 'drift-delta';
+      var lbl = document.createElement('div');
+      lbl.className = 'drift-delta-lbl';
+      lbl.textContent = label;
+      var v = document.createElement('div');
+      v.className = 'drift-delta-val' + (cls ? ' ' + cls : '');
+      v.textContent = val;
+      cell.appendChild(lbl);
+      cell.appendChild(v);
+      return cell;
+    }
+    var hrDriftStr = cd.hrDrift != null ? sign(cd.hrDrift) + cd.hrDrift + '%' : '--';
+    var hrDriftCls = cd.hrDrift == null ? '' : cd.hrDrift > 0 ? 'pos' : 'neg';
+    var pwDriftStr = cd.powerDrift != null ? sign(cd.powerDrift) + cd.powerDrift + '%' : '--';
+    var pwDriftCls = cd.powerDrift == null ? '' : cd.powerDrift < 0 ? 'pos' : 'neg'; // declining power = bad
+    ds.appendChild(makeDeltaCell('HR Drift (first \u2192 last)', hrDriftStr, hrDriftCls));
+    ds.appendChild(makeDeltaCell('Power Drift (first \u2192 last)', pwDriftStr, pwDriftCls));
+  } else {
+    var msg = document.createElement('div');
+    msg.className = 'drift-card';
+    msg.style.gridColumn = 'span 3';
+    msg.style.color = 'var(--text-dim)';
+    msg.style.fontSize = '13px';
+    msg.textContent = 'Not enough record data for cardiac drift analysis.';
+    dg.appendChild(msg);
+  }
+
+  // Pedal dynamics
+  var pg = document.getElementById('pedalGrid');
+  pg.innerHTML = '';
+
+  function makePedalCard(title, rows) {
+    var card = document.createElement('div');
+    card.className = 'pedal-card';
+    var t = document.createElement('div');
+    t.className = 'pedal-card-title';
+    t.textContent = title;
+    card.appendChild(t);
+    rows.forEach(function(row) {
+      var r = document.createElement('div');
+      r.className = 'pedal-row';
+      var l = document.createElement('span');
+      l.className = 'pedal-row-lbl';
+      l.textContent = row[0];
+      var v = document.createElement('span');
+      v.className = 'pedal-row-val';
+      v.textContent = row[1];
+      r.appendChild(l);
+      r.appendChild(v);
+      card.appendChild(r);
+    });
+    return card;
+  }
+
+  pg.appendChild(makePedalCard('Torque Effectiveness', [
+    ['Left',  fmt(m.avgLTE, 1) + '%'],
+    ['Right', fmt(m.avgRTE, 1) + '%'],
+  ]));
+
+  pg.appendChild(makePedalCard('Pedal Smoothness', [
+    ['Left',  fmt(m.avgLPS, 1) + '%'],
+    ['Right', fmt(m.avgRPS, 1) + '%'],
+  ]));
+
+  pg.appendChild(makePedalCard('Cadence — Seated vs Standing', [
+    ['Seated',   m.cadenceSeated   != null ? fmt(m.cadenceSeated)   + ' rpm' : '--'],
+    ['Standing', m.cadenceStanding != null ? fmt(m.cadenceStanding) + ' rpm' : '--'],
+  ]));
+
+  pg.appendChild(makePedalCard('Power — Seated vs Standing', [
+    ['Seated',   m.powerSeated   != null ? fmt(m.powerSeated)   + ' W' : '--'],
+    ['Standing', m.powerStanding != null ? fmt(m.powerStanding) + ' W' : '--'],
+  ]));
+
+  var standMin = m.timeStanding ? parseFloat((m.timeStanding / 60).toFixed(1)) : null;
+  var standPct = (m.timeStanding && m.movingTime)
+    ? parseFloat((m.timeStanding / m.movingTime * 100).toFixed(1)) : null;
+  pg.appendChild(makePedalCard('Standing Time', [
+    ['Duration',     standMin  != null ? standMin + ' min' : '--'],
+    ['% Moving',     standPct  != null ? standPct + '%' : '--'],
+    ['Stand Events', m.standCount != null ? String(m.standCount) : '--'],
+  ]));
+
+  // L/R balance — only shown if data exists
+  if (lr) {
+    var balCard = document.createElement('div');
+    balCard.className = 'pedal-card';
+
+    var bTitle = document.createElement('div');
+    bTitle.className = 'pedal-card-title';
+    bTitle.textContent = 'L/R Balance';
+    balCard.appendChild(bTitle);
+
+    if (lr.asymmetric) {
+      var flag = document.createElement('span');
+      flag.className = 'asymm-flag';
+      flag.textContent = 'Asymmetric';
+      balCard.appendChild(flag);
+    }
+
+    var bar = document.createElement('div');
+    bar.className = 'balance-bar';
+    var bLeft = document.createElement('div');
+    bLeft.className = 'balance-bar-left';
+    bLeft.style.width = lr.left + '%';
+    var bRight = document.createElement('div');
+    bRight.className = 'balance-bar-right';
+    bRight.style.width = lr.right + '%';
+    bar.appendChild(bLeft);
+    bar.appendChild(bRight);
+    balCard.appendChild(bar);
+
+    var bLabels = document.createElement('div');
+    bLabels.className = 'balance-labels';
+    var bL = document.createElement('span');
+    bL.className = 'bal-left';
+    bL.textContent = 'Left ' + lr.left + '%';
+    var bR = document.createElement('span');
+    bR.className = 'bal-right';
+    bR.textContent = 'Right ' + lr.right + '%';
+    bLabels.appendChild(bL);
+    bLabels.appendChild(bR);
+    balCard.appendChild(bLabels);
+
+    pg.appendChild(balCard);
+  }
+}
+
+// ── COPY FOR CLAUDE ────────────────────────────────────
+function copyForClaude() {
+  if (!rideData) return;
+  var m = rideData.metrics;
+  var pz = rideData.powerZones;
+  var hz = rideData.hrZones;
+  var cd = rideData.cardiacDrift;
+  var lr = rideData.lrBalance;
+
+  var lines = [
+    '=== GARMIN RIDE SUMMARY ===',
+    'Date: ' + fmtDateShort(m.startTime),
+    'Distance: ' + fmt(m.distance, 2) + ' miles',
+    'Moving time: ' + fmtTime(m.movingTime),
+    'Elapsed time: ' + fmtTime(m.elapsedTime),
+    'Elevation gain: ' + fmt(m.ascent, 0) + ' ft | Loss: ' + fmt(m.descent, 0) + ' ft',
+    '',
+    'POWER',
+    'FTP: ' + fmt(m.ftp) + 'W | Avg: ' + fmt(m.avgPower) + 'W | NP: ' + fmt(m.normPower) + 'W | IF: ' + fmt(m.intensityFactor, 3) + ' | TSS: ' + fmt(m.tss, 0),
+    'Max power: ' + fmt(m.maxPower) + 'W',
+    'Zone distribution: Z1 ' + pz[0] + '% | Z2 ' + pz[1] + '% | Z3 ' + pz[2] + '% | Z4 ' + pz[3] + '% | Z5 ' + pz[4] + '% | Z6 ' + pz[5] + '%',
+    '',
+    'HEART RATE',
+    'Avg: ' + fmt(m.avgHR) + ' bpm | Max: ' + fmt(m.maxHR) + ' bpm',
+    'Zone distribution: Z1 ' + hz[0] + '% | Z2 ' + hz[1] + '% | Z3 ' + hz[2] + '% | Z4 ' + hz[3] + '% | Z5 ' + hz[4] + '%',
+    '',
+    'CARDIAC DRIFT',
+  ];
+
+  if (cd) {
+    lines.push('First third: ' + fmt(cd.thirds[0].power, 1) + 'W @ ' + fmt(cd.thirds[0].hr, 1) + ' bpm');
+    lines.push('Middle third: ' + fmt(cd.thirds[1].power, 1) + 'W @ ' + fmt(cd.thirds[1].hr, 1) + ' bpm');
+    lines.push('Last third: ' + fmt(cd.thirds[2].power, 1) + 'W @ ' + fmt(cd.thirds[2].hr, 1) + ' bpm');
+    lines.push('HR drift: ' + (cd.hrDrift != null ? sign(cd.hrDrift) + cd.hrDrift + '%' : 'N/A')
+      + ' | Power drift: ' + (cd.powerDrift != null ? sign(cd.powerDrift) + cd.powerDrift + '%' : 'N/A'));
+  } else {
+    lines.push('Insufficient data for drift analysis');
+  }
+
+  lines.push('');
+  lines.push('PEDAL DYNAMICS');
+
+  if (lr) {
+    lines.push('L/R balance: ' + lr.left + '% / ' + lr.right + '%' + (lr.asymmetric ? ' (asymmetric)' : ''));
+  } else {
+    lines.push('L/R balance: not available');
+  }
+
+  lines.push('Torque effectiveness: L ' + fmt(m.avgLTE, 1) + '% / R ' + fmt(m.avgRTE, 1) + '%');
+  lines.push('Pedal smoothness: L ' + fmt(m.avgLPS, 1) + '% / R ' + fmt(m.avgRPS, 1) + '%');
+
+  var seated = (m.powerSeated != null && m.cadenceSeated != null)
+    ? fmt(m.powerSeated) + 'W @ ' + fmt(m.cadenceSeated) + 'rpm' : 'N/A';
+  var standing = (m.powerStanding != null && m.cadenceStanding != null)
+    ? fmt(m.powerStanding) + 'W @ ' + fmt(m.cadenceStanding) + 'rpm' : 'N/A';
+  var extra = '';
+  if (m.timeStanding) extra += parseFloat((m.timeStanding / 60).toFixed(1)) + ' min standing';
+  if (m.standCount != null) extra += (extra ? ', ' : '') + m.standCount + ' stand events';
+  lines.push('Seated: ' + seated + ' | Standing: ' + standing + (extra ? ' (' + extra + ')' : ''));
+
+  lines.push('');
+  lines.push('CADENCE');
+  lines.push('Avg: ' + fmt(m.avgCadence) + 'rpm | Max: ' + fmt(m.maxCadence) + 'rpm');
+
+  lines.push('');
+  lines.push('GENERAL');
+  lines.push('Avg speed: ' + fmt(m.avgSpeed, 1) + 'mph | Calories: ' + fmt(m.calories) + 'kcal | Temp avg: ' + (m.avgTempC != null ? fmt(m.avgTempC, 1) + '\u00b0C' : 'N/A'));
+  lines.push('Training effect: ' + fmt(m.trainingEffect, 1) + ' aerobic / ' + fmt(m.anaerobicEffect, 1) + ' anaerobic');
+
+  var text = lines.join('\n');
+
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy for Claude';
+    }, 2500);
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+}
+
+// ── FILE HANDLING ──────────────────────────────────────
+function handleFile(file) {
+  if (!file || !file.name.toLowerCase().endsWith('.fit')) {
+    showError('Please select a valid .FIT file.');
+    return;
+  }
+  hideError();
+  showParsing(true);
+
+  file.arrayBuffer().then(function(buffer) {
+    return parseFitFile(buffer);
+  }).then(function(data) {
+    var parsed = extractMetrics(data);
+    rideData = parsed;
+    showParsing(false);
+    showDashboard();
+    render(parsed);
+  }).catch(function(e) {
+    showParsing(false);
+    showError('Could not parse this FIT file: ' + esc(e.message || String(e)));
+    console.error(e);
+  });
+}
+
+function showError(msg) {
+  var el = document.getElementById('parseError');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function hideError() { document.getElementById('parseError').classList.remove('visible'); }
+function showParsing(show) {
+  document.getElementById('parsingIndicator').classList.toggle('visible', show);
+}
+function showDashboard() {
+  document.getElementById('upload-view').style.display = 'none';
+  document.getElementById('dashboard-view').classList.add('visible');
+}
+
+// ── DRAG & DROP ────────────────────────────────────────
+var dropZone = document.getElementById('dropZone');
+var fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  dropZone.classList.add('dragging');
+});
+dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragging'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropZone.classList.remove('dragging');
+  handleFile(e.dataTransfer.files[0]);
+});
+dropZone.addEventListener('click', function(e) {
+  if (e.target.closest('.file-btn')) return;
+  fileInput.click();
+});
+fileInput.addEventListener('change', function(e) {
+  handleFile(e.target.files[0]);
+});
+</script>
+</body>
+</html>
