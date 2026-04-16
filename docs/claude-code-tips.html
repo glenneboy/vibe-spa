@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Token Tips</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080808;
+      --surface: #0f0f0f;
+      --surface-2: #141414;
+      --border: #1e2a3a;
+      --border-dim: #111827;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #2d3f54;
+      --blue: #7dd3fc;
+      --violet: #a78bfa;
+      --coin: #f59e0b;
+      --coin-dim: #1a2234;
+      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+      --font-body: 'IBM Plex Sans', sans-serif;
+      --r: 6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── Back link ── */
+    .back-link {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-decoration: none;
+      text-transform: uppercase;
+      z-index: 200;
+      background: rgba(8,8,8,0.92);
+      padding: 6px 10px;
+      border-radius: var(--r);
+      border: 1px solid var(--border-dim);
+      backdrop-filter: blur(8px);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .back-link:hover { color: var(--text); border-color: var(--border); }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 88px 48px 52px;
+      max-width: 1080px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .hero h1 {
+      font-family: var(--font-mono);
+      font-size: clamp(30px, 4.5vw, 52px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      color: var(--text);
+      margin-bottom: 18px;
+    }
+    .hero h1 .accent-blue { color: var(--blue); }
+    .hero h1 .accent-violet { color: var(--violet); }
+    .hero-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 520px;
+      margin-bottom: 36px;
+      line-height: 1.75;
+    }
+
+    /* ── Coin legend ── */
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .legend-heading {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* ── Coins ── */
+    .coins { display: inline-flex; gap: 3px; align-items: center; }
+    .coin {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--coin-dim);
+      flex-shrink: 0;
+    }
+    .coin.on {
+      background: var(--coin);
+      box-shadow: 0 0 5px rgba(245,158,11,0.4);
+    }
+    .coins-md .coin { width: 11px; height: 11px; }
+    .coins-lg .coin { width: 13px; height: 13px; }
+
+    /* ── Sticky Index Nav ── */
+    .index-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(8,8,8,0.96);
+      border-bottom: 1px solid var(--border-dim);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .index-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 48px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .index-col {
+      padding: 16px 0;
+    }
+    .index-col.settings-col {
+      padding-right: 28px;
+      border-right: 1px solid var(--border-dim);
+    }
+    .index-col.practices-col {
+      padding-left: 28px;
+    }
+    .col-heading {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .settings-col .col-heading { color: var(--blue); }
+    .practices-col .col-heading { color: var(--violet); }
+
+    .index-links { display: flex; flex-direction: column; gap: 1px; }
+    .index-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-muted);
+      transition: background 0.12s, color 0.12s;
+    }
+    .index-link:hover { background: var(--surface-2); color: var(--text); }
+    .index-link.active { color: var(--text); }
+    .settings-col .index-link.active { color: var(--blue); }
+    .practices-col .index-link.active { color: var(--violet); }
+    .il-num { color: var(--text-dim); flex-shrink: 0; width: 18px; font-size: 10px; }
+    .il-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .il-coins { flex-shrink: 0; }
+
+    /* ── Sections ── */
+    .section {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 48px 0;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 22px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-dim);
+    }
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .settings-section .section-title { color: var(--blue); }
+    .practices-section .section-title { color: var(--violet); }
+    .section-subtitle { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+
+    /* ── Cards ── */
+    .tip-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--r);
+      padding: 26px 30px 22px 34px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.38s ease, transform 0.38s ease, border-color 0.2s;
+    }
+    .tip-card.visible { opacity: 1; transform: translateY(0); }
+    .tip-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .settings-section .tip-card::before { background: var(--blue); }
+    .practices-section .tip-card::before { background: var(--violet); }
+    .settings-section .tip-card:hover { border-color: rgba(125,211,252,0.18); }
+    .practices-section .tip-card:hover { border-color: rgba(167,139,250,0.18); }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    .card-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      opacity: 0.65;
+    }
+    .settings-section .card-label { color: var(--blue); }
+    .practices-section .card-label { color: var(--violet); }
+    .card-title {
+      font-family: var(--font-mono);
+      font-size: clamp(15px, 2vw, 19px);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .card-rating { text-align: right; flex-shrink: 0; padding-top: 2px; }
+    .rating-label {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      letter-spacing: 0.14em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .card-body {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.82;
+      max-width: 700px;
+    }
+    .card-body code {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--blue);
+      background: rgba(125,211,252,0.07);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    pre.code-block {
+      background: var(--surface-2);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--r);
+      padding: 14px 18px;
+      margin-top: 16px;
+      overflow-x: auto;
+      max-width: 620px;
+    }
+    pre.code-block code {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: #94a3b8;
+      background: none;
+      padding: 0;
+      line-height: 1.75;
+      display: block;
+    }
+    .c { color: var(--text-dim); }
+    .k { color: var(--blue); }
+    .v { color: #86efac; }
+    .cmd { color: var(--violet); }
+
+    .back-to-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 18px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      transition: color 0.15s;
+    }
+    .back-to-top:hover { color: var(--text-muted); }
+
+    .page-end { height: 80px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 720px) {
+      .hero { padding: 72px 20px 40px; }
+      .index-inner { grid-template-columns: 1fr; padding: 0 20px; }
+      .index-col.settings-col { padding-right: 0; border-right: none; border-bottom: 1px solid var(--border-dim); padding-bottom: 14px; }
+      .index-col.practices-col { padding-left: 0; padding-top: 14px; }
+      .section { padding: 32px 20px 0; }
+      .tip-card { padding: 18px 18px 16px 22px; }
+      .card-title { font-size: 14px; }
+    }
+  </style>
+</head>
+<body id="top">
+
+  <a href="index.html" class="back-link">← Dashboard</a>
+
+  <!-- Hero -->
+  <header class="hero">
+    <p class="hero-eyebrow">claude code / efficiency guide</p>
+    <h1>Top 20 <span class="accent-blue">Token</span><br><span class="accent-violet">Saving</span> Tips</h1>
+    <p class="hero-sub">Settings to configure once and habits to build — every tip ranked by its impact on your token spend.</p>
+    <div class="legend">
+      <span class="legend-heading">Savings scale</span>
+      <span class="legend-item">
+        <span class="coins"><span class="coin on"></span><span class="coin"></span><span class="coin"></span><span class="coin"></span><span class="coin"></span></span>
+        low
+      </span>
+      <span class="legend-item">
+        <span class="coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span>
+        moderate
+      </span>
+      <span class="legend-item">
+        <span class="coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span>
+        maximum
+      </span>
+    </div>
+  </header>
+
+  <!-- Sticky Index -->
+  <nav class="index-nav" aria-label="Jump to tip">
+    <div class="index-inner">
+      <div class="index-col settings-col">
+        <div class="col-heading">⚙ Settings</div>
+        <div class="index-links">
+          <a href="#tip-01" class="index-link"><span class="il-num">01</span><span class="il-title">Configure .claudeignore</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></a>
+          <a href="#tip-02" class="index-link"><span class="il-num">02</span><span class="il-title">Write a tight CLAUDE.md</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></a>
+          <a href="#tip-03" class="index-link"><span class="il-num">03</span><span class="il-title">Pick the right model</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></a>
+          <a href="#tip-04" class="index-link"><span class="il-num">04</span><span class="il-title">Disable unused MCP servers</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></a>
+          <a href="#tip-05" class="index-link"><span class="il-num">05</span><span class="il-title">CLI over IDE connector</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-06" class="index-link"><span class="il-num">06</span><span class="il-title">Scope --add-dir tightly</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-07" class="index-link"><span class="il-num">07</span><span class="il-title">Use the memory system</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-08" class="index-link"><span class="il-num">08</span><span class="il-title">Allowlist bash commands</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></a>
+          <a href="#tip-09" class="index-link"><span class="il-num">09</span><span class="il-title">--print for quick Q&amp;A</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></a>
+        </div>
+      </div>
+      <div class="index-col practices-col">
+        <div class="col-heading">◆ Practices</div>
+        <div class="index-links">
+          <a href="#tip-10" class="index-link"><span class="il-num">10</span><span class="il-title">/compact at task boundaries</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></a>
+          <a href="#tip-11" class="index-link"><span class="il-num">11</span><span class="il-title">Write specific prompts</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></a>
+          <a href="#tip-12" class="index-link"><span class="il-num">12</span><span class="il-title">Reference file:line, don't paste</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-13" class="index-link"><span class="il-num">13</span><span class="il-title">Batch related changes</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-14" class="index-link"><span class="il-num">14</span><span class="il-title">Plan Mode before complex work</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-15" class="index-link"><span class="il-num">15</span><span class="il-title">One task per session</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-16" class="index-link"><span class="il-num">16</span><span class="il-title">Ask targeted questions</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></a>
+          <a href="#tip-17" class="index-link"><span class="il-num">17</span><span class="il-title">/clear after going off-track</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></a>
+          <a href="#tip-18" class="index-link"><span class="il-num">18</span><span class="il-title">Sub-agents for parallel tasks</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></a>
+          <a href="#tip-19" class="index-link"><span class="il-num">19</span><span class="il-title">Run targeted tests</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span><span class="coin"></span></span></a>
+          <a href="#tip-20" class="index-link"><span class="il-num">20</span><span class="il-title">Monitor spend with /cost</span><span class="il-coins coins"><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span><span class="coin"></span></span></a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ═══════════ SETTINGS ═══════════ -->
+    <section class="section settings-section">
+      <div class="section-header">
+        <span class="section-title">⚙ Settings</span>
+        <span class="section-subtitle">9 one-time configuration changes</span>
+      </div>
+
+      <article class="tip-card" id="tip-01">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 01</p><h2 class="card-title">Configure .claudeignore</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></div>
+        </div>
+        <p class="card-body">
+          Every file Claude reads costs tokens. Without a <code>.claudeignore</code>, it can pull in
+          <code>node_modules</code>, compiled output, lock files, and generated assets before you've typed a word.
+          It uses the same syntax as <code>.gitignore</code> and lives at the project root.
+          Set it up once and it silently guards every session.
+        </p>
+        <pre class="code-block"><code><span class="c"># .claudeignore</span>
+<span class="v">node_modules/</span>
+<span class="v">dist/</span>
+<span class="v">.next/</span>
+<span class="v">build/</span>
+<span class="v">coverage/</span>
+<span class="v">*.lock</span>
+<span class="v">*.min.js</span>
+<span class="v">.git/</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-02">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 02</p><h2 class="card-title">Write a tight CLAUDE.md</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></div>
+        </div>
+        <p class="card-body">
+          <code>CLAUDE.md</code> loads into every session. A bloated one wastes tokens on boilerplate before you've asked
+          anything. Keep it to facts that are non-obvious from the code: stack choices, banned patterns,
+          naming conventions, key commands. Strip everything Claude could derive by reading the files themselves.
+        </p>
+        <pre class="code-block"><code><span class="c"># Good — tight, non-obvious facts only</span>
+<span class="v">- Stack: Next.js 14 / TypeScript / Prisma / Postgres</span>
+<span class="v">- Run `pnpm test` before any commit</span>
+<span class="v">- Never use `any` type — use `unknown` + narrowing</span>
+<span class="v">- DB migrations: /prisma/migrations only</span>
+
+<span class="c"># Bad — Claude can read this itself</span>
+<span class="v">- This is a web app built with React...</span>
+<span class="v">- The folder structure is as follows...</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-03">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 03</p><h2 class="card-title">Pick the right model per task</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></div>
+        </div>
+        <p class="card-body">
+          Haiku is roughly 20× cheaper than Opus per token — and for lookups, renaming, simple edits,
+          and explaining a function it's equally capable. Use <code>--model haiku</code> as your default
+          and only escalate when the task genuinely needs deeper reasoning. The cost cliff between tiers
+          is steep; matching model to task is the highest-leverage change you can make.
+        </p>
+        <pre class="code-block"><code><span class="c"># Quick lookup or small edit — use Haiku</span>
+<span class="cmd">claude --model haiku</span> <span class="v">"what does getUserById return?"</span>
+
+<span class="c"># Non-trivial implementation — Sonnet</span>
+<span class="cmd">claude --model sonnet</span> <span class="v">"implement the checkout flow"</span>
+
+<span class="c"># Complex reasoning only — Opus</span>
+<span class="cmd">claude --model opus</span> <span class="v">"design the multi-tenant auth model"</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-04">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 04</p><h2 class="card-title">Disable unused MCP servers</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></div>
+        </div>
+        <p class="card-body">
+          Every active MCP server injects its full tool schema into every single request — whether you use it
+          or not. A project with five connected MCPs can add thousands of tokens of tool definitions
+          before Claude has read a line of your code. Audit <code>~/.claude/settings.json</code> regularly.
+          Remove servers you're not actively using; enable them only for sessions that need them.
+        </p>
+        <pre class="code-block"><code><span class="c">// ~/.claude/settings.json</span>
+{
+  <span class="k">"mcpServers"</span>: {
+    <span class="c">// Keep only what this session needs</span>
+    <span class="k">"filesystem"</span>: { <span class="k">"command"</span>: <span class="v">"npx"</span>, ... }
+
+    <span class="c">// Disable idle servers — they still cost tokens</span>
+    <span class="c">// "slack": { ... },</span>
+    <span class="c">// "github": { ... }</span>
+  }
+}</code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-05">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 05</p><h2 class="card-title">CLI over IDE connector</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          The VSCode and JetBrains extensions for Claude Code automatically inject context you didn't ask for:
+          open file tabs, workspace diagnostics, editor state. Running <code>claude</code> directly in a terminal
+          gives you complete control over what enters the context window.
+          For focused coding sessions, the CLI is leaner and more predictable — you provide exactly what's needed, nothing more.
+        </p>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-06">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 06</p><h2 class="card-title">Scope --add-dir tightly</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          <code>--add-dir</code> makes additional directories available for Claude to explore.
+          Adding a whole monorepo when you're fixing a bug in one service is wasteful — Claude will
+          read broadly when it feels it needs context. Pass only the directories relevant to the current task.
+          If you're working on <code>services/auth</code>, add that, not the project root.
+        </p>
+        <pre class="code-block"><code><span class="c"># Focused — only what matters</span>
+<span class="cmd">claude --add-dir ./services/auth</span>
+
+<span class="c"># Wasteful — Claude can roam the whole repo</span>
+<span class="cmd">claude --add-dir .</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-07">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 07</p><h2 class="card-title">Use the memory system</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          Without persistent memory, Claude re-derives context from scratch every session — re-reading files,
+          re-asking questions, re-learning preferences. Use <code>/memory</code> to persist decisions,
+          patterns, and architectural context across sessions. Well-maintained memory means Claude arrives
+          already oriented, spending tokens on actual work instead of orientation.
+        </p>
+        <pre class="code-block"><code><span class="c"># Save a fact during a session</span>
+<span class="cmd">/memory</span>
+
+<span class="c"># Memories persist at:</span>
+<span class="c"># ~/.claude/projects/[project]/memory/</span>
+<span class="c"># Relevant ones load automatically at session start</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-08">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 08</p><h2 class="card-title">Allowlist bash commands</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          Each unapproved bash command triggers a permission prompt round-trip that interrupts flow
+          and adds overhead. Safe, read-only commands like <code>ls</code>, <code>git status</code>,
+          and <code>npm test</code> don't need to ask. Add them to the allowlist in
+          <code>.claude/settings.json</code> once — your sessions run faster and the permission noise disappears.
+        </p>
+        <pre class="code-block"><code><span class="c">// .claude/settings.json</span>
+{
+  <span class="k">"permissions"</span>: {
+    <span class="k">"allow"</span>: [
+      <span class="v">"Bash(git status:*)"</span>,
+      <span class="v">"Bash(git log:*)"</span>,
+      <span class="v">"Bash(npm test:*)"</span>,
+      <span class="v">"Bash(ls:*)"</span>
+    ]
+  }
+}</code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-09">
+        <div class="card-top">
+          <div><p class="card-label">⚙ Setting 09</p><h2 class="card-title">--print for quick Q&amp;A</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          When you just want an answer — "what does this regex do?", "explain this algorithm", "how should I
+          structure this?" — use <code>--print</code> for a non-interactive single-shot response.
+          No session state is maintained, no conversation history accumulates, and you skip the
+          interactive session overhead entirely. Perfect for quick lookups and one-off explanations.
+        </p>
+        <pre class="code-block"><code><span class="c"># Non-interactive — answer and exit</span>
+<span class="cmd">claude --print</span> <span class="v">"explain the difference between \
+optimistic and pessimistic locking"</span>
+
+<span class="c"># Pipe it straight to a file or stdout</span>
+<span class="cmd">claude --print</span> <span class="v">"summarise this function"</span> <span class="c">| pbcopy</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+    </section>
+
+    <!-- ═══════════ PRACTICES ═══════════ -->
+    <section class="section practices-section" style="padding-top:52px;">
+      <div class="section-header">
+        <span class="section-title">◆ Practices</span>
+        <span class="section-subtitle">11 habits that compound over time</span>
+      </div>
+
+      <article class="tip-card" id="tip-10">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 10</p><h2 class="card-title">/compact or /clear at every task boundary</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></div>
+        </div>
+        <p class="card-body">
+          Context accumulates relentlessly — every tool call, file read, and exchange adds to the running total.
+          When you finish a task and move to something else, that history is pure overhead.
+          <code>/compact</code> summarises the session before continuing; <code>/clear</code> resets entirely.
+          The discipline of doing this at every task boundary is the single highest-impact habit to build.
+        </p>
+        <pre class="code-block"><code><span class="c"># Summarise session and continue lean</span>
+<span class="cmd">/compact</span>
+
+<span class="c"># Full reset — start from zero</span>
+<span class="cmd">/clear</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-11">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 11</p><h2 class="card-title">Write specific, scoped prompts</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span></span></div>
+        </div>
+        <p class="card-body">
+          Vague prompts trigger exploratory behaviour. "Auth is broken" causes Claude to scan broadly,
+          read multiple files, and form hypotheses — all at your expense.
+          "Fix the null check at <code>src/auth/verify.ts:42</code> — it throws when <code>user.id</code>
+          is undefined" goes straight to the answer. The more precisely you describe location and nature,
+          the fewer tokens get burned on exploration.
+        </p>
+        <pre class="code-block"><code><span class="c"># Vague — triggers broad, expensive exploration</span>
+<span class="v">"the login is broken"</span>
+
+<span class="c"># Specific — straight to the fix</span>
+<span class="v">"fix the null check at src/auth/verify.ts:42
+— throws when user.id is undefined"</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-12">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 12</p><h2 class="card-title">Reference file:line — never paste raw code</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          Claude Code reads files natively. Pasting code you could reference just duplicates that content
+          in the context window — you pay for it twice.
+          Instead of pasting 60 lines, write <code>src/utils/parse.ts:45-105</code> and let Claude read it directly.
+          For larger functions this is a meaningful saving, and it keeps prompts clean.
+        </p>
+        <pre class="code-block"><code><span class="c"># Wasteful — pasting content Claude can read</span>
+<span class="v">"here's the function: [60 lines pasted]
+can you refactor it?"</span>
+
+<span class="c"># Efficient — reference by location</span>
+<span class="v">"refactor the parser at src/utils/parse.ts:45-105"</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-13">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 13</p><h2 class="card-title">Batch related changes into one turn</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          Every prompt carries the full conversation history. Five separate prompts for related changes
+          = five times the context overhead. If you know you want to fix a bug, update its test, and update
+          the docs, say all three at once. Claude handles multi-part instructions well, and you pay
+          the context cost once instead of five times.
+        </p>
+        <pre class="code-block"><code><span class="c"># Expensive — 3 turns, 3× context overhead</span>
+<span class="v">"fix the null check in auth.ts"</span>
+<span class="v">"now update the test for it"</span>
+<span class="v">"now update the docs"</span>
+
+<span class="c"># Efficient — one turn</span>
+<span class="v">"fix null check in auth.ts, update its test,
+and update the relevant docs section"</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-14">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 14</p><h2 class="card-title">Plan Mode before complex implementations</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          Jumping to implementation on a complex task risks Claude going in the wrong direction —
+          which you then spend tokens correcting. Plan Mode forces a read-only planning phase first.
+          You align on approach before a single file is changed. The cost of a short planning session
+          is almost always less than the cost of a wrong-direction implementation and its correction.
+        </p>
+        <pre class="code-block"><code><span class="c"># Enter plan mode — read-only, no edits made</span>
+<span class="cmd">/plan</span>
+
+<span class="c"># Review the plan → approve → implement</span>
+<span class="c"># Catches misaligned assumptions before they cost you</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-15">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 15</p><h2 class="card-title">One task per session</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          Mixing "fix a bug + add a feature + refactor something" in one session creates a sprawling context
+          where earlier work crowds out the current task. Each new task in the same session inherits the full
+          history of everything before it. Separate sessions mean separate, clean contexts —
+          each task starts lean, without carrying irrelevant history as overhead.
+        </p>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-16">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 16</p><h2 class="card-title">Ask targeted questions, not "explore and summarise"</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          "How does authentication work?" is open-ended with no natural stopping point — Claude scans broadly
+          and reads extensively before answering. "What does <code>verifyToken()</code> in
+          <code>src/auth/verify.ts</code> return when the token is expired?" is bounded to a single read.
+          Frame questions around specific functions, files, and outcomes rather than broad topics.
+        </p>
+        <pre class="code-block"><code><span class="c"># Open-ended — triggers broad, unbounded scan</span>
+<span class="v">"how does authentication work in this codebase?"</span>
+
+<span class="c"># Targeted — one read, direct answer</span>
+<span class="v">"what does verifyToken() return when the JWT
+is expired? (src/auth/verify.ts)"</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-17">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 17</p><h2 class="card-title">/clear and restart after going off-track</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          When Claude misunderstands and heads in the wrong direction, the instinct is to correct in-session.
+          But corrective messages compound the context — you carry the wrong attempt, plus the correction,
+          plus the context of how you got there. It's almost always cheaper to <code>/clear</code> and start
+          fresh with a better prompt than to course-correct mid-session.
+        </p>
+        <pre class="code-block"><code><span class="c"># Expensive — correcting in-session</span>
+<span class="v">"no that's wrong, I meant X not Y"</span>
+<span class="v">"still not right, the issue is actually..."</span>
+
+<span class="c"># Cheaper — clear and rephrase</span>
+<span class="cmd">/clear</span>
+<span class="v">"[better, more specific prompt]"</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-18">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 18</p><h2 class="card-title">Use sub-agents for parallel independent tasks</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          When you have two or more independent research tasks — say, investigating an error log while also
+          checking the schema — running them sequentially in one conversation doubles the context you carry.
+          Dispatching sub-agents keeps that exploratory work out of the main context entirely.
+          The main thread stays lean; sub-agents do the heavy reading in parallel.
+        </p>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-19">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 19</p><h2 class="card-title">Run targeted tests, not the full suite</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          Test output lands in the context window. Running a full suite when you've changed one file
+          means Claude reads (and you pay for) hundreds of unrelated test results.
+          Target the pattern relevant to your change — feedback is faster and the context impact
+          is a fraction of the full suite.
+        </p>
+        <pre class="code-block"><code><span class="c"># Full suite — lots of unrelated output in context</span>
+<span class="cmd">npm test</span>
+
+<span class="c"># Targeted — only the output that matters</span>
+<span class="cmd">npm test -- --testPathPattern=auth</span>
+
+<span class="c"># Or with Vitest</span>
+<span class="cmd">vitest run src/auth</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+
+      <article class="tip-card" id="tip-20">
+        <div class="card-top">
+          <div><p class="card-label">◆ Practice 20</p><h2 class="card-title">Monitor spend with /cost</h2></div>
+          <div class="card-rating"><p class="rating-label">Token Savings</p><span class="coins coins-lg"><span class="coin on"></span><span class="coin on"></span><span class="coin"></span><span class="coin"></span><span class="coin"></span></span></div>
+        </div>
+        <p class="card-body">
+          You can't optimise what you don't measure. <code>/cost</code> shows token spend for the current
+          session. Seeing "that exploration cost $0.40" reshapes how you prompt next time.
+          Build a habit of checking it after expensive-feeling sessions — patterns become visible quickly:
+          which types of prompt are cheap, which burn through budget.
+        </p>
+        <pre class="code-block"><code><span class="c"># Check spend for the current session</span>
+<span class="cmd">/cost</span>
+
+<span class="c"># Shows input tokens, output tokens, and estimated cost</span>
+<span class="c"># Run it after any session that felt expensive</span></code></pre>
+        <a href="#top" class="back-to-top">↑ back to top</a>
+      </article>
+    </section>
+  </main>
+
+  <div class="page-end"></div>
+
+  <script>
+    // Fade-in cards on scroll
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
+      { threshold: 0.06 }
+    );
+    document.querySelectorAll('.tip-card').forEach(c => io.observe(c));
+
+    // Highlight active index link as user scrolls
+    const cards = document.querySelectorAll('.tip-card');
+    const linkMap = {};
+    document.querySelectorAll('.index-link').forEach(l => { linkMap[l.getAttribute('href').slice(1)] = l; });
+
+    const lo = new IntersectionObserver(
+      entries => entries.forEach(e => {
+        if (e.isIntersecting) {
+          document.querySelectorAll('.index-link').forEach(l => l.classList.remove('active'));
+          const l = linkMap[e.target.id];
+          if (l) l.classList.add('active');
+        }
+      }),
+      { rootMargin: '-15% 0px -75% 0px' }
+    );
+    cards.forEach(c => lo.observe(c));
+  </script>
+</body>
+</html>
