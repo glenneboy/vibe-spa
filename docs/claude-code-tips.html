@@ -831,6 +831,16 @@ is expired? (src/auth/verify.ts)"</span></code></pre>
   <div class="page-end"></div>
 
   <script>
+    // Offset anchor scroll to account for sticky nav height
+    function updateScrollMargin() {
+      const navH = document.getElementById('index-nav').offsetHeight;
+      document.querySelectorAll('.tip-card').forEach(c => {
+        c.style.scrollMarginTop = (navH + 16) + 'px';
+      });
+    }
+    updateScrollMargin();
+    window.addEventListener('resize', updateScrollMargin);
+
     // Fade-in cards on scroll
     const io = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
