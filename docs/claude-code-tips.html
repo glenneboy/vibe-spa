@@ -954,11 +954,19 @@ is expired? (src/auth/verify.ts)"</span></code></pre>
         navToggle.setAttribute('aria-expanded', String(open));
       });
       document.querySelectorAll('.index-link').forEach(l => {
-        l.addEventListener('click', () => {
+        l.addEventListener('click', (e) => {
           if (window.innerWidth <= 720) {
+            e.preventDefault();
+            const targetId = l.getAttribute('href').slice(1);
+            const target = document.getElementById(targetId);
             indexInner.classList.remove('open');
             navToggle.textContent = 'Jump to tip ▾';
             navToggle.setAttribute('aria-expanded', 'false');
+            // Wait for the nav-close transition (300ms) so offsetHeight is correct
+            setTimeout(() => {
+              updateScrollMargin();
+              if (target) target.scrollIntoView({ behavior: 'smooth' });
+            }, 320);
           }
         });
       });
