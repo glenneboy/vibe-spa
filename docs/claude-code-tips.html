@@ -334,15 +334,78 @@
 
     .page-end { height: 80px; }
 
+    /* ── Nav toggle (hidden on desktop) ── */
+    .nav-bar { display: none; }
+    .nav-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: 1px solid var(--border-dim);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .nav-toggle:hover { color: var(--text); border-color: var(--border); }
+
     /* ── Mobile ── */
     @media (max-width: 720px) {
-      .hero { padding: 72px 20px 40px; }
-      .index-inner { grid-template-columns: 1fr; padding: 0 20px; }
-      .index-col.settings-col { padding-right: 0; border-right: none; border-bottom: 1px solid var(--border-dim); padding-bottom: 14px; }
-      .index-col.practices-col { padding-left: 0; padding-top: 14px; }
-      .section { padding: 32px 20px 0; }
-      .tip-card { padding: 18px 18px 16px 22px; }
+      .back-link { top: 12px; left: 12px; font-size: 9px; padding: 5px 8px; }
+
+      .hero { padding: 60px 16px 32px; }
+      .hero h1 { font-size: clamp(24px, 8vw, 36px); }
+      .hero-sub { font-size: 13px; max-width: 100%; }
+      .legend { gap: 12px; }
+      .legend-item { font-size: 9px; gap: 5px; }
+
+      /* Collapsible sticky nav */
+      .nav-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 16px;
+        border-bottom: 1px solid var(--border-dim);
+      }
+      .nav-bar-label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        color: var(--text-dim);
+        text-transform: uppercase;
+      }
+      .index-inner {
+        grid-template-columns: 1fr;
+        padding: 0 16px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      .index-inner.open {
+        max-height: 70vh;
+        overflow-y: auto;
+        padding-bottom: 10px;
+      }
+      .index-col { padding: 12px 0; }
+      .index-col.settings-col { padding-right: 0; border-right: none; border-bottom: 1px solid var(--border-dim); padding-bottom: 12px; }
+      .index-col.practices-col { padding-left: 0; padding-top: 12px; }
+      .index-link { font-size: 11px; padding: 4px 6px; }
+
+      .section { padding: 28px 16px 0; }
+      .tip-card { padding: 16px 16px 14px 20px; margin-bottom: 10px; }
+      .card-top { gap: 10px; }
       .card-title { font-size: 14px; }
+      .rating-label { display: none; }
+      .coins-lg .coin { width: 11px; height: 11px; }
+      .card-body { font-size: 13px; }
+      pre.code-block { max-width: 100%; padding: 12px 14px; margin-top: 14px; }
+      pre.code-block code { font-size: 10px; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 4px; }
     }
   </style>
 </head>
@@ -374,7 +437,11 @@
 
   <!-- Sticky Index -->
   <nav class="index-nav" aria-label="Jump to tip">
-    <div class="index-inner">
+    <div class="nav-bar">
+      <span class="nav-bar-label">20 tips &middot; Settings &amp; Practices</span>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="index-inner">Jump to tip ▾</button>
+    </div>
+    <div class="index-inner" id="index-inner">
       <div class="index-col settings-col">
         <div class="col-heading">⚙ Settings</div>
         <div class="index-links">
@@ -876,6 +943,26 @@ is expired? (src/auth/verify.ts)"</span></code></pre>
       { rootMargin: '-15% 0px -75% 0px' }
     );
     cards.forEach(c => lo.observe(c));
+
+    // Mobile nav toggle
+    const navToggle = document.querySelector('.nav-toggle');
+    const indexInner = document.getElementById('index-inner');
+    if (navToggle && indexInner) {
+      navToggle.addEventListener('click', () => {
+        const open = indexInner.classList.toggle('open');
+        navToggle.textContent = open ? 'Close ▲' : 'Jump to tip ▾';
+        navToggle.setAttribute('aria-expanded', String(open));
+      });
+      document.querySelectorAll('.index-link').forEach(l => {
+        l.addEventListener('click', () => {
+          if (window.innerWidth <= 720) {
+            indexInner.classList.remove('open');
+            navToggle.textContent = 'Jump to tip ▾';
+            navToggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      });
+    }
   </script>
 </body>
 </html>
