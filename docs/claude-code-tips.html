@@ -340,19 +340,19 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      background: none;
-      border: 1px solid var(--border-dim);
-      color: var(--text-muted);
+      background: rgba(125,211,252,0.08);
+      border: 1px solid rgba(125,211,252,0.3);
+      color: var(--blue);
       font-family: var(--font-mono);
       font-size: 10px;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      padding: 5px 10px;
+      padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
-      transition: color 0.15s, border-color 0.15s;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .nav-toggle:hover { color: var(--text); border-color: var(--border); }
+    .nav-toggle:hover { background: rgba(125,211,252,0.14); border-color: rgba(125,211,252,0.5); }
 
     /* ── Mobile ── */
     @media (max-width: 720px) {
@@ -902,7 +902,7 @@ is expired? (src/auth/verify.ts)"</span></code></pre>
     function updateScrollMargin() {
       const navH = document.querySelector('.index-nav').offsetHeight;
       document.querySelectorAll('.tip-card').forEach(c => {
-        c.style.scrollMarginTop = (navH + 16) + 'px';
+        c.style.scrollMarginTop = (navH + 6) + 'px';
       });
     }
     updateScrollMargin();
