@@ -841,12 +841,24 @@ is expired? (src/auth/verify.ts)"</span></code></pre>
     updateScrollMargin();
     window.addEventListener('resize', updateScrollMargin);
 
-    // Fade-in cards on scroll
+    // Fade-in cards on scroll — initialise after anchor scroll has settled
     const io = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
       { threshold: 0.06 }
     );
-    document.querySelectorAll('.tip-card').forEach(c => io.observe(c));
+
+    function initFadeIn() {
+      const vh = window.innerHeight;
+      document.querySelectorAll('.tip-card').forEach(c => {
+        if (c.getBoundingClientRect().top < vh + 50) {
+          c.classList.add('visible');   // already in/near view — show now
+        } else {
+          io.observe(c);               // below fold — animate on scroll
+        }
+      });
+    }
+    // Double rAF lets the browser complete the anchor scroll before we check positions
+    requestAnimationFrame(() => requestAnimationFrame(initFadeIn));
 
     // Highlight active index link as user scrolls
     const cards = document.querySelectorAll('.tip-card');
