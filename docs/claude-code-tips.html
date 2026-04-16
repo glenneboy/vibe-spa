@@ -833,7 +833,7 @@ is expired? (src/auth/verify.ts)"</span></code></pre>
   <script>
     // Offset anchor scroll to account for sticky nav height
     function updateScrollMargin() {
-      const navH = document.getElementById('index-nav').offsetHeight;
+      const navH = document.querySelector('.index-nav').offsetHeight;
       document.querySelectorAll('.tip-card').forEach(c => {
         c.style.scrollMarginTop = (navH + 16) + 'px';
       });
