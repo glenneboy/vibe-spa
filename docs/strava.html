@@ -1179,14 +1179,20 @@ function initMap() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                map.setView([position.coords.latitude, position.coords.longitude], FALLBACK_ZOOM);
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                map.setView([lat, lng], FALLBACK_ZOOM);
                 console.log('Map centred on current location');
+                setLocationFromMap(lat, lng);
             },
             () => {
                 console.log('Geolocation unavailable, defaulting to Ilford, Essex');
+                setLocationFromMap(FALLBACK_LAT, FALLBACK_LNG);
             },
             { timeout: 5000 }
         );
+    } else {
+        setLocationFromMap(FALLBACK_LAT, FALLBACK_LNG);
     }
 
     console.log('Map initialized');
