@@ -1153,25 +1153,41 @@ function renderRoutes() {
     }).join('');
 }
 
+// Ilford, Essex fallback coordinates
+const FALLBACK_LAT = 51.5590;
+const FALLBACK_LNG = 0.0843;
+const FALLBACK_ZOOM = 11;
+
 // Initialize Map
 function initMap() {
     if (map) return; // Already initialized
 
     console.log('Initializing map...');
 
-    // Create map centered on US (default)
-    map = L.map('map').setView([39.8283, -98.5795], 4);
+    map = L.map('map').setView([FALLBACK_LAT, FALLBACK_LNG], FALLBACK_ZOOM);
 
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19
     }).addTo(map);
 
-    // Handle map clicks
     map.on('click', function(e) {
         setLocationFromMap(e.latlng.lat, e.latlng.lng);
     });
+
+    // Try to centre on user's current location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                map.setView([position.coords.latitude, position.coords.longitude], FALLBACK_ZOOM);
+                console.log('Map centred on current location');
+            },
+            () => {
+                console.log('Geolocation unavailable, defaulting to Ilford, Essex');
+            },
+            { timeout: 5000 }
+        );
+    }
 
     console.log('Map initialized');
 }
@@ -1279,7 +1295,7 @@ function clearLocationFilter() {
     }
 
     // Reset map view to default
-    map.setView([39.8283, -98.5795], 4);
+    map.setView([FALLBACK_LAT, FALLBACK_LNG], FALLBACK_ZOOM);
 
     // Re-apply filters
     applyFilters();
