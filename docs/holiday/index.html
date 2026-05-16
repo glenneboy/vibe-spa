@@ -303,6 +303,12 @@ document.getElementById('btn-view').addEventListener('click', () => {
   loadAndRender();
 });
 
+// ─── Holiday keyword filter ───────────────────────────────────────────────────
+const HOLIDAY_KEYWORDS = /\b(holiday|holidays|hols|annual\s+leave|vacation|pto|time\s+off|day\s+off|days?\s+off|leave)\b/i;
+function isHolidayEvent(title) {
+  return HOLIDAY_KEYWORDS.test(title);
+}
+
 // ─── Data loading ─────────────────────────────────────────────────────────────
 function windowDates() {
   const now = new Date();
@@ -340,9 +346,11 @@ async function loadAndRender() {
         const data = await gcal('/calendars/' + encodeURIComponent(calId) + '/events?' + qs.toString());
         (data.items || []).forEach(ev => {
           if (ev.start?.date && !ev.start?.dateTime) {
+            const title = typeof ev.summary === 'string' ? ev.summary : '';
+            if (!isUK && !isHolidayEvent(title)) return;
             allEvents.push({
               id:           ev.id,
-              title:        typeof ev.summary === 'string' ? ev.summary : (isUK ? 'Bank holiday' : 'Holiday'),
+              title:        title || (isUK ? 'Bank holiday' : 'Holiday'),
               start:        ev.start.date,
               end:          ev.end.date,
               color,
