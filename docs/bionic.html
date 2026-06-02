@@ -168,6 +168,27 @@
         #bionic-app .controls-section { min-width: 250px; max-width: 300px; }
         @media (min-width: 768px) { #bionic-app .main-layout { display: flex; gap: 1.5rem; } #bionic-app .content-section { flex-grow: 1; } }
 
+        /* --- Bionic Reading (Focus) Mode --- */
+        #bionic-reader-overlay { position: fixed; inset: 0; z-index: 50; display: none; overflow-y: auto; background: #faf8f3; color: #16181d; transition: background-color .3s ease, color .3s ease; -webkit-font-smoothing: antialiased; }
+        #bionic-reader-overlay.visible { display: block; }
+        #bionic-reader-overlay.dark { background: #07080a; color: #d9dde3; }
+        #bionic-reader-overlay .reader-column { max-width: 42rem; margin: 0 auto; padding: 3rem 1.5rem 45vh; font-size: 26px; line-height: 1.9; }
+        #bionic-reader-overlay .bionic-bold { font-weight: 700; color: #000; }
+        #bionic-reader-overlay.dark .bionic-bold { color: #fff; }
+        #bionic-reader-overlay h1, #bionic-reader-overlay h2, #bionic-reader-overlay h3, #bionic-reader-overlay h4, #bionic-reader-overlay h5, #bionic-reader-overlay h6 { font-weight: 700; margin: 1em 0 .5em; line-height: 1.25; }
+        #bionic-reader-overlay h1 { font-size: 1.6em; } #bionic-reader-overlay h2 { font-size: 1.4em; } #bionic-reader-overlay h3 { font-size: 1.2em; }
+        #bionic-reader-overlay p { margin-bottom: .9em; }
+        #bionic-reader-overlay ul, #bionic-reader-overlay ol { margin-bottom: .9em; padding-left: 1.6em; }
+        #bionic-reader-overlay li { margin-bottom: .5em; list-style-type: disc; }
+        #bionic-reader-overlay ol li { list-style-type: decimal; }
+        #bionic-reader-overlay blockquote { border-left: 3px solid currentColor; opacity: .85; padding-left: 1rem; margin: 0 0 .9em; }
+        #bionic-reader-overlay .reader-controls { position: fixed; top: 1rem; right: 1rem; display: flex; gap: .35rem; align-items: center; padding: .35rem; border-radius: 10px; background: rgba(125,125,125,.12); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 51; }
+        #bionic-reader-overlay .reader-controls.show, #bionic-reader-overlay .reader-controls:hover { opacity: 1; pointer-events: auto; }
+        #bionic-reader-overlay .reader-controls button { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 .55rem; border: none; border-radius: 7px; background: transparent; color: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background-color .15s ease; }
+        #bionic-reader-overlay .reader-controls button:hover { background: rgba(125,125,125,.25); }
+        #bionic-reader-overlay .reader-controls .reader-exit { color: #fff; background: #dc2626; font-size: 17px; }
+        #bionic-reader-overlay .reader-controls .reader-exit:hover { background: #b91c1c; }
+
         /* --- Scoped Styles for Random Picker --- */
         #picker-app { background: #08090f; align-items: center; justify-content: center; overflow-y: auto; position: relative; }
         #picker-app::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(0,220,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,220,255,0.04) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
@@ -290,12 +311,24 @@
                             <h2 class="text-xl font-semibold mb-4 text-gray-700">Adjust Formatting</h2>
                             <div class="mb-4"><label for="boldIntensity" class="block text-gray-700 text-sm font-medium mb-2">Number of Bold Letters:</label><input type="range" id="boldIntensity" name="boldIntensity" min="1" max="5" value="2" class="form-range accent-blue-600 w-full"><span id="intensityValue" class="block text-center text-gray-700 font-medium mt-1">2</span></div>
                             <div class="mb-4"><label for="fontSize" class="block text-gray-700 text-sm font-medium mb-2">Font Size:</label><input type="range" id="fontSize" name="fontSize" min="12" max="24" value="16" class="form-range accent-blue-600 w-full"><span id="fontSizeValue" class="block text-center text-gray-700 font-medium mt-1">16px</span></div>
-                            <div class="mb-4"><label for="lineHeight" class="block text-gray-700 text-sm font-medium mb-2">Line Height:</label><input type="range" id="lineHeight" name="lineHeight" min="1.2" max="2.0" value="1.6" step="0.1" class="form-range accent-blue-600 w-full"><span id="lineHeightValue" class="block text-center text-gray-700 font-medium mt-1">1.6</span></div>
+                            <div class="mb-4"><label for="lineHeight" class="block text-gray-700 text-sm font-medium mb-2">Line Height:</label><input type="range" id="lineHeight" name="lineHeight" min="1.2" max="4" value="1.6" step="0.1" class="form-range accent-blue-600 w-full"><span id="lineHeightValue" class="block text-center text-gray-700 font-medium mt-1">1.6</span></div>
                             <div class="mb-4"><label for="letterSpacing" class="block text-gray-700 text-sm font-medium mb-2">Letter Spacing:</label><input type="range" id="letterSpacing" name="letterSpacing" min="0" max="2" value="0" step="0.1" class="form-range accent-blue-600 w-full"><span id="letterSpacingValue" class="block text-center text-gray-700 font-medium mt-1">0px</span></div>
+                            <button id="readerModeBtn" class="w-full px-6 py-3 bg-slate-900 text-white font-semibold rounded-md shadow hover:bg-slate-800 transition ease-in-out duration-150 mt-4 flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>Reading Mode</button>
                             <button id="convertBtn" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 transition ease-in-out duration-150 mt-4">Convert & Apply Settings</button>
                             <button id="exportPdfBtn" class="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-md shadow hover:bg-green-700 transition ease-in-out duration-150 mt-4">Export to PDF</button>
                         </div>
                     </div>
+                </div>
+                <div id="bionic-reader-overlay">
+                    <div class="reader-controls">
+                        <button data-r="theme" id="readerThemeBtn" title="Toggle light / dark">🌙</button>
+                        <button data-r="font-dec" title="Smaller text">A−</button>
+                        <button data-r="font-inc" title="Larger text">A+</button>
+                        <button data-r="lh-dec" title="Tighter lines">↕−</button>
+                        <button data-r="lh-inc" title="Looser lines">↕+</button>
+                        <button data-r="exit" class="reader-exit" title="Exit (Esc)">✕</button>
+                    </div>
+                    <div class="reader-column" id="readerColumn"></div>
                 </div>
             `,
             "picker-app": `
@@ -1054,6 +1087,69 @@
                         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
                         pdf.save('bionic-reader-output.pdf');
                     });
+                });
+
+                // --- Reading (Focus) Mode ---
+                const readerOverlay = bionicApp.querySelector('#bionic-reader-overlay');
+                const readerColumn = bionicApp.querySelector('#readerColumn');
+                const readerModeBtn = bionicApp.querySelector('#readerModeBtn');
+                const readerThemeBtn = bionicApp.querySelector('#readerThemeBtn');
+                const readerControls = readerOverlay.querySelector('.reader-controls');
+                let readerFontSize = 28;
+                let readerLineHeight = 1.9;
+                let controlsTimer;
+
+                // Reveal the close button + controls on mouse movement, then fade after idle.
+                const revealControls = () => {
+                    readerControls.classList.add('show');
+                    clearTimeout(controlsTimer);
+                    controlsTimer = setTimeout(() => readerControls.classList.remove('show'), 2500);
+                };
+
+                const applyReaderStyles = () => {
+                    readerColumn.style.fontSize = readerFontSize + 'px';
+                    readerColumn.style.lineHeight = readerLineHeight;
+                };
+                const setReaderTheme = (dark) => {
+                    readerOverlay.classList.toggle('dark', dark);
+                    readerThemeBtn.textContent = dark ? '☀' : '🌙';
+                    localStorage.setItem('bionic-reader-dark', dark ? '1' : '0');
+                };
+                const openReader = () => {
+                    if (!outputArea.textContent.trim() || outputArea.querySelector('.italic')) performConversionAndStyling();
+                    readerColumn.innerHTML = outputArea.innerHTML;
+                    readerFontSize = Math.max(parseInt(fontSizeSlider.value, 10) + 6, 22);
+                    readerLineHeight = parseFloat(lineHeightSlider.value);
+                    applyReaderStyles();
+                    readerOverlay.classList.add('visible');
+                    document.body.style.overflow = 'hidden';
+                    revealControls();
+                };
+                const closeReader = () => {
+                    readerOverlay.classList.remove('visible');
+                    readerControls.classList.remove('show');
+                    clearTimeout(controlsTimer);
+                    document.body.style.overflow = '';
+                };
+
+                setReaderTheme(localStorage.getItem('bionic-reader-dark') !== '0'); // default to dark to avoid glare
+
+                readerModeBtn.addEventListener('click', openReader);
+                readerOverlay.addEventListener('mousemove', revealControls);
+                readerControls.addEventListener('click', (e) => {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+                    switch (btn.dataset.r) {
+                        case 'exit': closeReader(); break;
+                        case 'theme': setReaderTheme(!readerOverlay.classList.contains('dark')); break;
+                        case 'font-inc': readerFontSize = Math.min(readerFontSize + 2, 80); applyReaderStyles(); break;
+                        case 'font-dec': readerFontSize = Math.max(readerFontSize - 2, 12); applyReaderStyles(); break;
+                        case 'lh-inc': readerLineHeight = Math.min(Math.round((readerLineHeight + 0.1) * 10) / 10, 5); applyReaderStyles(); break;
+                        case 'lh-dec': readerLineHeight = Math.max(Math.round((readerLineHeight - 0.1) * 10) / 10, 1); applyReaderStyles(); break;
+                    }
+                });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && readerOverlay.classList.contains('visible')) closeReader();
                 });
 
                 applyTextStyling();
