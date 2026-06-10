@@ -15,6 +15,10 @@
     .screen.active { display: block; }
     input[type="range"] { accent-color: #667eea; cursor: pointer; }
     .cal-cb { accent-color: #667eea; width: 16px; height: 16px; cursor: pointer; }
+    .ev-pill { display: block; transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; }
+    .ev-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(0,0,0,0.28); opacity: .92; }
+    .ev-pill:active { transform: translateY(0); }
+    .ev-pill:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -106,6 +110,8 @@
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"></span>Burn out</span>
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>Bank holiday</span>
         </div>
+        <button id="btn-help" title="What counts as a holiday?"
+          class="flex-shrink-0 w-7 h-7 rounded-full border border-gray-300 text-gray-500 font-semibold text-sm leading-none hover:border-indigo-400 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 active:scale-95 transition-colors">?</button>
       </div>
     </div>
 
@@ -130,6 +136,24 @@
         Disconnect &amp; clear all data
       </button>
       <button id="btn-close-modal" class="w-full text-gray-400 text-sm hover:text-gray-600 transition-colors">Cancel</button>
+    </div>
+  </div>
+
+  <!-- HELP MODAL -->
+  <div id="modal-help" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
+      <h3 class="text-xl font-bold text-gray-900 mb-1">What counts as a holiday?</h3>
+      <p class="text-gray-500 text-sm mb-5">An event shows up here only if <strong>all</strong> of these are true:</p>
+      <ul class="space-y-3 text-sm text-gray-700 mb-6">
+        <li class="flex gap-2.5"><span class="text-indigo-500 font-bold flex-shrink-0">1</span><span>It&rsquo;s on one of your <strong>selected calendars</strong> (change these in Settings).</span></li>
+        <li class="flex gap-2.5"><span class="text-indigo-500 font-bold flex-shrink-0">2</span><span>It&rsquo;s an <strong>all-day event</strong>. Timed events (with a start/end time) are ignored.</span></li>
+        <li class="flex gap-2.5"><span class="text-indigo-500 font-bold flex-shrink-0">3</span><span>Its title mentions time off &mdash; <em>holiday, hols, annual leave, vacation, PTO, time off, day(s) off, leave</em>. <strong>The word &ldquo;holiday&rdquo; counts.</strong></span></li>
+        <li class="flex gap-2.5"><span class="text-emerald-500 font-bold flex-shrink-0">+</span><span>Anything on the <strong>&ldquo;Holidays in United Kingdom&rdquo;</strong> calendar counts as a bank holiday, regardless of its title.</span></li>
+      </ul>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-500 mb-6">
+        Showing events from 2 months ago to 10 months ahead. Reloading the page (&#8984;R) always pulls the latest from Google Calendar.
+      </div>
+      <button id="btn-close-help" class="w-full gradient-bg text-white font-semibold py-2.5 rounded-lg hover:opacity-90 transition-opacity active:scale-[0.99] text-sm">Got it</button>
     </div>
   </div>
 
@@ -236,7 +260,8 @@ function onTokenError() {
 async function gcal(path) {
   if (!isTokenValid()) throw Object.assign(new Error('Session expired. Please reconnect.'), { expired: true });
   const resp = await fetch('https://www.googleapis.com/calendar/v3' + path, {
-    headers: { Authorization: 'Bearer ' + S.token }
+    headers: { Authorization: 'Bearer ' + S.token },
+    cache: 'no-store'
   });
   if (resp.status === 401) throw Object.assign(new Error('Session expired. Please reconnect.'), { expired: true });
   if (!resp.ok) throw new Error('Google Calendar API error (' + resp.status + '). Try reconnecting.');
@@ -303,6 +328,12 @@ document.getElementById('btn-view').addEventListener('click', () => {
   loadAndRender();
 });
 
+// ─── Holiday keyword filter ───────────────────────────────────────────────────
+const HOLIDAY_KEYWORDS = /\b(holiday|holidays|hols|annual\s+leave|vacation|pto|time\s+off|day\s+off|days?\s+off|leave)\b/i;
+function isHolidayEvent(title) {
+  return HOLIDAY_KEYWORDS.test(title);
+}
+
 // ─── Data loading ─────────────────────────────────────────────────────────────
 function windowDates() {
   const now = new Date();
@@ -327,9 +358,10 @@ async function loadAndRender() {
     const allEvents = [];
 
     await Promise.all(S.calendarIds.map(async calId => {
-      const cal    = S.calendars.find(c => c.id === calId);
-      const color  = /^#[0-9a-f]{3,8}$/i.test(cal?.backgroundColor || '') ? cal.backgroundColor : '#667eea';
-      const isUK   = /holidays in united kingdom/i.test(cal?.summary || '');
+      const cal     = S.calendars.find(c => c.id === calId);
+      const color   = /^#[0-9a-f]{3,8}$/i.test(cal?.backgroundColor || '') ? cal.backgroundColor : '#667eea';
+      const isUK    = /holidays in united kingdom/i.test(cal?.summary || '');
+      const calName = cal?.summary || calId;
       let pageToken = '';
       do {
         const qs = new URLSearchParams({
@@ -340,13 +372,19 @@ async function loadAndRender() {
         const data = await gcal('/calendars/' + encodeURIComponent(calId) + '/events?' + qs.toString());
         (data.items || []).forEach(ev => {
           if (ev.start?.date && !ev.start?.dateTime) {
+            const title = typeof ev.summary === 'string' ? ev.summary : '';
+            if (!isUK && !isHolidayEvent(title)) return;
             allEvents.push({
               id:           ev.id,
-              title:        typeof ev.summary === 'string' ? ev.summary : (isUK ? 'Bank holiday' : 'Holiday'),
+              title:        title || (isUK ? 'Bank holiday' : 'Holiday'),
               start:        ev.start.date,
               end:          ev.end.date,
               color,
-              isBankHoliday: isUK
+              isBankHoliday: isUK,
+              calName,
+              htmlLink:     ev.htmlLink || '',
+              location:     typeof ev.location === 'string' ? ev.location : '',
+              description:  typeof ev.description === 'string' ? ev.description : ''
             });
           }
         });
@@ -375,6 +413,39 @@ async function loadAndRender() {
 function parseYMD(s) {
   const [y, m, d] = s.split('-').map(Number);
   return new Date(y, m - 1, d);
+}
+
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// Day-of-month label for a pill, e.g. "(23rd)" or "(23rd–25th)".
+// Google all-day end dates are exclusive, so the last day is end − 1.
+function dayLabel(startStr, endStr) {
+  const s = parseYMD(startStr);
+  const last = parseYMD(endStr); last.setDate(last.getDate() - 1);
+  if (last <= s) return '(' + ordinal(s.getDate()) + ')';
+  return '(' + ordinal(s.getDate()) + '–' + ordinal(last.getDate()) + ')';
+}
+
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDate(d) {
+  return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON_SHORT[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// Full multi-line detail string shown on hover via the native title tooltip.
+function eventTooltip(ev, days) {
+  const s = parseYMD(ev.start);
+  const last = parseYMD(ev.end); last.setDate(last.getDate() - 1);
+  const range = last <= s ? fmtDate(s) : fmtDate(s) + '  →  ' + fmtDate(last);
+  const lines = [ev.title, range, days + ' working day' + (days === 1 ? '' : 's')];
+  if (ev.calName) lines.push('Calendar: ' + ev.calName);
+  if (ev.location) lines.push('📍 ' + ev.location);
+  if (ev.description) lines.push('', ev.description.replace(/<[^>]*>/g, '').trim());
+  if (ev.htmlLink) lines.push('', 'Click to open in Google Calendar →');
+  return lines.join('\n');
 }
 
 function workingDays(from, to) {
@@ -483,6 +554,19 @@ function el(tag, className) {
   return e;
 }
 
+function eventPill(ev, days, colorClasses) {
+  const tag = ev.htmlLink ? 'a' : 'div';
+  const pill = el(tag, 'ev-pill text-xs rounded-md px-2 py-1 truncate ' + colorClasses);
+  pill.title = eventTooltip(ev, days);
+  if (ev.htmlLink) {
+    pill.href = ev.htmlLink;
+    pill.target = '_blank';
+    pill.rel = 'noopener';
+    pill.style.cursor = 'pointer';
+  }
+  return pill;
+}
+
 function monthCard(m) {
   const sc = SC[m.status];
 
@@ -520,17 +604,16 @@ function monthCard(m) {
 
   m.holidays.forEach(ev => {
     const days = workingDays(parseYMD(ev.start), parseYMD(ev.end));
-    const pill = el('div', 'text-xs rounded-md px-2 py-1 text-white truncate font-medium');
+    const pill = eventPill(ev, days, 'text-white font-medium');
     pill.style.backgroundColor = ev.color;
-    pill.title = ev.title;
-    pill.textContent = ev.title + ' · ' + days + 'd';
+    pill.textContent = dayLabel(ev.start, ev.end) + ' ' + ev.title + ' · ' + days + 'd';
     evSection.appendChild(pill);
   });
 
   m.bankHolidays.forEach(ev => {
-    const pill = el('div', 'text-xs rounded-md px-2 py-1 bg-emerald-100 text-emerald-800 truncate');
-    pill.title = ev.title;
-    pill.textContent = '🏦 ' + ev.title;
+    const days = workingDays(parseYMD(ev.start), parseYMD(ev.end));
+    const pill = eventPill(ev, days, 'bg-emerald-100 text-emerald-800');
+    pill.textContent = dayLabel(ev.start, ev.end) + ' 🏦 ' + ev.title;
     evSection.appendChild(pill);
   });
 
@@ -566,6 +649,18 @@ document.getElementById('slider-gap').addEventListener('input', e => {
   localStorage.setItem('hp_max_gap', String(S.maxGapWeeks));
   document.getElementById('slider-label').textContent = S.maxGapWeeks + ' weeks';
   if (document.getElementById('screen-app').classList.contains('active')) renderGrid();
+});
+
+// ─── Help ─────────────────────────────────────────────────────────────────────
+document.getElementById('btn-help').addEventListener('click', () =>
+  document.getElementById('modal-help').classList.remove('hidden'));
+
+document.getElementById('btn-close-help').addEventListener('click', () =>
+  document.getElementById('modal-help').classList.add('hidden'));
+
+document.getElementById('modal-help').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-help'))
+    document.getElementById('modal-help').classList.add('hidden');
 });
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
